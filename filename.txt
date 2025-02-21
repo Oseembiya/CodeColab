@@ -1,0 +1,35 @@
+CodeCola/
+│── frontend/              # Frontend (React App)
+│   │── public/            # Static assets (favicons, images, etc.)
+│   │── src/               # Source code
+│   │   │── assets/        # Images, icons, styles
+│   │   │── components/    # Reusable React components (UI elements)
+│   │   │── pages/         # React pages (Home, Dashboard, etc.)
+│   │   │── context/       # Context API or Redux store
+│   │   │── hooks/         # Custom React hooks
+│   │   │── utils/         # Helper functions
+│   │   │── services/      # API service handlers (Firebase, MongoDB)
+│   │   │── App.js         # Main React app entry
+│   │   │── index.js       # React root file
+│   │── package.json       # Frontend dependencies
+│   │── .env               # Environment variables (frontend)
+│── backend/               # Backend (Node.js & Express)
+│   │── config/            # Configurations (DB, auth)
+│   │── controllers/       # Business logic (handling API requests)
+│   │── models/            # MongoDB models (User, Rooms, etc.)
+│   │── routes/            # API routes
+│   │── services/          # Utility services (auth, database, etc.)
+│   │── socket/            # Socket.IO event handling
+│   │── middleware/        # Middleware (auth checks, security)
+│   │── index.js           # Main backend entry point
+│   │── package.json       # Backend dependencies
+│   │── .env               # Backend environment variables
+│── database/              # MongoDB database setup (if needed)
+│── docs/                  # Documentation (API docs, project reports)
+│── scripts/               # Deployment & automation scripts
+│── tests/                 # Unit & integration tests
+│── .gitignore             # Files to ignore in Git
+│── README.md              # Project description & setup guide
+│── docker-compose.yml     # Docker setup (if used)
+│── vercel.json            # Deployment config (if using Vercel)
+│── aws-config.json        # AWS hosting configuration
