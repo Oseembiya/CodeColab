@@ -4,7 +4,7 @@ CodeCola/
 │   │── src/               # Source code
 │   │   │── assets/        # Images, icons, styles
 │   │   │── components/    # Reusable React components (UI elements)
-│   │   │── pages/         # React pages (Home, Dashboard, etc.)
+│   │   │── pages/         # React pages (Home, Dashboard, session etc.)
 │   │   │── context/       # Context API or Redux store
 │   │   │── hooks/         # Custom React hooks
 │   │   │── utils/         # Helper functions
