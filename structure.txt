@@ -9,8 +9,8 @@ CodeCola/
 │   │   │── hooks/         # Custom React hooks
 │   │   │── utils/         # Helper functions
 │   │   │── services/      # API service handlers (Firebase, MongoDB)
-│   │   │── App.js         # Main React app entry
-│   │   │── index.js       # React root file
+│   │   │── App.jsx         # Main React app entry
+│   │   │── index.jsx       # React root file
 │   │── package.json       # Frontend dependencies
 │   │── .env               # Environment variables (frontend)
 │── backend/               # Backend (Node.js & Express)
