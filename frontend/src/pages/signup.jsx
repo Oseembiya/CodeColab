@@ -13,10 +13,7 @@ const SignUp = () => {
 
     });
 
-    const handleChange = (e) => {
-        const { name, value, checked } = e.target;
-        setFormData({ ...formData, [name]: name === 'acceptTerms' ? checked : value });
-    };
+   
 
     const [error, setError] = useState({});
 
