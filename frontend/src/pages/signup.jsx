@@ -17,6 +17,7 @@ const SignUp = () => {
     });
     const [error, setError] = useState({});
     const [firebaseError, setFirebaseError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prevData => ({
@@ -27,6 +28,7 @@ const SignUp = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFirebaseError(""); // Reset previous Firebase errors
+        setSuccessMessage(""); // Reset previous success message
         const newErrors = validateForm();
         
         if (Object.keys(newErrors).length === 0) {
@@ -37,23 +39,25 @@ const SignUp = () => {
                     formData.password
                 );
                 
-                // You can access the user object here
                 const user = userCredential.user;
                 console.log("New user created:", user.uid);
                 
-                // Optional: Update user profile with full name
                 await updateProfile(user, {
                     displayName: formData.fullName
                 });
                 
-                // Redirect to dashboard page
-                window.location.href = '/dashboard';
+                setSuccessMessage("Account created successfully! Redirecting...");
+                
+                // Add a slight delay before redirecting
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 2000);
                 
             } catch (error) {
                 console.error("Firebase error:", error);
                 switch (error.code) {
                     case 'auth/email-already-in-use':
-                        setFirebaseError('This email is already registered please login');
+                        setFirebaseError('This email is already registered please Login');
                         break;
                     case 'auth/invalid-email':
                         setFirebaseError('Invalid email address');
@@ -151,6 +155,7 @@ const SignUp = () => {
                     </label>
                     {error.acceptTerms && <span className="error">{error.acceptTerms}</span>}
                 </div>
+                {successMessage && <div className="success">{successMessage}</div>}
                 {firebaseError && <div className="error">{firebaseError}</div>}
                 <button className="submit-button" type="submit">Get Started</button>
                 <p>Already have an account? <Link to="/login">Login</Link></p>

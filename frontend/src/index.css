@@ -100,6 +100,14 @@ body {
     margin-top: 0.25rem;
     display: block;
 }
+.success {
+    color: green;
+    background-color: #e8f5e9;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    text-align: center;
+}
 
 .submit-button {
     width: 100%;
