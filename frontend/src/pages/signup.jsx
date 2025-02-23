@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { auth } from "../firebaseConfig";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
+import { Link } from "react-router-dom";
+
 import "../index.css"
 import image from "../assets/image.png"
 
@@ -15,6 +17,7 @@ const SignUp = () => {
 
     });
     const [error, setError] = useState({});
+    const [firebaseError, setFirebaseError] = useState("");
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prevData => ({
@@ -24,13 +27,47 @@ const SignUp = () => {
     };
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setFirebaseError(""); // Reset previous Firebase errors
         const newErrors = validateForm();
+        
         if (Object.keys(newErrors).length === 0) {
             try {
-                await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-                // Handle successful signup
+                const userCredential = await createUserWithEmailAndPassword(
+                    auth, 
+                    formData.email, 
+                    formData.password
+                );
+                
+                // You can access the user object here
+                const user = userCredential.user;
+                console.log("New user created:", user.uid);
+                
+                // Optional: Update user profile with full name
+                await updateProfile(user, {
+                    displayName: formData.fullName
+                });
+                
+                // Redirect to login page or dashboard
+                window.location.href = '/dashboard';
+                
             } catch (error) {
-                setError({ submit: error.message });
+                console.error("Firebase error:", error);
+                switch (error.code) {
+                    case 'auth/email-already-in-use':
+                        setFirebaseError('This email is already registered');
+                        break;
+                    case 'auth/invalid-email':
+                        setFirebaseError('Invalid email address');
+                        break;
+                    case 'auth/operation-not-allowed':
+                        setFirebaseError('Email/password accounts are not enabled');
+                        break;
+                    case 'auth/weak-password':
+                        setFirebaseError('Password is too weak');
+                        break;
+                    default:
+                        setFirebaseError('An error occurred during registration');
+                }
             }
         } else {
             setError(newErrors);
@@ -103,8 +140,21 @@ const SignUp = () => {
                     <FaLock className="input-icon" />
                     {error.confirmPassword && <span className="error">{error.confirmPassword}</span>}
                 </div>
+                <div className="form-group">
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="acceptTerms"
+                            checked={formData.acceptTerms}
+                            onChange={handleChange}
+                        />
+                        I accept the terms and conditions
+                    </label>
+                    {error.acceptTerms && <span className="error">{error.acceptTerms}</span>}
+                </div>
+                {firebaseError && <div className="error">{firebaseError}</div>}
                 <button className="submit-button" type="submit">Get Started</button>
-                <p>Already have an account? <link to="/login"/>Login</p>
+                <p>Already have an account? <Link to="/login">Login</Link></p>
              </form>   
         </div>
     </div>
