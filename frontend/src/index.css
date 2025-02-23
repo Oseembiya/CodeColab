@@ -4,7 +4,7 @@
     --line-color: #42434a;
     --hover-color: #222533;
     ---color: #e6e6ef;
-    --quinary-color: #5e63ff;
+    --quinary-color: #5c5fbb;
     --secondary-color-light: #b0b3c1;
     --error-color:#dc2626;
 }
@@ -138,4 +138,21 @@ body {
 
 .login-link a:hover {
     text-decoration: underline;
+}
+
+/* Add these styles at the end of your index.css file */
+.login-container {
+    max-width: 480px;
+    margin: 4rem auto;
+    padding: 2rem;
+}
+
+.login-form h1 {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.login-form p {
+    text-align: center;
+    margin-bottom: 2rem;
 }

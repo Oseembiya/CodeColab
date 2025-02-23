@@ -2,11 +2,12 @@ import { useState } from "react";
 import { auth } from "../firebaseConfig";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../index.css"
 import image from "../assets/image.png"
 
 const SignUp = () => {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -48,9 +49,9 @@ const SignUp = () => {
                 
                 setSuccessMessage("Account created successfully! Redirecting...");
                 
-                // Add a slight delay before redirecting
+                // Replace setTimeout with navigate
                 setTimeout(() => {
-                    window.location.href = '/dashboard';
+                    navigate('/dashboard');  // to redirect dashboard
                 }, 2000);
                 
             } catch (error) {
