@@ -128,7 +128,7 @@ const SignUp = () => {
                 </div>
                 <div className="form-group">
                     <label htmlFor="email">Email</label>
-                    <input type="email" id="email" name="email" value={formData.email} placeholder="oscar@gmail.com" onChange={handleChange} />
+                    <input type="email" id="email" name="email" value={formData.email} placeholder="Oseearmstrong@gmail.com" onChange={handleChange} />
                     <FaEnvelope className="input-icon" />
                     {error.email && <span className="error">{error.email}</span>}
                 </div>
