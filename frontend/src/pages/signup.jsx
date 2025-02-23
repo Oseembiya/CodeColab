@@ -3,7 +3,6 @@ import { auth } from "../firebaseConfig";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import { Link } from "react-router-dom";
-
 import "../index.css"
 import image from "../assets/image.png"
 
@@ -47,14 +46,14 @@ const SignUp = () => {
                     displayName: formData.fullName
                 });
                 
-                // Redirect to login page or dashboard
+                // Redirect to dashboard page
                 window.location.href = '/dashboard';
                 
             } catch (error) {
                 console.error("Firebase error:", error);
                 switch (error.code) {
                     case 'auth/email-already-in-use':
-                        setFirebaseError('This email is already registered');
+                        setFirebaseError('This email is already registered please login');
                         break;
                     case 'auth/invalid-email':
                         setFirebaseError('Invalid email address');
