@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { auth } from "../firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { FaEnvelope, FaLock } from "react-icons/fa";
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { FaEnvelope, FaLock, FaGoogle } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import "../index.css";
 
@@ -74,6 +74,24 @@ const Login = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setFirebaseError("");
+    setSuccessMessage("");
+    
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      setSuccessMessage("Login successful! Redirecting...");
+      
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (error) {
+      console.error("Google login error:", error);
+      setFirebaseError('An error occurred during Google login');
+    }
+  };
+
   return (
     <div className="signup-container">
       <div className="signup-form">
@@ -109,6 +127,13 @@ const Login = () => {
           {successMessage && <div className="success">{successMessage}</div>}
           {firebaseError && <div className="error">{firebaseError}</div>}
           <button className="submit-button" type="submit">Login</button>
+          <button 
+            type="button" 
+            className="google-button" 
+            onClick={handleGoogleLogin}
+          >
+            <FaGoogle /> Sign in with Google
+          </button>
           <p>Do not have an account? <Link to="/signup">Sign Up</Link></p>
         </form>
       </div>
