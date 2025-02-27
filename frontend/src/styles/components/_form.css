@@ -1,0 +1,89 @@
+.form-group {
+  margin-bottom: var(--spacing-lg);
+  position: relative;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"] {
+  width: 100%;
+  padding: var(--spacing-md);
+  padding-right: 2.5rem;
+  border: 1px solid var(--line-color);
+  border-radius: 4px;
+  font-size: var(--text-base);
+}
+
+.input-icon {
+  position: absolute;
+  right: 12px;
+  top: 40%;
+  transform: translateY(30%);
+  color: var(--text-color);
+  font-size: var(--text-lg);
+}
+
+.error {
+  color: var(--error-color);
+  font-size: var(--text-sm);
+  margin-top: var(--spacing-xs);
+  display: block;
+}
+
+.success {
+  color: var(--success-color);
+  background-color: #e3f1e4;
+  padding: var(--spacing-md);
+  border-radius: 4px;
+  margin: var(--spacing-md) 0;
+  text-align: center;
+}
+
+.submit-button {
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: var(--quinary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: var(--text-base);
+  cursor: pointer;
+  margin: var(--spacing-md) 0;
+}
+
+.submit-button:hover {
+  background-color: var(--hover-color);
+}
+
+.login-link {
+  text-align: center;
+  margin-top: var(--spacing-lg);
+}
+
+.login-link a {
+  color: var(--text-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-link a:hover {
+  text-decoration: underline;
+}
+
+.google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  margin: var(--spacing-sm) 0;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+} 
