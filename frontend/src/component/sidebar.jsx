@@ -6,6 +6,7 @@ const Sidebar = () => {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
+        <img src="/logo.ico" alt="CodeColab Logo" className="sidebar-logo" />
         <h2>CodeColab</h2>
       </div>
       
