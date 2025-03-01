@@ -1,0 +1,66 @@
+.navbar {
+  height: 60px;
+  background-color: var(--background-color-dark);
+  color: var(--text-color);
+  padding: 0 var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 250px; /* Same as sidebar width */
+  z-index: 100;
+  border-bottom: 1px solid var(--line-color);
+}
+
+.search-container {
+  position: relative;
+  width: 400px;
+}
+
+.search-input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  padding-left: 2.5rem;
+  background-color: var(--hover-color);
+  border: 1px solid var(--line-color);
+  border-radius: 4px;
+  color: var(--text-color);
+  font-size: var(--text-base);
+}
+
+.search-input::placeholder {
+  color: var(--secondary-color-light);
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--secondary-color-light);
+}
+
+.navbar-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.user-name {
+  color: var(--text-color);
+  font-size: var(--text-base);
+} 
