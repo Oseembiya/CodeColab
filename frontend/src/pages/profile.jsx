@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { auth } from "../firebaseConfig";
 import { updateProfile } from "firebase/auth";
 import { FaUser, FaEdit } from "react-icons/fa";
-import Sidebar from '../component/sidebar';
 
 const Profile = () => {
   const [formData, setFormData] = useState({
@@ -56,7 +55,7 @@ const Profile = () => {
 
   return (
     <div className="dashboard-container">
-      <Sidebar />
+     
       <div className="main-content">
         <div className="profile-container">
           <div className="profile-header">

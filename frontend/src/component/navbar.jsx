@@ -1,8 +1,8 @@
 import UserProfile from './userProfile';
 import { FaSearch } from 'react-icons/fa';
-import Profile from '../pages/profile';
 
-const Navbar = () => {
+// eslint-disable-next-line react/prop-types
+const Navbar = ({ onProfileClick }) => {
     return (
         <nav className="navbar">
             <div className="search-container">
@@ -14,8 +14,7 @@ const Navbar = () => {
                 />
             </div>
             <div className="navbar-profile">
-                <UserProfile />
-                <Profile />
+                <UserProfile onProfileClick={onProfileClick} />
             </div>
         </nav>
     );

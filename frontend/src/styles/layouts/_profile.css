@@ -1,12 +1,11 @@
 .profile-container {
-  
   margin-top: 60px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .profile-header {
-  width: 100%;
+
   display: flex;
   justify-content: space-between;
   align-items: center;

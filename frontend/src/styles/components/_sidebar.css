@@ -41,6 +41,7 @@
 
 .menu-item:hover {
   background-color: var(--hover-color);
+  color: var(--secondary-color);
 }
 
 .sidebar-footer {
