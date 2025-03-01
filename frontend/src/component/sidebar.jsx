@@ -22,8 +22,10 @@ const Sidebar = () => {
       </div>
 
       <div className="sidebar-footer">
+        <button className="sign-out-button">
           <FaSignOutAlt />
           <SignOut />
+        </button>
       </div>
     </div>
   );
