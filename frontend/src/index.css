@@ -1,0 +1,170 @@
+:root {
+    --background-color: #ffffff;
+    --text-color: #11121a;
+    --line-color: #42434a;
+    --hover-color: #222533;
+    ---color: #e6e6ef;
+    --quinary-color: #5c5fbb;
+    --secondary-color-light: #b0b3c1;
+    --error-color:#dc2626;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+.signup-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.signup-content {
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+   
+}
+
+.signup-content img {
+    max-width: 80%;
+    height: auto;
+    object-fit: cover;
+    margin-top: 2rem;
+    border-radius: 50%;
+}
+
+.signup-form {
+    flex: 1;
+    max-width: 480px;
+}
+
+.signup-form h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.signup-form p {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"] {
+    width: 100%;
+    padding: 0.75rem;
+    padding-right: 2.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.input-icon {
+    position: absolute;
+    right: 12px;
+    top: 40%;
+    transform: translateY(30%);
+    color: var(--text-color);
+    font-size: 1.2rem;
+}
+
+.error {
+    color: var(--error-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+.success {
+    color: green;
+    background-color: #e3f1e4;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.submit-button {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--quinary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin: 1rem 0;
+}
+
+.submit-button:hover {
+    background-color: var(--hover-color);
+}
+
+.login-link {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.login-link a {
+    color: #000;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+/* Add these styles at the end of your index.css file */
+.login-container {
+    max-width: 480px;
+    margin: 4rem auto;
+    padding: 2rem;
+}
+
+.login-form h1 {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.login-form p {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.google-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin: 8px 0;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+  }

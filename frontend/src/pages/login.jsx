@@ -3,7 +3,7 @@ import { auth } from "../firebaseConfig";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { FaEnvelope, FaLock, FaGoogle } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-
+import "../index.css";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -93,7 +93,7 @@ const Login = () => {
   };
 
   return (
-    <div className="signup-container">
+    <div className="login-container">
       <div className="signup-form">
         <h1>Login</h1>
         <p>Please enter your credentials to login.</p>
@@ -134,7 +134,7 @@ const Login = () => {
           >
             <FaGoogle /> Sign in with Google
           </button>
-          <p>Do not have an account? <Link to="/signup">Sign Up</Link></p>
+          <p className="login-link">Do not have an account? <Link to="/signup">Sign Up</Link></p>
         </form>
       </div>
     </div>

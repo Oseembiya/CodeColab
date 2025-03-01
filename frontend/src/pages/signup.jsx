@@ -3,7 +3,7 @@ import { auth } from "../firebaseConfig";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-
+import "../index.css";
 import image from "../assets/image.png"
 
 const SignUp = () => {
@@ -159,7 +159,7 @@ const SignUp = () => {
                 {successMessage && <div className="success">{successMessage}</div>}
                 {firebaseError && <div className="error">{firebaseError}</div>}
                 <button className="submit-button" type="submit">Get Started</button>
-                <p>Already have an account? <Link to="/login">Login</Link></p>
+                <p className="login-link">Already have an account? <Link to="/login">Login</Link></p>
              </form>   
         </div>
     </div>

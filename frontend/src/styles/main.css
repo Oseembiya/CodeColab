@@ -1,7 +1,5 @@
 
 @import './base/_reset.css';
-
-@import './components/_form.css';
 @import './components/_sidebar.css';
 @import './components/_navbar.css';
 @import './layouts/_dashboard.css';
