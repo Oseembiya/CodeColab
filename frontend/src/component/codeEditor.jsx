@@ -2,7 +2,7 @@ import * as monaco from '@monaco-editor/react';
 
 const MonacoEditor = () => {
   return (
-    <div className="monaco-editor-container">
+    <div className="monaco-editor">
       <monaco.Editor
         height="100%"
         defaultLanguage="javascript"
