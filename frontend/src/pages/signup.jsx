@@ -3,7 +3,7 @@ import { auth } from "../firebaseConfig";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import "../index.css"
+
 import image from "../assets/image.png"
 
 const SignUp = () => {

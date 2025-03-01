@@ -1,5 +1,4 @@
-/* Import all CSS files */
-@import './base/_variables.css';
+
 @import './base/_reset.css';
 
 @import './components/_form.css';
