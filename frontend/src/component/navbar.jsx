@@ -1,8 +1,7 @@
 import UserProfile from './userProfile';
 import { FaSearch, FaBell, FaEnvelope } from 'react-icons/fa';
 
-// eslint-disable-next-line react/prop-types
-const Navbar = ({ onProfileClick }) => {
+const Navbar = () => {
     return (
         <nav className="navbar">
             <div className="search-container">
@@ -24,7 +23,7 @@ const Navbar = ({ onProfileClick }) => {
                         <span className="notification-badge">3</span>
                     </button>
                 </div>
-                <UserProfile onProfileClick={onProfileClick} />
+                <UserProfile />
             </div>
         </nav>
     );

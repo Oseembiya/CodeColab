@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { auth } from "../firebaseConfig";
 import { updateProfile } from "firebase/auth";
 import { FaUser, FaEdit } from "react-icons/fa";
 
 const Profile = () => {
   const [formData, setFormData] = useState({
-    displayName: "",
+    displayName: auth.currentUser?.displayName || "",
     bio: "",
     theme: "light",
     emailNotifications: true
@@ -13,17 +13,6 @@ const Profile = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-
-  useEffect(() => {
-    // Load user data when component mounts
-    const user = auth.currentUser;
-    if (user) {
-      setFormData(prevData => ({
-        ...prevData,
-        displayName: user.displayName || "",
-      }));
-    }
-  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -54,7 +43,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="dashboard-container">
+    
      
       <div className="main-content">
         <div className="profile-container">
@@ -140,7 +129,6 @@ const Profile = () => {
           </form>
         </div>
       </div>
-    </div>
   );
 };
 

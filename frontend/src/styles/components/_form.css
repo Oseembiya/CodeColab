@@ -158,4 +158,7 @@
     cursor: pointer;
     background-color: transparent;
     border: none;
+}
+    .google-button::before {
+        color: var(--secondary-color);
   }

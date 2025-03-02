@@ -1,16 +1,14 @@
-;
 import Sidebar from '../component/sidebar';
-import MonacoEditor from '../component/codeEditor';
 import Navbar from '../component/navbar';
-
+import { Outlet } from 'react-router-dom';
 
 const Dashboard = () => {
   return (
     <div className="container">
-      <Sidebar className="sidebar" />
-      <Navbar className="navbar" />
+      <Sidebar />
+      <Navbar />
       <div className="main-content">
-        <MonacoEditor />
+        <Outlet />
       </div>
     </div>
   );

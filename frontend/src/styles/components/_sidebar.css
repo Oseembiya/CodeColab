@@ -44,6 +44,11 @@
   color: var(--secondary-color);
 }
 
+.menu-item.active {
+  background-color: var(--hover-color);
+  color: var(--secondary-color);
+}
+
 .sidebar-footer {
   display: flex;
   align-items: center;
