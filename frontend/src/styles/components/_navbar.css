@@ -11,7 +11,6 @@
   right: 0;
   left: 250px; /* Same as sidebar width */
   z-index: 100;
-  border-bottom: 1px solid var(--line-color);
 }
 
 .search-container {
