@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { FaHome, FaCode, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaCode,  } from 'react-icons/fa';
 import SignOut from './signOut';
+
 const Sidebar = () => {
   return (
     <div className="sidebar">
@@ -12,20 +13,17 @@ const Sidebar = () => {
       <div className="sidebar-menu">
         <Link to="/dashboard" className="menu-item">
           <FaHome />
-          Dashboard
+          <span>Dashboard</span>
         </Link>
         
         <Link to="/sessions" className="menu-item">
           <FaCode />
-          Sessions
+          <span>Sessions</span>
         </Link>
       </div>
 
       <div className="sidebar-footer">
-        <button className="sign-out-button">
-          <FaSignOutAlt />
-          <SignOut />
-        </button>
+        <SignOut />
       </div>
     </div>
   );

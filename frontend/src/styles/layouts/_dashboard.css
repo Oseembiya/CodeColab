@@ -31,3 +31,10 @@
   height: 100%;
   width: 100%;
 }
+
+/* Add these media queries at the end of the file */
+@media screen and (max-width: 768px) {
+  .container {
+    grid-template-columns: 60px 1fr;
+  }
+}

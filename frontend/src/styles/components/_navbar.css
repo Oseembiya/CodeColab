@@ -63,4 +63,67 @@
 .user-name {
   color: var(--text-color);
   font-size: var(--text-base);
+}
+
+.navbar-icons {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-right: var(--spacing-md);
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: var(--text-lg);
+  cursor: pointer;
+  position: relative;
+  padding: var(--spacing-xs);
+}
+
+.icon-button:hover {
+  color: var(--secondary-color);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  font-size: var(--text-xs);
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Add these media queries at the end of the file */
+@media screen and (max-width: 768px) {
+  .navbar {
+    left: 60px; /* Reduce navbar offset to match smaller sidebar */
+    padding: 0 var(--spacing-sm);
+  }
+
+  .search-container {
+    width: 200px;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .navbar-icons {
+    margin-right: var(--spacing-sm);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .search-container {
+    width: 150px;
+  }
+
+  .search-input {
+    padding: var(--spacing-xs) var(--spacing-md);
+  }
 } 
