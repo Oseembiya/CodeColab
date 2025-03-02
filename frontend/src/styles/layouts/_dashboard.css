@@ -16,7 +16,6 @@
 .navbar {
   grid-row: 1;
   grid-column: 2;
-  padding: 1rem;
 }
 
 /* Main content area */

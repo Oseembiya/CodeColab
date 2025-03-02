@@ -5,7 +5,7 @@ import Dashboard from "./pages/dashboard"
 import PrivateRoute from "./pages/privateRoute"
 import Profile from "./pages/profile"
 import Sessions from "./pages/sessions"
-import CodeEditor from "./component/codeEditor"
+import CodeEditor from "./pages/codeEditor"
 function App() {
   return (
     <Routes>

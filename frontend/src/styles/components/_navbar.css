@@ -2,7 +2,7 @@
   height: 60px;
   background-color: var(--background-color-dark);
   color: var(--text-color);
-  padding: 0 var(--spacing-lg);
+  padding-right: var(--spacing-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -43,92 +43,90 @@ const Profile = () => {
   };
 
   return (
-    
-     
-      <div className="main-content">
-        <div className="profile-container">
-          <div className="profile-header">
-            <h1>Profile Settings</h1>
-            <button 
-              className="edit-button"
-              onClick={() => setIsEditing(!isEditing)}
-            >
-              <FaEdit /> {isEditing ? "Cancel" : "Edit Profile"}
-            </button>
+    <div className="profile-main-content">
+      <div className="profile-container">
+        <div className="profile-header">
+          <h1>Profile Settings</h1>
+          <button 
+            className="edit-button"
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            <FaEdit /> {isEditing ? "Cancel" : "Edit Profile"}
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="profile-form">
+          <div className="profile-avatar">
+            <img 
+              src={auth.currentUser?.photoURL || "/default-avatar.png"} 
+              alt="Profile" 
+              className="avatar-large"
+            />
+            <FaUser className="avatar-icon" />
           </div>
 
-          <form onSubmit={handleSubmit} className="profile-form">
-            <div className="profile-avatar">
-              <img 
-                src={auth.currentUser?.photoURL || "/default-avatar.png"} 
-                alt="Profile" 
-                className="avatar-large"
-              />
-              <FaUser className="avatar-icon" />
-            </div>
+          <div className="form-group">
+            <label htmlFor="displayName">Display Name</label>
+            <input
+              type="text"
+              id="displayName"
+              name="displayName"
+              value={formData.displayName}
+              onChange={handleChange}
+              disabled={!isEditing}
+            />
+          </div>
 
-            <div className="form-group">
-              <label htmlFor="displayName">Display Name</label>
+          <div className="form-group">
+            <label htmlFor="bio">Bio</label>
+            <textarea
+              id="bio"
+              name="bio"
+              value={formData.bio}
+              onChange={handleChange}
+              disabled={!isEditing}
+              rows="4"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="theme">Theme Preference</label>
+            <select
+              id="theme"
+              name="theme"
+              value={formData.theme}
+              onChange={handleChange}
+              disabled={!isEditing}
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>
               <input
-                type="text"
-                id="displayName"
-                name="displayName"
-                value={formData.displayName}
+                type="checkbox"
+                name="emailNotifications"
+                checked={formData.emailNotifications}
                 onChange={handleChange}
                 disabled={!isEditing}
               />
-            </div>
+              Receive email notifications
+            </label>
+          </div>
 
-            <div className="form-group">
-              <label htmlFor="bio">Bio</label>
-              <textarea
-                id="bio"
-                name="bio"
-                value={formData.bio}
-                onChange={handleChange}
-                disabled={!isEditing}
-                rows="4"
-              />
-            </div>
+          {error && <div className="error">{error}</div>}
+          {success && <div className="success">{success}</div>}
 
-            <div className="form-group">
-              <label htmlFor="theme">Theme Preference</label>
-              <select
-                id="theme"
-                name="theme"
-                value={formData.theme}
-                onChange={handleChange}
-                disabled={!isEditing}
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>
-                <input
-                  type="checkbox"
-                  name="emailNotifications"
-                  checked={formData.emailNotifications}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-                Receive email notifications
-              </label>
-            </div>
-
-            {error && <div className="error">{error}</div>}
-            {success && <div className="success">{success}</div>}
-
-            {isEditing && (
-              <button type="submit" className="submit-button">
-                Save Changes
-              </button>
-            )}
-          </form>
-        </div>
+          {isEditing && (
+            <button type="submit" className="submit-button">
+              Save Changes
+            </button>
+          )}
+        </form>
       </div>
+    </div>
   );
 };
 
