@@ -3,7 +3,6 @@ import { auth } from "../firebaseConfig";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { FaEnvelope, FaLock, FaGoogle } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import "../index.css";
 
 const Login = () => {
   const navigate = useNavigate();

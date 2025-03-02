@@ -1,13 +1,10 @@
 :root {
   /* Colors */
-  --background-color: #ffffff;
-  --background-color-dark: #11121a;
-  --text-color: #ffffff;
+  --background-color: #11121a;
+  --text-color: #fefefe;
   --line-color: #42434a;
   --hover-color: #222533;
-  --primary-color: #e6e6ef;
   --secondary-color: #5c5fbb;
-  --secondary-color-light: #b0b3c1;
   --error-color: #dc2626;
   --success-color: #22c55e;
   
@@ -37,13 +34,15 @@ body {
   font-family: 'Arial', sans-serif;
   background-color: var(--background-color);
   color: var(--text-color);
+  
 }
 
 a {
   text-decoration: none;
-  color: inherit; 
+  color: var(--text-color); 
+}
+input {
+  color: var(--text-color);
 }
 
-ul {
-  list-style: none;
-}
+

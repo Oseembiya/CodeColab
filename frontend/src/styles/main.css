@@ -1,7 +1,7 @@
-
+@import './components/_form.css';
 @import './base/_reset.css';
 @import './components/_sidebar.css';
 @import './components/_navbar.css';
 @import './layouts/_dashboard.css';
-@import './layouts/_auth.css';
+
 @import './layouts/_profile.css';

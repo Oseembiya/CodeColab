@@ -49,24 +49,22 @@
   align-items: center;
   justify-content: center;
   margin-top: auto;
-  padding: 15px;
   border-top: 1px solid #93b2d2;
 }
 
 .sign-out-button {
-  width: 100%;
-  padding: 15px 25px;
+  padding: 10px 10px;
   background-color: transparent;
   border: none;
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
   justify-content: center;
   font-size: inherit;
 }
 
-.sign-out-button:hover {
+.sign-out-button:hover, .sidebar-footer:hover {
   background-color: var(--hover-color);
+  color: var(--secondary-color);
 }
