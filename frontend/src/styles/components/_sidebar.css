@@ -48,6 +48,10 @@
   font-size: var(--icon-size);
 }
 
+.menu-item span {
+  min-width: 80px;
+}
+
 .sidebar-footer {
   margin-top: auto;
 }
@@ -64,6 +68,10 @@
 .sign-out-link:hover {
   background-color: var(--hover-color);
   color: var(--secondary-color);
+}
+
+.sign-out-link span {
+  min-width: 80px;
 }
 
 @media screen and (max-width: 768px) {
