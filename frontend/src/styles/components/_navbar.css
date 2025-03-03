@@ -1,8 +1,8 @@
 .navbar {
   height: 60px;
-  background-color: var(--background-color-dark);
+  background-color: var(--background-color);
   color: var(--text-color);
-  padding-right: var(--spacing-lg);
+  padding: var(--spacing-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -38,7 +38,7 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--secondary-color-light);
+  color: var(--text-color);
   font-size: var(--icon-size);
 }
 
@@ -98,10 +98,9 @@
   text-align: center;
 }
 
-/* Add these media queries at the end of the file */
 @media screen and (max-width: 768px) {
   .navbar {
-    left: 60px; /* Reduce navbar offset to match smaller sidebar */
+    left: 60px;
     padding: 0 var(--spacing-sm);
   }
 
@@ -112,16 +111,10 @@
   .user-name {
     display: none;
   }
-
-  .navbar-icons {
-    margin-right: var(--spacing-sm);
-  }
 }
 
 @media screen and (max-width: 480px) {
   .search-container {
     width: 150px;
   }
-
-
 } 

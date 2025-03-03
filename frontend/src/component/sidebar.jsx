@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FaHome, FaCode, FaLaptopCode } from 'react-icons/fa';
-import SignOut from './signOut';
+import { FaHome, FaCode, FaLaptopCode, FaSignOutAlt } from 'react-icons/fa';
+
 
 const Sidebar = () => {
   const location = useLocation();
@@ -38,7 +38,10 @@ const Sidebar = () => {
       </div>
 
       <div className="sidebar-footer">
-        <SignOut />
+        <Link to="/login" className="sign-out-link">
+          <FaSignOutAlt />
+          <span>Sign Out</span>
+        </Link>
       </div>
     </div>
   );

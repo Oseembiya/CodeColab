@@ -1,39 +1,9 @@
 .signup-container,
 .login-container {
-  max-width: 1200px;
+  max-width: 480px;
   margin: var(--spacing-xl) auto;
   padding: var(--spacing-md);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xl);
 }
-
-.signup-content {
-  flex: 1;
-  display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
-}
-
-.signup-content img {
-    max-width: 80%;
-    height: auto;
-    object-fit: cover;
-    margin-top: 2rem;
-    border-radius: 50%;
-}
-.signup-form {
-  flex: 1;
-  max-width: 480px;
-}
-
-.signup-form h1 {
-  font-size: var(--text-2xl);
-  margin-bottom: var(--spacing-sm);
-  font-weight: 600;
-  text-align: center;
-} 
-
 
 .signup-form {
     flex: 1;
@@ -90,8 +60,9 @@
     margin-top: 0.25rem;
     display: block;
 }
+
 .success {
-    color: green;
+    color: var(--success-color);
     background-color: #e3f1e4;
     padding: 10px;
     border-radius: 4px;
@@ -130,23 +101,6 @@
     text-decoration: underline;
 }
 
-/* Add these styles at the end of your index.css file */
-.login-container {
-    max-width: 480px;
-    margin: 4rem auto;
-    padding: 2rem;
-}
-
-.login-form h1 {
-    text-align: center;
-    margin-bottom: 1rem;
-}
-
-.login-form p {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
 .google-button {
     display: flex;
     align-items: center;
@@ -159,9 +113,6 @@
     background-color: transparent;
     border: none;
 }
-    .google-button::before {
-        color: var(--secondary-color);
-  }
 
 .google-button svg {
     font-size: var(--icon-size);

@@ -3,7 +3,6 @@ import { auth } from "../firebaseConfig";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import image from "../assets/image.png"
 
 const SignUp = () => {
     const navigate = useNavigate();
@@ -109,12 +108,6 @@ const SignUp = () => {
     
   return (
     <div className="signup-container">
-        <div className="signup-content">
-            <img 
-                src={image} 
-                alt="Sign up illustration" 
-            />
-        </div>
         <div className="signup-form">
             <h1>Sign Up</h1>
             <p>Please fill in the form below to create an account.</p>

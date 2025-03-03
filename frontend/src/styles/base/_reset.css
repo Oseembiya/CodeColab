@@ -1,5 +1,5 @@
 :root {
-  /* Colors */
+  /* Colors - all used */
   --background-color: #11121a;
   --text-color: #fefefe;
   --line-color: #42434a;
@@ -8,19 +8,17 @@
   --error-color: #dc2626;
   --success-color: #22c55e;
   
-  /* Spacing */
+  /* Spacing - all used */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   
-  /* Font sizes */
+  /* Font sizes - keep only used ones */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
   
   /* Icon sizes */
@@ -37,13 +35,13 @@ body {
   font-family: 'Arial', sans-serif;
   background-color: var(--background-color);
   color: var(--text-color);
-  
 }
 
 a {
   text-decoration: none;
   color: var(--text-color); 
 }
+
 input {
   color: var(--text-color);
 }

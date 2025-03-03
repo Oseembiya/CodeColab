@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { FaSignOutAlt } from 'react-icons/fa';
 import { auth } from '../firebaseConfig';
 
 const SignOut = () => {
@@ -19,8 +18,7 @@ const SignOut = () => {
       onClick={handleSignOut}
       className="sign-out-button"
     >
-      <FaSignOutAlt />
-      <span>Sign Out</span>
+      Sign Out
     </button>
   );
 };
