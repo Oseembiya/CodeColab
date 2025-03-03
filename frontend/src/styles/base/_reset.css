@@ -22,6 +22,9 @@
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
+  
+  /* Icon sizes */
+  --icon-size: 1.2rem;
 } 
 
 * {

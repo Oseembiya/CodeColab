@@ -1,6 +1,6 @@
 .container {
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 210px 1fr;
   grid-template-rows: 60px 1fr;
   min-height: 100vh;
   width: 100%;
@@ -24,12 +24,16 @@
   grid-column: 2;
   height: calc(100vh - 60px); /* Subtract navbar height */
   width: 100%;
+  padding: var(--spacing-md);
+  overflow-y: auto;
 }
 
 .monaco-editor {
   height: 100%;
   width: 100%;
 }
+
+
 
 /* Add these media queries at the end of the file */
 @media screen and (max-width: 768px) {

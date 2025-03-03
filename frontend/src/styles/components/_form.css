@@ -81,7 +81,7 @@
     top: 40%;
     transform: translateY(30%);
     color: var(--text-color);
-    font-size: 1.2rem;
+    font-size: var(--icon-size);
 }
 
 .error {
@@ -162,3 +162,7 @@
     .google-button::before {
         color: var(--secondary-color);
   }
+
+.google-button svg {
+    font-size: var(--icon-size);
+}

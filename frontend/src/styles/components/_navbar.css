@@ -9,7 +9,7 @@
   position: fixed;
   top: 0;
   right: 0;
-  left: 250px; /* Same as sidebar width */
+  left: 210px;
   z-index: 100;
 }
 
@@ -39,6 +39,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--secondary-color-light);
+  font-size: var(--icon-size);
 }
 
 .navbar-profile {
@@ -74,7 +75,7 @@
   background: none;
   border: none;
   color: var(--text-color);
-  font-size: var(--text-lg);
+  font-size: var(--icon-size);
   cursor: pointer;
   position: relative;
   padding: var(--spacing-xs);
@@ -122,7 +123,5 @@
     width: 150px;
   }
 
-  .search-input {
-    padding: var(--spacing-xs) var(--spacing-md);
-  }
+
 } 
