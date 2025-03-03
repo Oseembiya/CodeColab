@@ -1,10 +1,18 @@
 import { auth } from '../firebaseConfig';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 
-// eslint-disable-next-line react/prop-types
+
 const UserProfile = () => {
-  const user = auth.currentUser;
+  const [user, setUser] = useState(auth.currentUser);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleProfileClick = () => {
     navigate('/dashboard/profile');
@@ -22,6 +30,7 @@ const UserProfile = () => {
           alt="User Avatar" 
           className="user-avatar" 
         />
+        <span className="user-name">{user?.displayName}</span>
       </div>
     </div>
   );
