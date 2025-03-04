@@ -155,6 +155,7 @@
 .password-strength {
   margin-top: 0.5rem;
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .password-strength.weak {
@@ -166,5 +167,23 @@
 }
 
 .password-strength.strong {
+  color: var(--success-color);
+}
+
+.password-length {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.password-strength.weak .password-length {
+  color: var(--error-color);
+}
+
+.password-strength.medium .password-length {
+  color: #fbbf24;
+}
+
+.password-strength.strong .password-length {
   color: var(--success-color);
 }
