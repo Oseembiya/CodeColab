@@ -26,13 +26,15 @@
   width: 100%;
   padding: var(--spacing-md);
   overflow-y: auto;
+
 }
 
 .editor-container {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
+  
 }
 
 .editor-header {
@@ -66,6 +68,49 @@
 
 .monaco-editor {
   flex: 1;
+}
+
+.editor-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-right: auto;
+}
+
+.run-button,
+.check-button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: var(--text-base);
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.run-button {
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+}
+
+.run-button:hover {
+  background-color: var(--hover-color);
+}
+
+.check-button {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  border: 1px solid var(--line-color);
+}
+
+.check-button:hover {
+  background-color: var(--hover-color);
+}
+
+.run-button svg,
+.check-button svg {
+  font-size: var(--icon-size);
 }
 
 /* Add these media queries at the end of the file */

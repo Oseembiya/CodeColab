@@ -1,5 +1,6 @@
 import * as monaco from "@monaco-editor/react";
 import { useState } from "react";
+import { FaPlay, FaCheck } from "react-icons/fa";
 
 
 const MonacoEditor = () => {
@@ -23,6 +24,14 @@ const MonacoEditor = () => {
   return (
     <div className="editor-container">
       <div className="editor-header">
+        <div className="editor-buttons">
+          <button className="run-button">
+            <FaPlay /> Run
+          </button>
+          <button className="check-button">
+            <FaCheck /> Check Answer
+          </button>
+        </div>
         <select
           value={language}
           onChange={handleLanguageChange}
@@ -42,6 +51,7 @@ const MonacoEditor = () => {
           height="100%"
           language={language}
           theme="vs-dark"
+          defaultValue="// type your code here"
           options={{
             minimap: { enabled: false },
             fontSize: 14,
