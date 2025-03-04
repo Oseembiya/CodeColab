@@ -24,7 +24,7 @@
   grid-column: 2;
   height: calc(100vh - 60px); /* Subtract navbar height */
   width: 100%;
-  padding-right: var(--spacing-md);
+  padding: var(--spacing-md);
   overflow-y: auto;
 }
 
