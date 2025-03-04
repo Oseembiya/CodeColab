@@ -28,12 +28,45 @@
   overflow-y: auto;
 }
 
-.monaco-editor {
+.editor-container {
   height: 100%;
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--spacing-sm);
+  border-radius: 4px;
+}
 
+.languages-select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--background-color);
+  color: var(--text-color); 
+  font-size: var(--text-base);
+  cursor: pointer;
+  min-width: 120px;
+  border-radius: 4px;
+}
+
+.languages-select:hover {
+  border-color: var(--secondary-color);
+ 
+}
+
+.languages-select:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 2px rgba(92, 95, 187, 0.2);
+}
+
+.monaco-editor {
+  flex: 1;
+}
 
 /* Add these media queries at the end of the file */
 @media screen and (max-width: 768px) {
