@@ -117,3 +117,54 @@
 .google-button svg {
     font-size: var(--icon-size);
 }
+
+.password-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-container input {
+  width: 100%;
+  padding-right: 3rem; /* Make room for the eye icon */
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--icon-size);
+}
+
+.password-toggle:hover {
+  color: var(--secondary-color);
+}
+
+.password-toggle:focus {
+  outline: none;
+}
+
+.password-strength {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.password-strength.weak {
+  color: var(--error-color);
+}
+
+.password-strength.medium {
+  color: #fbbf24; /* amber */
+}
+
+.password-strength.strong {
+  color: var(--success-color);
+}
