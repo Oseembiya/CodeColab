@@ -16,11 +16,25 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prevData => ({
-      ...prevData,
-      [name]: value
-    }));
+    const { name, value, type, checked } = e.target;
+    
+    if (type === 'checkbox') {
+      setFormData(prevData => ({
+        ...prevData,
+        [name]: checked
+      }));
+    } else {
+      // Remove leading and trailing spaces for all text inputs
+      // Remove all spaces for password field
+      const cleanedValue = name === 'password' 
+        ? value.replace(/\s/g, '')  // Remove all spaces for password
+        : value.trim();  // Remove only leading/trailing spaces for other fields
+      
+      setFormData(prevData => ({
+        ...prevData,
+        [name]: cleanedValue
+      }));
+    }
   };
 
   const validateForm = () => {
