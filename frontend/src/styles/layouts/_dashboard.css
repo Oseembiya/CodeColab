@@ -113,6 +113,36 @@
   font-size: var(--icon-size);
 }
 
+.check-button.correct {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+.check-button.incorrect {
+  background-color: var(--error-color);
+  border-color: var(--error-color);
+}
+
+.output-container {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--hover-color);
+  border-radius: 4px;
+  border: 1px solid var(--line-color);
+}
+
+.output-container h3 {
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-color);
+}
+
+.output-container pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--text-color);
+  font-family: monospace;
+}
+
 /* Add these media queries at the end of the file */
 @media screen and (max-width: 768px) {
   .container {
