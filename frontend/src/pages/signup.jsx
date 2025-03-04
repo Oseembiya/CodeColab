@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { auth } from "../firebaseConfig";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 
 const SignUp = () => {
@@ -17,6 +17,8 @@ const SignUp = () => {
     const [error, setError] = useState({});
     const [firebaseError, setFirebaseError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prevData => ({
@@ -104,57 +106,100 @@ const SignUp = () => {
         }
 
         return newErrors;
-    };
-    
-  return (
-    <div className="signup-container">
-        <div className="signup-form">
-            <h1>Sign Up</h1>
-            <p>Please fill in the form below to create an account.</p>
-            <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label htmlFor="fullName">Full Name</label>
-                    <input type="text" id="fullName" name="fullName" value={formData.fullName} placeholder="Osee Armstrong" onChange={handleChange} />
-                    <FaUser className="input-icon" />
-                    {error.fullName && <span className="error">{error.fullName}</span>}
-                </div>
-                <div className="form-group">
-                    <label htmlFor="email">Email</label>
-                    <input type="email" id="email" name="email" value={formData.email} placeholder="Oseearmstrong@gmail.com" onChange={handleChange} />
-                    <FaEnvelope className="input-icon" />
-                    {error.email && <span className="error">{error.email}</span>}
-                </div>
-                <div className="form-group">
-                    <label htmlFor="password">Password</label>
-                    <input type="password" id="password" name="password" value={formData.password} placeholder="***********" onChange={handleChange} />
-                    <FaLock className="input-icon" />
-                    {error.password && <span className="error">{error.password}</span>}
-                </div>
-                <div className="form-group">
-                    <label htmlFor="confirmPassword">Confirm Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" value={formData.confirmPassword} placeholder="***********" onChange={handleChange} />
-                    <FaLock className="input-icon" />
-                    {error.confirmPassword && <span className="error">{error.confirmPassword}</span>}
-                </div>
-                <div className="form-group">
-                    <label>
-                        <input
-                            type="checkbox"
-                            name="acceptTerms"
-                            checked={formData.acceptTerms}
-                            onChange={handleChange}
+    };  
+    return (
+        <div className="signup-container">
+            <div className="signup-form">
+                <h1>Sign Up</h1>
+                <p>Please fill in the form below to create an account.</p>
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label htmlFor="fullName">Full Name</label>
+                        <input 
+                            type="text" 
+                            id="fullName" 
+                            name="fullName" 
+                            value={formData.fullName} 
+                            placeholder="Osee Armstrong" 
+                            onChange={handleChange} 
                         />
-                        I accept the terms and conditions
-                    </label>
-                    {error.acceptTerms && <span className="error">{error.acceptTerms}</span>}
-                </div>
-                {successMessage && <div className="success">{successMessage}</div>}
-                {firebaseError && <div className="error">{firebaseError}</div>}
-                <button className="submit-button" type="submit">Get Started</button>
-                <p className="login-link">Already have an account? <Link to="/login">Login</Link></p>
-             </form>   
+                        <FaUser className="input-icon" />
+                        {error.fullName && <span className="error">{error.fullName}</span>}
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="email">Email</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            value={formData.email} 
+                            placeholder="Oseearmstrong@gmail.com" 
+                            onChange={handleChange} 
+                        />
+                        <FaEnvelope className="input-icon" />
+                        {error.email && <span className="error">{error.email}</span>}
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="password">Password</label>
+                        <div className="password-input-container">
+                            <input 
+                                type={showPassword ? "text" : "password"}
+                                id="password" 
+                                name="password" 
+                                value={formData.password} 
+                                placeholder="***********" 
+                                onChange={handleChange} 
+                            />
+                            <button 
+                                type="button" 
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? <FaEye /> : <FaEyeSlash />}
+                            </button>
+                        </div>
+                        {error.password && <span className="error">{error.password}</span>}
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="confirmPassword">Confirm Password</label>
+                        <div className="password-input-container">
+                            <input 
+                                type={showConfirmPassword ? "text" : "password"}
+                                id="confirmPassword" 
+                                name="confirmPassword" 
+                                value={formData.confirmPassword} 
+                                placeholder="***********" 
+                                onChange={handleChange} 
+                            />
+                            <button 
+                                type="button" 
+                                className="password-toggle"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                                {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
+                            </button>
+                        </div>
+                        {error.confirmPassword && <span className="error">{error.confirmPassword}</span>}
+                    </div>
+                    <div className="form-group">
+                        <label>
+                            <input
+                                type="checkbox"
+                                name="acceptTerms"
+                                checked={formData.acceptTerms}
+                                onChange={handleChange}
+                            />
+                            I accept the terms and conditions
+                        </label>
+                        {error.acceptTerms && <span className="error">{error.acceptTerms}</span>}
+                    </div>
+                    {successMessage && <div className="success">{successMessage}</div>}
+                    {firebaseError && <div className="error">{firebaseError}</div>}
+                    <button className="submit-button" type="submit">Get Started</button>
+                    <p className="login-link">Already have an account? <Link to="/login">Login</Link></p>
+                </form>
+            </div>
         </div>
-    </div>
-  )
-}
+    );
+};
 export default SignUp;          
