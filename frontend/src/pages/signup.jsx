@@ -19,6 +19,49 @@ const SignUp = () => {
     const [successMessage, setSuccessMessage] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [passwordStrength, setPasswordStrength] = useState('');
+
+    const checkPasswordStrength = (password) => {
+        let strength = 0;
+        let message = '';
+
+        // Length check
+        if (password.length >= 8) strength++;
+        
+        // Contains number
+        if (/\d/.test(password)) strength++;
+        
+        // Contains lowercase letter
+        if (/[a-z]/.test(password)) strength++;
+        
+        // Contains uppercase letter
+        if (/[A-Z]/.test(password)) strength++;
+        
+        // Contains special character
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
+
+        // Set strength message
+        switch (strength) {
+            case 0:
+            case 1:
+                message = 'weak';
+                break;
+            case 2:
+            case 3:
+                message = 'medium';
+                break;
+            case 4:
+            case 5:
+                message = 'strong';
+                break;
+            default:
+                message = '';
+        }
+
+        setPasswordStrength(message);
+        return strength >= 3; // Return true if password is at least medium strength
+    };
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         
@@ -28,16 +71,26 @@ const SignUp = () => {
                 [name]: checked
             }));
         } else {
-            // Remove leading and trailing spaces for all text inputs
-            // Remove all spaces for password fields
-            const cleanedValue = (name === 'password' || name === 'confirmPassword')
-                ? value.replace(/\s/g, '')  // Remove all spaces for passwords
-                : value.trim();  // Remove only leading/trailing spaces for other fields
-            
-            setFormData(prevData => ({
-                ...prevData,
-                [name]: cleanedValue
-            }));
+            // For password fields, limit to 12 characters and remove spaces
+            if (name === 'password' || name === 'confirmPassword') {
+                const cleanedValue = value.replace(/\s/g, '').slice(0, 12);
+                setFormData(prevData => ({
+                    ...prevData,
+                    [name]: cleanedValue
+                }));
+
+                // Check password strength when password changes
+                if (name === 'password') {
+                    checkPasswordStrength(cleanedValue);
+                }
+            } else {
+                // For other fields, just trim whitespace
+                const cleanedValue = value.trim();
+                setFormData(prevData => ({
+                    ...prevData,
+                    [name]: cleanedValue
+                }));
+            }
         }
     };
     const handleSubmit = async (e) => {
@@ -107,6 +160,10 @@ const SignUp = () => {
             newErrors.password = 'Password is required';
         } else if (formData.password.length < 8) {
             newErrors.password = 'Password must be at least 8 characters';
+        } else if (formData.password.length > 12) {
+            newErrors.password = 'Password cannot exceed 12 characters';
+        } else if (!checkPasswordStrength(formData.password)) {
+            newErrors.password = 'Password is too weak. Please include numbers, uppercase, lowercase, and special characters';
         }
 
         if (!formData.confirmPassword) {
@@ -162,7 +219,8 @@ const SignUp = () => {
                                 name="password" 
                                 value={formData.password} 
                                 placeholder="***********" 
-                                onChange={handleChange} 
+                                onChange={handleChange}
+                                maxLength={12}
                             />
                             <button 
                                 type="button" 
@@ -173,6 +231,14 @@ const SignUp = () => {
                             </button>
                         </div>
                         {error.password && <span className="error">{error.password}</span>}
+                        {formData.password && (
+                            <div className={`password-strength ${passwordStrength}`}>
+                                Password strength: {passwordStrength.charAt(0).toUpperCase() + passwordStrength.slice(1)}
+                                <span className="password-length">
+                                    ({formData.password.length}/12)
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <div className="form-group">
                         <label htmlFor="confirmPassword">Confirm Password</label>
