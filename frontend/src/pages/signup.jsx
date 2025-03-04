@@ -21,10 +21,24 @@ const SignUp = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prevData => ({
-            ...prevData,
-            [name]: type === 'checkbox' ? checked : value
-        }));
+        
+        if (type === 'checkbox') {
+            setFormData(prevData => ({
+                ...prevData,
+                [name]: checked
+            }));
+        } else {
+            // Remove leading and trailing spaces for all text inputs
+            // Remove all spaces for password fields
+            const cleanedValue = (name === 'password' || name === 'confirmPassword')
+                ? value.replace(/\s/g, '')  // Remove all spaces for passwords
+                : value.trim();  // Remove only leading/trailing spaces for other fields
+            
+            setFormData(prevData => ({
+                ...prevData,
+                [name]: cleanedValue
+            }));
+        }
     };
     const handleSubmit = async (e) => {
         e.preventDefault();
