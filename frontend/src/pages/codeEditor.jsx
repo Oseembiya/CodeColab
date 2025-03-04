@@ -1,8 +1,10 @@
 import * as monaco from "@monaco-editor/react";
 import { useState } from "react";
 
+
 const MonacoEditor = () => {
   const [language, setLanguage] = useState("javascript");
+
   
   const languages = [
     { id: "javascript", name: "JavaScript" },
@@ -15,7 +17,7 @@ const MonacoEditor = () => {
   ];
 
   const handleLanguageChange = (e) => {
-    setLanguage(e.target.value);
+  setLanguage(e.target.value);
   };
 
   return (
@@ -39,7 +41,6 @@ const MonacoEditor = () => {
           key={language}
           height="100%"
           language={language}
-          defaultValue="// Start coding here"
           theme="vs-dark"
           options={{
             minimap: { enabled: false },
