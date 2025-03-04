@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { auth } from "../firebaseConfig";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { FaEnvelope, FaLock, FaGoogle } from "react-icons/fa";
+import { FaEnvelope, FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
@@ -13,6 +13,7 @@ const Login = () => {
   const [error, setError] = useState({});
   const [firebaseError, setFirebaseError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -112,15 +113,23 @@ const Login = () => {
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input 
-              type="password" 
-              id="password" 
-              name="password" 
-              value={formData.password} 
-              placeholder="***********" 
-              onChange={handleChange} 
-            />
-            <FaLock className="input-icon" />
+            <div className="password-input-container">
+              <input 
+                type={showPassword ? "text" : "password"}
+                id="password" 
+                name="password" 
+                value={formData.password} 
+                placeholder="***********" 
+                onChange={handleChange} 
+              />
+              <button 
+                type="button" 
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEye /> : <FaEyeSlash />}
+              </button>
+            </div>
             {error.password && <span className="error">{error.password}</span>}
           </div>
           {successMessage && <div className="success">{successMessage}</div>}
