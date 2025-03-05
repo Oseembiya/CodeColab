@@ -30,7 +30,6 @@ const UserProfile = () => {
           alt="User Avatar" 
           className="user-avatar" 
         />
-        <span className="user-name">{user?.displayName}</span>
       </div>
     </div>
   );

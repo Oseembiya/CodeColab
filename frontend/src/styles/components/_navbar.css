@@ -68,7 +68,7 @@
 .navbar-icons {
   display: flex;
   gap: var(--spacing-md);
-  margin-right: var(--spacing-md);
+  align-content:last baseline
 }
 
 .icon-button {

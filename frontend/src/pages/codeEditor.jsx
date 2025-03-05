@@ -1,12 +1,13 @@
 import * as monaco from "@monaco-editor/react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { FaPlay, FaCheck } from "react-icons/fa";
-
 
 const MonacoEditor = () => {
   const [language, setLanguage] = useState("javascript");
+  const [output, setOutput] = useState("");
+  const [isCorrect, setIsCorrect] = useState(null);
+  const editorRef = useRef(null);
 
-  
   const languages = [
     { id: "javascript", name: "JavaScript" },
     { id: "python", name: "Python" },
@@ -18,17 +19,62 @@ const MonacoEditor = () => {
   ];
 
   const handleLanguageChange = (e) => {
-  setLanguage(e.target.value);
+    setLanguage(e.target.value);
+  };
+
+  const handleRunCode = async () => {
+    const code = editorRef.current.getValue();
+    setOutput("Running code...");
+    
+    try {
+      // For demonstration, we'll use a simple evaluation
+      // In a real application, you'd want to use a proper code execution service
+      const result = await evaluateCode(code, language);
+      setOutput(result);
+    } catch (error) {
+      setOutput(`Error: ${error.message}`);
+    }
+  };
+
+  const handleCheckAnswer = () => {
+    const code = editorRef.current.getValue();
+    // This is a simple example - you'd want to implement proper code validation
+    const isAnswerCorrect = validateCode(code);
+    setIsCorrect(isAnswerCorrect);
+  };
+
+  const evaluateCode = async (code, language) => {
+    // This is a mock implementation
+    // In a real application, you'd want to use a proper code execution service
+    // like Judge0, CodeX, or your own backend service
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve("Code executed successfully!");
+      }, 1000);
+    });
+  };
+
+  const validateCode = (code) => {
+    // This is a mock implementation
+    // In a real application, you'd want to implement proper code validation
+    // based on your requirements
+    return code.includes("function") && code.includes("return");
   };
 
   return (
     <div className="editor-container">
       <div className="editor-header">
         <div className="editor-buttons">
-          <button className="run-button">
+          <button 
+            className="run-button"
+            onClick={handleRunCode}
+          >
             <FaPlay /> Run
           </button>
-          <button className="check-button">
+          <button 
+            className={`check-button ${isCorrect !== null ? (isCorrect ? 'correct' : 'incorrect') : ''}`}
+            onClick={handleCheckAnswer}
+          >
             <FaCheck /> Check Answer
           </button>
         </div>
@@ -52,6 +98,9 @@ const MonacoEditor = () => {
           language={language}
           theme="vs-dark"
           defaultValue="// type your code here"
+          onMount={(editor) => {
+            editorRef.current = editor;
+          }}
           options={{
             minimap: { enabled: false },
             fontSize: 14,
@@ -64,6 +113,13 @@ const MonacoEditor = () => {
           }}
         />
       </div>
+      
+      {output && (
+        <div className="output-container">
+          <h3>Output:</h3>
+          <pre>{output}</pre>
+        </div>
+      )}
     </div>
   );
 };
