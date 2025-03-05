@@ -7,6 +7,7 @@ const MonacoEditor = () => {
   const [output, setOutput] = useState("");
   const [isCorrect, setIsCorrect] = useState(null);
   const editorRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const languages = [
     { id: "javascript", name: "JavaScript" },
@@ -18,21 +19,76 @@ const MonacoEditor = () => {
     { id: "kotlin", name: "Kotlin" },
   ];
 
+  // Language ID mapping for Judge0
+  const languageIds = {
+    javascript: 63,  // Node.js
+    python: 71,      // Python 3
+    java: 62,       // Java
+    cpp: 54,        // C++
+    csharp: 51,     // C#
+    go: 60,         // Go
+    kotlin: 78      // Kotlin
+  };
+
   const handleLanguageChange = (e) => {
     setLanguage(e.target.value);
   };
 
   const handleRunCode = async () => {
     const code = editorRef.current.getValue();
+    setIsLoading(true);
     setOutput("Running code...");
     
     try {
-      // For demonstration, we'll use a simple evaluation
-      // In a real application, you'd want to use a proper code execution service
-      const result = await evaluateCode(code, language);
-      setOutput(result);
+      // Create submission
+      const response = await fetch('https://judge0-ce.p.rapidapi.com/submissions', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
+          'X-RapidAPI-Key': '364315ccbdmshfca9834d3b458b0p1688e8jsn5a98fc87204d', // API key
+        },
+        body: JSON.stringify({
+          source_code: code,
+          language_id: languageIds[language],
+          stdin: ''
+        })
+      });
+
+      const { token } = await response.json();
+
+      // Poll for results
+      let result;
+      while (true) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+
+        const statusResponse = await fetch(`https://judge0-ce.p.rapidapi.com/submissions/${token}`, {
+          headers: {
+            'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
+            'X-RapidAPI-Key': '364315ccbdmshfca9834d3b458b0p1688e8jsn5a98fc87204d' // Replace with your actual API key
+          }
+        });
+
+        result = await statusResponse.json();
+
+        if (result.status.id > 2) { // Status > 2 means processing is complete
+          break;
+        }
+      }
+
+      // Format and display results
+      let outputText = '';
+      if (result.stdout) outputText += `Output:\n${result.stdout}\n`;
+      if (result.stderr) outputText += `\nErrors:\n${result.stderr}\n`;
+      if (result.compile_output) outputText += `\nCompilation Output:\n${result.compile_output}\n`;
+      outputText += `\nExecution Time: ${result.time || '0'} seconds`;
+      outputText += `\nMemory Used: ${result.memory || '0'} KB`;
+
+      setOutput(outputText);
     } catch (error) {
       setOutput(`Error: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -41,17 +97,6 @@ const MonacoEditor = () => {
     // This is a simple example - you'd want to implement proper code validation
     const isAnswerCorrect = validateCode(code);
     setIsCorrect(isAnswerCorrect);
-  };
-
-  const evaluateCode = async (code, language) => {
-    // This is a mock implementation
-    // In a real application, you'd want to use a proper code execution service
-    // like Judge0, CodeX, or your own backend service
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve("Code executed successfully!");
-      }, 1000);
-    });
   };
 
   const validateCode = (code) => {
@@ -68,8 +113,9 @@ const MonacoEditor = () => {
           <button 
             className="run-button"
             onClick={handleRunCode}
+            disabled={isLoading}
           >
-            <FaPlay /> Run
+            <FaPlay /> {isLoading ? 'Running...' : 'Run'}
           </button>
           <button 
             className={`check-button ${isCorrect !== null ? (isCorrect ? 'correct' : 'incorrect') : ''}`}

@@ -26,3 +26,5 @@ yarn-error.log*
 
 # Environment files (local configs)
 /.env.*
+# frontend/.env judge0 api key
+.env

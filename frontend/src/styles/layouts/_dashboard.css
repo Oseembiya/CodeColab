@@ -98,6 +98,15 @@
   background-color: var(--hover-color);
 }
 
+.run-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.run-button:disabled:hover {
+  background-color: var(--secondary-color);
+}
+
 .check-button {
   background-color: var(--background-color);
   color: var(--text-color);
