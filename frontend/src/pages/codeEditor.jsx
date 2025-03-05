@@ -1,5 +1,5 @@
 import * as monaco from "@monaco-editor/react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { FaPlay, FaCheck } from "react-icons/fa";
 
 const MonacoEditor = () => {
@@ -8,7 +8,7 @@ const MonacoEditor = () => {
   const [isCorrect, setIsCorrect] = useState(null);
   const editorRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [outputHeight, setOutputHeight] = useState(200); // Default height in pixels
+  const [outputHeight, setOutputHeight] = useState(200);
   const [isDragging, setIsDragging] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const dragStartY = useRef(0);
@@ -24,20 +24,17 @@ const MonacoEditor = () => {
     { id: "kotlin", name: "Kotlin" },
   ];
 
-  // Language ID mapping for Judge0
   const languageIds = {
-    javascript: 63,  // Node.js
-    python: 71,      // Python 3
-    java: 62,       // Java
-    cpp: 54,        // C++
-    csharp: 51,     // C#
-    go: 60,         // Go
-    kotlin: 78      // Kotlin
+    javascript: 63,
+    python: 71,
+    java: 62,
+    cpp: 54,
+    csharp: 51,
+    go: 60,
+    kotlin: 78
   };
 
-  const handleLanguageChange = (e) => {
-    setLanguage(e.target.value);
-  };
+  const handleLanguageChange = (e) => setLanguage(e.target.value);
 
   const handleRunCode = async () => {
     const code = editorRef.current.getValue();
@@ -45,13 +42,12 @@ const MonacoEditor = () => {
     setOutput("Running code...");
     
     try {
-      // Create submission
       const response = await fetch('https://judge0-ce.p.rapidapi.com/submissions', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
-          'X-RapidAPI-Key': '364315ccbdmshfca9834d3b458b0p1688e8jsn5a98fc87204d', // API key
+          'X-RapidAPI-Key': '364315ccbdmshfca9834d3b458b0p1688e8jsn5a98fc87204d',
         },
         body: JSON.stringify({
           source_code: code,
@@ -62,26 +58,20 @@ const MonacoEditor = () => {
 
       const { token } = await response.json();
 
-      // Poll for results
       let result;
       while (true) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-
+        await new Promise(resolve => setTimeout(resolve, 1000));
         const statusResponse = await fetch(`https://judge0-ce.p.rapidapi.com/submissions/${token}`, {
           headers: {
             'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
-            'X-RapidAPI-Key': '364315ccbdmshfca9834d3b458b0p1688e8jsn5a98fc87204d' // Replace with your actual API key
+            'X-RapidAPI-Key': '364315ccbdmshfca9834d3b458b0p1688e8jsn5a98fc87204d'
           }
         });
 
         result = await statusResponse.json();
-
-        if (result.status.id > 2) { // Status > 2 means processing is complete
-          break;
-        }
+        if (result.status.id > 2) break;
       }
 
-      // Format and display results
       let outputText = '';
       if (result.stdout) outputText += `Output:\n${result.stdout}\n`;
       if (result.stderr) outputText += `\nErrors:\n${result.stderr}\n`;
@@ -99,15 +89,9 @@ const MonacoEditor = () => {
 
   const handleCheckAnswer = () => {
     const code = editorRef.current.getValue();
-    const isAnswerCorrect = validateCode(code);
-    setIsCorrect(isAnswerCorrect);
+    setIsCorrect(code.includes("function") && code.includes("return"));
   };
 
-  const validateCode = (code) => {
-    return code.includes("function") && code.includes("return");
-  };
-
-  // functions for drag functionality
   const handleDragStart = (e) => {
     setIsDragging(true);
     dragStartY.current = e.clientY;
@@ -130,37 +114,55 @@ const MonacoEditor = () => {
     document.removeEventListener('mouseup', handleDragEnd);
   };
 
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    setIsDragging(true);
+    dragStartY.current = touch.clientY;
+    dragStartHeight.current = outputHeight;
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
   };
+
+  const handleTouchMove = (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const delta = dragStartY.current - touch.clientY;
+      const newHeight = Math.min(Math.max(dragStartHeight.current + delta, 100), window.innerHeight - 200);
+      setOutputHeight(newHeight);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    document.removeEventListener('touchmove', handleTouchMove);
+    document.removeEventListener('touchend', handleTouchEnd);
+  };
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleDrag);
+      document.removeEventListener('mouseup', handleDragEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  },[] );
 
   return (
     <div className="editor-container">
       <div className="editor-header">
         <div className="editor-buttons">
-          <button 
-            className="run-button"
-            onClick={handleRunCode}
-            disabled={isLoading}
-          >
+          <button className="run-button" onClick={handleRunCode} disabled={isLoading}>
             <FaPlay /> {isLoading ? 'Running...' : 'Run'}
           </button>
-          <button 
-            className={`check-button ${isCorrect !== null ? (isCorrect ? 'correct' : 'incorrect') : ''}`}
-            onClick={handleCheckAnswer}
-          >
+          <button className={`check-button ${isCorrect !== null ? (isCorrect ? 'correct' : 'incorrect') : ''}`}
+            onClick={handleCheckAnswer}>
             <FaCheck /> Check Answer
           </button>
         </div>
-        <select
-          value={language}
-          onChange={handleLanguageChange}
-          className="languages-select"
-        >
+        <select value={language} onChange={handleLanguageChange} className="languages-select">
           {languages.map((lang) => (
-            <option key={lang.id} value={lang.id}>
-              {lang.name}
-            </option>
+            <option key={lang.id} value={lang.id}>{lang.name}</option>
           ))}
         </select>
       </div>
@@ -189,20 +191,23 @@ const MonacoEditor = () => {
           />
         </div>
 
-        <div className={`output-panel ${isCollapsed ? 'collapsed' : ''}`} 
+        <div 
+          className={`output-panel ${isCollapsed ? 'collapsed' : ''}`} 
           style={{ height: isCollapsed ? '35px' : `${outputHeight}px` }}
         >
           <div 
             className="output-drag-handle" 
             onMouseDown={handleDragStart}
-            onClick={toggleCollapse}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onClick={() => setIsCollapsed(!isCollapsed)}
           >
             <div className="drag-handle-content">
               <div className="drag-lines">
                 <span></span>
                 <span></span>
               </div>
-              
             </div>
           </div>
           <div className="output-content">

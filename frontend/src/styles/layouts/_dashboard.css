@@ -292,4 +292,91 @@
   .container {
     grid-template-columns: 60px 1fr;
   }
+
+  .editor-header {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+  }
+
+  .editor-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .run-button,
+  .check-button {
+    flex: 1;
+    justify-content: center;
+    padding: var(--spacing-sm);
+    font-size: 14px;
+  }
+
+  .languages-select {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .output-panel {
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+
+  .output-scroll {
+    padding: var(--spacing-sm);
+    min-height: 150px;
+  }
+
+  .drag-lines span {
+    width: 20px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .editor-header {
+    padding: var(--spacing-sm) var(--spacing-xs);
+  }
+
+  .run-button,
+  .check-button {
+    padding: var(--spacing-xs);
+    font-size: 12px;
+  }
+
+  .output-header {
+    height: 35px;
+  }
+
+  .output-header h3 {
+    font-size: 14px;
+  }
+
+  .output-scroll {
+    font-size: 12px;
+    min-height: 120px;
+  }
+
+  .output-panel.collapsed:hover {
+    transform: translateY(calc(100% - 35px - 4px));
+  }
+}
+
+/* Add touch device optimization */
+@media (hover: none) and (pointer: coarse) {
+  .output-drag-handle {
+    height: 25px; /* Larger touch target */
+  }
+
+  .drag-lines span {
+    height: 3px; /* More visible on mobile */
+  }
+
+  .output-panel.collapsed {
+    transform: translateY(calc(100% - 35px));
+  }
+
+  .output-panel.collapsed:hover {
+    transform: translateY(calc(100% - 35px)); /* Disable hover effect on touch devices */
+  }
 }
