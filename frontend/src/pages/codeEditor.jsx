@@ -8,6 +8,11 @@ const MonacoEditor = () => {
   const [isCorrect, setIsCorrect] = useState(null);
   const editorRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [outputHeight, setOutputHeight] = useState(200); // Default height in pixels
+  const [isDragging, setIsDragging] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const dragStartY = useRef(0);
+  const dragStartHeight = useRef(0);
 
   const languages = [
     { id: "javascript", name: "JavaScript" },
@@ -94,16 +99,39 @@ const MonacoEditor = () => {
 
   const handleCheckAnswer = () => {
     const code = editorRef.current.getValue();
-    // This is a simple example - you'd want to implement proper code validation
     const isAnswerCorrect = validateCode(code);
     setIsCorrect(isAnswerCorrect);
   };
 
   const validateCode = (code) => {
-    // This is a mock implementation
-    // In a real application, you'd want to implement proper code validation
-    // based on your requirements
     return code.includes("function") && code.includes("return");
+  };
+
+  // functions for drag functionality
+  const handleDragStart = (e) => {
+    setIsDragging(true);
+    dragStartY.current = e.clientY;
+    dragStartHeight.current = outputHeight;
+    document.addEventListener('mousemove', handleDrag);
+    document.addEventListener('mouseup', handleDragEnd);
+  };
+
+  const handleDrag = (e) => {
+    if (isDragging) {
+      const delta = dragStartY.current - e.clientY;
+      const newHeight = Math.min(Math.max(dragStartHeight.current + delta, 100), window.innerHeight - 200);
+      setOutputHeight(newHeight);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleDrag);
+    document.removeEventListener('mouseup', handleDragEnd);
+  };
+
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
   };
 
   return (
@@ -137,35 +165,56 @@ const MonacoEditor = () => {
         </select>
       </div>
 
-      <div className="monaco-editor">
-        <monaco.Editor
-          key={language}
-          height="100%"
-          language={language}
-          theme="vs-dark"
-          defaultValue="// type your code here"
-          onMount={(editor) => {
-            editorRef.current = editor;
-          }}
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            automaticLayout: true,
-            lineNumbers: 'on',
-            roundedSelection: false,
-            scrollBeyond: false,
-            readOnly: false,
-            cursorStyle: 'line',
-          }}
-        />
-      </div>
-      
-      {output && (
-        <div className="output-container">
-          <h3>Output:</h3>
-          <pre>{output}</pre>
+      <div className="editor-main">
+        <div className="monaco-editor-wrapper">
+          <monaco.Editor
+            key={language}
+            height="100%"
+            language={language}
+            theme="vs-dark"
+            defaultValue="// type your code here"
+            onMount={(editor) => {
+              editorRef.current = editor;
+            }}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              automaticLayout: true,
+              lineNumbers: 'on',
+              roundedSelection: false,
+              scrollBeyond: false,
+              readOnly: false,
+              cursorStyle: 'line',
+            }}
+          />
         </div>
-      )}
+
+        <div className={`output-panel ${isCollapsed ? 'collapsed' : ''}`} 
+          style={{ height: isCollapsed ? '35px' : `${outputHeight}px` }}
+        >
+          <div 
+            className="output-drag-handle" 
+            onMouseDown={handleDragStart}
+            onClick={toggleCollapse}
+          >
+            <div className="drag-handle-content">
+              <div className="drag-lines">
+                <span></span>
+                <span></span>
+              </div>
+              
+            </div>
+          </div>
+          <div className="output-content">
+            <div className="output-header">
+              <h3>Output</h3>
+            </div>
+            <div className="output-scroll">
+              {output && <pre>{output}</pre>}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
