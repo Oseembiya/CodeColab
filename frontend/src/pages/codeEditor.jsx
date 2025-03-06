@@ -1,5 +1,5 @@
 import * as monaco from "@monaco-editor/react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import EditorToolbar from "../components/editor/EditorToolbar";
 import OutputPanel from "../components/editor/OutputPanel";
 
@@ -101,19 +101,19 @@ const MonacoEditor = () => {
     document.addEventListener('mouseup', handleDragEnd);
   };
 
-  const handleDrag = (e) => {
+  const handleDrag = useCallback((e) => {
     if (isDragging) {
       const delta = dragStartY.current - e.clientY;
       const newHeight = Math.min(Math.max(dragStartHeight.current + delta, 100), window.innerHeight - 200);
       setOutputHeight(newHeight);
     }
-  };
+  }, [isDragging]);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setIsDragging(false);
     document.removeEventListener('mousemove', handleDrag);
     document.removeEventListener('mouseup', handleDragEnd);
-  };
+  }, [handleDrag]);
 
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
@@ -124,7 +124,7 @@ const MonacoEditor = () => {
     document.addEventListener('touchend', handleTouchEnd);
   };
 
-  const handleTouchMove = (e) => {
+  const handleTouchMove = useCallback((e) => {
     if (isDragging) {
       e.preventDefault();
       const touch = e.touches[0];
@@ -132,13 +132,13 @@ const MonacoEditor = () => {
       const newHeight = Math.min(Math.max(dragStartHeight.current + delta, 100), window.innerHeight - 200);
       setOutputHeight(newHeight);
     }
-  };
+  }, [isDragging]);
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
     document.removeEventListener('touchmove', handleTouchMove);
     document.removeEventListener('touchend', handleTouchEnd);
-  };
+  }, [handleTouchMove]);
 
   useEffect(() => {
     return () => {
@@ -147,7 +147,7 @@ const MonacoEditor = () => {
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
     };
-  },[] );
+  }, [handleDrag, handleDragEnd, handleTouchMove, handleTouchEnd]);
 
   return (
     <div className="editor-container">

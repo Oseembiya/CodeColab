@@ -30,18 +30,20 @@ const EditorToolbar = memo(({
       </button>
     </div>
     <div className="language-select-container">
-      <label htmlFor="language-select" className="visually-hidden">Select programming language</label>
+      <label htmlFor="language-select" className="visually-hidden">
       <select 
-        id="language-select"
-        value={language} 
-        onChange={onLanguageChange} 
-        className="languages-select"
-        aria-label="Select programming language"
-      >
-        {languages.map((lang) => (
-          <option key={lang.id} value={lang.id}>{lang.name}</option>
-        ))}
-      </select>
+      id="language-select"
+      value={language} 
+      onChange={onLanguageChange} 
+      className="languages-select"
+      aria-label="Select programming language"
+    >
+      {languages.map((lang) => (
+        <option key={lang.id} value={lang.id}>{lang.name}</option>
+      ))}
+    </select>
+      </label>
+     
     </div>
   </div>
 ));
