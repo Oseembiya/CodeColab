@@ -9,6 +9,7 @@ import {
   GoogleAuthProvider,
   updateProfile 
 } from 'firebase/auth';
+import PropTypes from 'prop-types';
 
 const AuthForm = ({ isLogin }) => {
   const navigate = useNavigate();
@@ -165,6 +166,7 @@ const AuthForm = ({ isLogin }) => {
       await signInWithPopup(auth, provider);
       navigate('/dashboard');
     } catch (error) {
+      console.error("Google authentication error:", error);
       setFirebaseError('An error occurred during Google authentication');
     }
   };
@@ -301,6 +303,10 @@ const AuthForm = ({ isLogin }) => {
       </div>
     </div>
   );
+};
+
+AuthForm.propTypes = {
+  isLogin: PropTypes.bool.isRequired
 };
 
 export default AuthForm; 

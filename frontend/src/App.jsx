@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import SignUp from "./pages/signup";
+import SignUp from "./pages/signUp";
 import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import PrivateRoute from "./pages/privateRoute";
@@ -14,7 +14,7 @@ function App() {
       <Route path="/signup" element={<SignUp />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>}>
-        <Route index element={<div>Welcome to Dashboard</div>} />
+        <Route index element={<h1>Welcome to Dashboard</h1>} />
         <Route path="profile" element={<Profile />} />
         <Route path="sessions" element={<Sessions />} />
         <Route path="codeEditor" element={<CodeEditor />} />
