@@ -1,11 +1,12 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import SignUp from "./pages/signUp"
-import Login from "./pages/login"
-import Dashboard from "./pages/dashboard"
-import PrivateRoute from "./pages/privateRoute"
-import Profile from "./pages/profile"
-import Sessions from "./pages/sessions"
-import CodeEditor from "./pages/codeEditor"
+import SignUp from "./pages/signup";
+import Login from "./pages/login";
+import Dashboard from "./pages/dashboard";
+import PrivateRoute from "./pages/privateRoute";
+import Profile from "./pages/profile";
+import Sessions from "./pages/sessions";
+import CodeEditor from "./pages/codeEditor";
+
 function App() {
   return (
     <Routes>

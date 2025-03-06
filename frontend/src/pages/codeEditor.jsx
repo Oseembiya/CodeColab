@@ -1,6 +1,7 @@
 import * as monaco from "@monaco-editor/react";
 import { useState, useRef, useEffect } from "react";
-import { FaPlay, FaCheck } from "react-icons/fa";
+import EditorToolbar from "../components/editor/EditorToolbar";
+import OutputPanel from "../components/editor/OutputPanel";
 
 const MonacoEditor = () => {
   const [language, setLanguage] = useState("javascript");
@@ -150,22 +151,15 @@ const MonacoEditor = () => {
 
   return (
     <div className="editor-container">
-      <div className="editor-header">
-        <div className="editor-buttons">
-          <button className="run-button" onClick={handleRunCode} disabled={isLoading}>
-            <FaPlay /> {isLoading ? 'Running...' : 'Run'}
-          </button>
-          <button className={`check-button ${isCorrect !== null ? (isCorrect ? 'correct' : 'incorrect') : ''}`}
-            onClick={handleCheckAnswer}>
-            <FaCheck /> Check Answer
-          </button>
-        </div>
-        <select value={language} onChange={handleLanguageChange} className="languages-select">
-          {languages.map((lang) => (
-            <option key={lang.id} value={lang.id}>{lang.name}</option>
-          ))}
-        </select>
-      </div>
+      <EditorToolbar 
+        onRun={handleRunCode}
+        onCheck={handleCheckAnswer}
+        isLoading={isLoading}
+        language={language}
+        onLanguageChange={handleLanguageChange}
+        languages={languages}
+        isCorrect={isCorrect}
+      />
 
       <div className="editor-main">
         <div className="monaco-editor-wrapper">
@@ -191,34 +185,16 @@ const MonacoEditor = () => {
           />
         </div>
 
-        <div 
-          className={`output-panel ${isCollapsed ? 'collapsed' : ''}`} 
-          style={{ height: isCollapsed ? '35px' : `${outputHeight}px` }}
-        >
-          <div 
-            className="output-drag-handle" 
-            onMouseDown={handleDragStart}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onClick={() => setIsCollapsed(!isCollapsed)}
-          >
-            <div className="drag-handle-content">
-              <div className="drag-lines">
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          </div>
-          <div className="output-content">
-            <div className="output-header">
-              <h3>Output</h3>
-            </div>
-            <div className="output-scroll">
-              {output && <pre>{output}</pre>}
-            </div>
-          </div>
-        </div>
+        <OutputPanel 
+          output={output}
+          height={outputHeight}
+          isCollapsed={isCollapsed}
+          onDragStart={handleDragStart}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onCollapse={() => setIsCollapsed(!isCollapsed)}
+        />
       </div>
     </div>
   );

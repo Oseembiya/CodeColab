@@ -1,0 +1,260 @@
+/* Navigation Layout */
+.navbar {
+  height: 60px;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  padding: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 210px;
+  z-index: var(--z-navbar);
+}
+
+.sidebar {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 210px;
+  z-index: var(--z-sidebar);
+}
+
+/* Search Container */
+.search-container {
+  position: relative;
+  width: 400px;
+}
+
+.search-input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  padding-left: 2.5rem;
+  background-color: var(--hover-color);
+  border: 1px solid var(--line-color);
+  border-radius: 4px;
+  font-size: var(--text-base);
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--icon-size);
+}
+
+/* Navbar Profile Section */
+.navbar-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.navbar-icons {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.notification-button {
+  position: relative;
+  padding: var(--spacing-sm);
+  color: var(--text-color);
+  background-color: var(--hover-color);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.notification-button svg {
+  font-size: var(--icon-size);
+}
+
+.notification-button:hover {
+  background-color: var(--secondary-color);
+  transform: translateY(-2px);
+}
+
+.notification-button:active {
+  transform: translateY(0);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #ff4757;
+  color: white;
+  font-size: var(--text-xs);
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  font-weight: bold;
+  border: 2px solid var(--background-color);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Different colors for different notification types */
+.notification-button:has(> .fa-envelope) .notification-badge {
+  background-color: #2ed573;
+}
+
+.notification-button:has(> .fa-bell) .notification-badge {
+  background-color: #ffa502;
+}
+
+/* User Profile */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+/* Sidebar Sections */
+.sidebar-header {
+  padding: 13.5px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.sidebar-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 70%;
+}
+
+.sidebar-menu {
+  padding: 20px 0;
+}
+
+.menu-item {
+  padding: 15px 25px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  gap: 10px;
+}
+
+.menu-item:hover,
+.menu-item.active {
+  background-color: var(--hover-color);
+  color: var(--secondary-color);
+}
+
+.menu-item svg {
+  font-size: var(--icon-size);
+}
+
+.menu-item span {
+  min-width: 80px;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  margin-top: auto;
+}
+
+.sign-out-link {
+  width: 100%;
+  padding: 15px 25px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background-color 0.3s;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  text-align: left;
+}
+
+.sign-out-link:hover {
+  background-color: var(--hover-color);
+  color: var(--secondary-color);
+}
+
+.sign-out-link span {
+  min-width: 80px;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+  .navbar {
+    left: 60px;
+    padding: 0 var(--spacing-sm);
+  }
+
+  .search-container {
+    width: 200px;
+  }
+
+  .sidebar {
+    width: 60px;
+  }
+
+  .sidebar-header h2,
+  .menu-item span,
+  .sign-out-link span {
+    display: none;
+  }
+
+  .menu-item,
+  .sign-out-link {
+    padding: 15px;
+    justify-content: center;
+  }
+
+  .user-name {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .search-container {
+    width: 150px;
+  }
+}
+
+/* Touch Device Optimization */
+@media (hover: none) and (pointer: coarse) {
+  .menu-item,
+  .sign-out-link {
+    padding: 20px 25px; /* Larger touch targets */
+  }
+
+  .notification-button {
+    padding: var(--spacing-sm);
+  }
+}
+
+/* Reset any default button styles */
+button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  outline: inherit;
+}
