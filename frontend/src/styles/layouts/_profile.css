@@ -88,7 +88,6 @@
 .profile-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--spacing-xl);
 }
 
 .profile-grid {
@@ -101,7 +100,6 @@
 .profile-section {
   background: var(--background-color-dark);
   border-radius: 8px;
-  padding: var(--spacing-xl);
 }
 
 .profile-section h2 {

@@ -8,13 +8,14 @@ import {
   FaBell, 
   FaEnvelope 
 } from 'react-icons/fa';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { auth } from '../firebaseConfig';
 
 const Navigation = memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
   const user = auth.currentUser;
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -25,10 +26,18 @@ const Navigation = memo(() => {
     }
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!isSidebarOpen);
+  };
+
   return (
     <>
       {/* Sidebar */}
-      <div className="sidebar" role="navigation" aria-label="Main navigation">
+      <div 
+        className={`sidebar ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`} 
+        role="navigation" 
+        aria-label="Main navigation"
+      >
         <div className="sidebar-header">
           <img src="/logo.ico" alt="CodeColab Logo" className="sidebar-logo" />
           <h2 id="site-title">CodeColab</h2>
@@ -79,7 +88,17 @@ const Navigation = memo(() => {
       </div>
 
       {/* Navbar */}
-      <nav className="navbar" role="navigation" aria-label="Secondary navigation">
+      <nav className={`navbar ${!isSidebarOpen ? 'navbar-expanded' : ''}`} role="navigation" aria-label="Secondary navigation">
+        <button 
+          className="hamburger-menu"
+          onClick={toggleSidebar}
+          aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
         <div className="search-container">
           <FaSearch className="search-icon" />
           <input 
@@ -121,6 +140,15 @@ const Navigation = memo(() => {
           </button>
         </div>
       </nav>
+
+      {/* Add overlay for mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close sidebar"
+        />
+      )}
     </>
   );
 });
