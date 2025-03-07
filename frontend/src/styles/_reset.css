@@ -1,10 +1,10 @@
 :root {
   /* Colors - all used */
-  --background-color: #11121a;
-  --text-color: #fefefe;
+  --background-color: #151618;
+  --text-color: #E4E6EB;
   --line-color: #42434a;
-  --hover-color: #222533;
-  --secondary-color: #5c5fbb;
+  --hover-color: #2C2F33;
+  --secondary-color: #5C5FBB;
   --error-color: #dc2626;
   --success-color: #22c55e;
   

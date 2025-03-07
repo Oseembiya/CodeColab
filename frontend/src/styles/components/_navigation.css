@@ -255,12 +255,6 @@ button {
     display: flex;
     position: relative;
   }
-
-  /* Menu items styling for mobile */
-  .sidebar-menu {
-    padding-top: 60px; /* Space for navbar */
-  }
-
   .menu-item {
     width: 100%;
     padding: 20px;
