@@ -1,25 +1,68 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from 'react';
 import SignUp from "./pages/signUp";
-import Login from "./pages/login";
-import Dashboard from "./pages/dashboard";
-import PrivateRoute from "./pages/privateRoute";
-import Profile from "./pages/profile";
-import Sessions from "./pages/sessions";
-import CodeEditor from "./pages/codeEditor";
+
+// Lazy load all components including ProtectedRoute
+const ProtectedRoute = lazy(() => import("./pages/protectedRoute"));
+const Login = lazy(() => import("./pages/login"));
+const Dashboard = lazy(() => import("./pages/dashboard"));
+const Profile = lazy(() => import("./pages/profile"));
+const Sessions = lazy(() => import("./pages/sessions"));
+const CodeEditor = lazy(() => import("./pages/codeEditor"));
+
+// Custom loading component
+const LoadingFallback = () => (
+  <div className="loading-spinner">Loading...</div>
+);
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" />} />
-      <Route path="/signup" element={<SignUp />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>}>
-        <Route index element={<h1>Welcome to Dashboard</h1>} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="sessions" element={<Sessions />} />
-        <Route path="codeEditor" element={<CodeEditor />} />
-      </Route>
-    </Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/login" 
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <Login />
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/dashboard" 
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            </Suspense>
+          }
+        >
+          <Route path="profile" 
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <Profile />
+              </Suspense>
+            } 
+          />
+          <Route path="sessions" 
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <Sessions />
+              </Suspense>
+            } 
+          />
+          <Route path="codeEditor" 
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <CodeEditor />
+              </Suspense>
+            } 
+          />
+        </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace={true} />} />
+      </Routes>
+    </Suspense>
   );
 }
 

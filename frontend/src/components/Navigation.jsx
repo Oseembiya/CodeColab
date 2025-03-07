@@ -1,5 +1,13 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaCode, FaLaptopCode, FaSignOutAlt, FaSearch, FaBell, FaEnvelope } from 'react-icons/fa';
+import { 
+  FaHome, 
+  FaCode, 
+  FaLaptopCode, 
+  FaSignOutAlt, 
+  FaSearch, 
+  FaBell, 
+  FaEnvelope 
+} from 'react-icons/fa';
 import { memo } from 'react';
 import { auth } from '../firebaseConfig';
 

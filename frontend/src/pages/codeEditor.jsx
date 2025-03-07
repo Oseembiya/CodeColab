@@ -1,9 +1,11 @@
-import * as monaco from "@monaco-editor/react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense, lazy } from "react";
 import EditorToolbar from "../components/editor/EditorToolbar";
 import OutputPanel from "../components/editor/OutputPanel";
 
-const MonacoEditor = () => {
+// Lazy load Monaco editor with a loading state
+const MonacoEditor = lazy(() => import("@monaco-editor/react"));
+
+const CodeEditor = () => {
   const [language, setLanguage] = useState("javascript");
   const [output, setOutput] = useState("");
   const [isCorrect, setIsCorrect] = useState(null);
@@ -163,26 +165,28 @@ const MonacoEditor = () => {
 
       <div className="editor-main">
         <div className="monaco-editor-wrapper">
-          <monaco.Editor
-            key={language}
-            height="100%"
-            language={language}
-            theme="vs-dark"
-            defaultValue="// type your code here"
-            onMount={(editor) => {
-              editorRef.current = editor;
-            }}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              automaticLayout: true,
-              lineNumbers: 'on',
-              roundedSelection: false,
-              scrollBeyond: false,
-              readOnly: false,
-              cursorStyle: 'line',
-            }}
-          />
+          <Suspense fallback={<div>Loading editor...</div>}>
+            <MonacoEditor
+              key={language}
+              height="100%"
+              language={language}
+              theme="vs-dark"
+              defaultValue="// type your code here"
+              onMount={(editor) => {
+                editorRef.current = editor;
+              }}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                automaticLayout: true,
+                lineNumbers: 'on',
+                roundedSelection: false,
+                scrollBeyond: false,
+                readOnly: false,
+                cursorStyle: 'line',
+              }}
+            />
+          </Suspense>
         </div>
 
         <OutputPanel 
@@ -200,4 +204,4 @@ const MonacoEditor = () => {
   );
 };
 
-export default MonacoEditor;
+export default CodeEditor;

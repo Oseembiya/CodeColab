@@ -1,15 +1,9 @@
-import { useState } from 'react';
+import { useState} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaEye, FaEyeSlash, FaGoogle } from 'react-icons/fa';
-import { auth } from '../../firebaseConfig';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup, 
-  GoogleAuthProvider,
-  updateProfile 
-} from 'firebase/auth';
 import PropTypes from 'prop-types';
+
+
 
 const AuthForm = ({ isLogin }) => {
   const navigate = useNavigate();
@@ -110,6 +104,7 @@ const AuthForm = ({ isLogin }) => {
     return newErrors;
   };
 
+  // Lazy load Firebase functions when needed
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFirebaseError('');
@@ -117,6 +112,10 @@ const AuthForm = ({ isLogin }) => {
     const newErrors = validateForm();
 
     if (Object.keys(newErrors).length === 0) {
+      // Dynamically import Firebase auth when needed
+      const { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } 
+        = await import('../../firebaseConfig');
+
       try {
         if (isLogin) {
           await signInWithEmailAndPassword(auth, formData.email, formData.password);
@@ -162,6 +161,10 @@ const AuthForm = ({ isLogin }) => {
 
   const handleGoogleAuth = async () => {
     try {
+      // Dynamically import Google auth when needed
+      const { auth } = await import('../../firebaseConfig');
+      const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
+      
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       navigate('/dashboard');
