@@ -4,6 +4,7 @@
   grid-template-rows: 60px 1fr;
   min-height: 100vh;
   width: 100%;
+  position: relative;
 }
 
 /* Sidebar styling */
@@ -12,6 +13,7 @@
   grid-column: 1;
   width: 210px;
   transition: all 0.3s ease;
+  background-color: var(--background-color);
 }
 
 .sidebar-closed {
@@ -39,8 +41,7 @@
   padding: var(--spacing-md);
   overflow-y: auto;
   transition: all 0.3s ease;
-  margin-left: 210px; /* Match sidebar width */
-  width: calc(100% - 210px); /* Subtract sidebar width */
+  width: 100%; 
 }
 
 .sidebar-closed ~ .main-content {
@@ -328,26 +329,31 @@
     top: 0;
     left: 0;
     height: 100vh;
-    width: 100%;
-    z-index: var(--z-sidebar);
+    width: 100vw;
+    z-index: 1000;
     transform: translateX(-100%);
     visibility: hidden;
+    opacity: 0;
   }
 
   .sidebar-open {
     transform: translateX(0);
     visibility: visible;
+    opacity: 1;
   }
 
   .sidebar-closed {
     transform: translateX(-100%);
     width: 0;
-    visibility: hidden; /* Hide completely when closed */
+    visibility: hidden;
   }
 
   .navbar {
+    position: fixed;
+    top: 0;
     left: 0;
     width: 100%;
+    z-index: 998;
   }
 
   .main-content {
@@ -356,20 +362,24 @@
     width: 100%;
   }
 
-  /* Overlay styling */
   .sidebar-overlay {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: calc(var(--z-sidebar) - 1);
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: none;
   }
 
   .sidebar-open ~ .sidebar-overlay {
     display: block;
+  }
+
+  .sidebar-open ~ .main-content {
+    position: fixed;
+    overflow: hidden;
   }
 
   .editor-header {
@@ -413,13 +423,10 @@
 }
 
 @media screen and (min-width: 769px) {
-  .sidebar-overlay {
-    display: none !important;
-  }
-
   .sidebar {
     transform: none !important;
     visibility: visible !important;
+    opacity: 1 !important;
     width: 210px !important;
   }
 
@@ -427,10 +434,14 @@
     left: 210px !important;
   }
 
-  .main-content {
-    margin-left: 210px;
-    width: 100% ; 
+ .main-content {
+  width: 100%;
+ }
+
+  .sidebar-overlay {
+    display: none !important;
   }
+
   .output-header {
     height: 35px;
   }
@@ -452,11 +463,11 @@
 /* Add touch device optimization */
 @media (hover: none) and (pointer: coarse) {
   .output-drag-handle {
-    height: 25px; /* Larger touch target */
+    height: 25px;
   }
 
   .drag-lines span {
-    height: 3px; /* More visible on mobile */
+    height: 3px;
   }
 
   .output-panel.collapsed {
@@ -464,6 +475,6 @@
   }
 
   .output-panel.collapsed:hover {
-    transform: translateY(calc(100% - 35px)); /* Disable hover effect on touch devices */
+    transform: translateY(calc(100% - 35px));
   }
 }

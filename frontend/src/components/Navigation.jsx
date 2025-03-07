@@ -6,7 +6,8 @@ import {
   FaSignOutAlt, 
   FaSearch, 
   FaBell, 
-  FaEnvelope 
+  FaEnvelope, 
+  FaTimes 
 } from 'react-icons/fa';
 import { memo, useState } from 'react';
 import { auth } from '../firebaseConfig';
@@ -16,6 +17,7 @@ const Navigation = memo(() => {
   const navigate = useNavigate();
   const user = auth.currentUser;
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -30,6 +32,10 @@ const Navigation = memo(() => {
     setSidebarOpen(!isSidebarOpen);
   };
 
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+  };
+
   return (
     <>
       {/* Sidebar */}
@@ -39,8 +45,17 @@ const Navigation = memo(() => {
         aria-label="Main navigation"
       >
         <div className="sidebar-header">
-          <img src="/logo.ico" alt="CodeColab Logo" className="sidebar-logo" />
-          <h2 id="site-title">CodeColab</h2>
+          <div className="sidebar-brand">
+            <img src="/logo.ico" alt="CodeColab Logo" className="sidebar-logo" />
+            <h2 id="site-title">CodeColab</h2>
+          </div>
+          <button 
+            className="sidebar-close-btn"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+          >
+            <FaTimes size={24} />
+          </button>
         </div>
         
         <div className="sidebar-menu">
@@ -99,7 +114,8 @@ const Navigation = memo(() => {
           <span></span>
         </button>
 
-        <div className="search-container">
+        {/* Desktop Search */}
+        <div className="search-container desktop-search">
           <FaSearch className="search-icon" />
           <input 
             type="text" 
@@ -107,6 +123,15 @@ const Navigation = memo(() => {
             className="search-input"
           />
         </div>
+
+        {/* Mobile Search Icon */}
+        <button 
+          className="mobile-search-icon"
+          onClick={toggleSearch}
+          aria-label="Open search"
+        >
+          <FaSearch />
+        </button>
 
         <div className="navbar-profile">
           <div className="navbar-icons">
@@ -149,6 +174,28 @@ const Navigation = memo(() => {
           aria-label="Close sidebar"
         />
       )}
+
+      {/* Mobile Search Overlay */}
+      <div className={`search-overlay ${isSearchOpen ? 'search-open' : ''}`}>
+        <div className="search-header">
+          <button 
+            className="search-close"
+            onClick={() => setIsSearchOpen(false)}
+            aria-label="Close search"
+          >
+            <FaTimes />
+          </button>
+          <div className="search-input-container">
+            <FaSearch className="search-icon" />
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              className="search-input"
+              autoFocus
+            />
+          </div>
+        </div>
+      </div>
     </>
   );
 });

@@ -41,6 +41,7 @@
   border: 1px solid var(--line-color);
   border-radius: 4px;
   font-size: var(--text-base);
+  color: var(--text-color);
 }
 
 .search-icon {
@@ -49,6 +50,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: var(--icon-size);
+  color: var(--text-color);
 }
 
 /* Navbar Profile Section */
@@ -131,18 +133,23 @@
 
 /* Sidebar Sections */
 .sidebar-header {
-  padding: 13.5px;
-  text-align: center;
+  padding: var(--spacing-md);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  justify-content: space-between;
+
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 .sidebar-logo {
   width: 32px;
   height: 32px;
-  border-radius: 70%;
+  border-radius: 50%;
 }
 
 .sidebar-menu {
@@ -230,7 +237,7 @@ button {
   height: 20px;
   cursor: pointer;
   padding: 0;
-  z-index: var(--z-navbar);
+  z-index: 1001; /* Above sidebar */
   margin-right: var(--spacing-md);
 }
 
@@ -246,23 +253,17 @@ button {
 @media screen and (max-width: 768px) {
   .hamburger-menu {
     display: flex;
+    position: relative;
   }
 
-  .sidebar {
-    padding-top: var(--spacing-lg);
-  }
-
+  /* Menu items styling for mobile */
   .sidebar-menu {
-    width: 100%;
+    padding-top: 60px; /* Space for navbar */
   }
 
   .menu-item {
     width: 100%;
     padding: 20px;
-  }
-
-  .navbar-profile {
-    margin-left: auto;
   }
 
   /* Animate hamburger to X */
@@ -291,5 +292,123 @@ button {
   .notification-button {
     width: 35px;
     height: 35px;
+  }
+}
+
+/* Close Button Styles */
+.sidebar-close-btn {
+  display: none; /* Hidden by default */
+  padding: var(--spacing-sm);
+  color: var(--text-color);
+  background-color: var(--hover-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sidebar-close-btn:hover {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+/* Mobile Styles */
+@media screen and (max-width: 768px) {
+  .sidebar-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar-header {
+    padding: var(--spacing-md);
+  }
+}
+
+/* Mobile Search Icon */
+.mobile-search-icon {
+  display: none;
+  padding: var(--spacing-sm);
+  color: var(--text-color);
+  background: var(--hover-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: var(--icon-size);
+}
+
+/* Search Overlay */
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--background-color);
+  z-index: 2000;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease;
+  visibility: hidden;
+}
+
+.search-overlay.search-open {
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.search-header {
+  padding: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  border-bottom: 1px solid var(--line-color);
+}
+
+.search-close {
+  padding: var(--spacing-sm);
+  color: var(--text-color);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--icon-size);
+}
+
+.search-input-container {
+  position: relative;
+  flex: 1;
+}
+
+/* Mobile Styles */
+@media screen and (max-width: 768px) {
+  .desktop-search {
+    display: none;
+  }
+
+  .mobile-search-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .search-overlay .search-input {
+    width: 100%;
+    background-color: var(--hover-color);
+    border: none;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .search-header {
+    background-color: var(--background-color);
+  }
+}
+
+/* Desktop Styles */
+@media screen and (min-width: 769px) {
+  .mobile-search-icon {
+    display: none;
+  }
+
+  .search-overlay {
+    display: none;
   }
 }
