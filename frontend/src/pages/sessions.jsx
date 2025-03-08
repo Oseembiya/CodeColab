@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaSearch, FaFilter, FaClock, FaUsers, FaCode, FaCalendar, FaLock, FaLockOpen } from 'react-icons/fa';
 import CreateSessionModal from '../components/sessions/CreateSessionModal';
@@ -9,13 +9,17 @@ import { useAuth } from '../hooks/useAuth';
 import { useSessions } from '../hooks/useSessions';
 
 const Sessions = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { 
     sessions, 
+    loading, 
+    error, 
     createSession, 
     joinSession, 
-    updateSession,
-    deleteSession 
+    updateSession, 
+    deleteSession,
+    refreshSessions 
   } = useSessions();
   
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -27,8 +31,15 @@ const Sessions = () => {
     dateRange: 'all',
     privacy: 'all'
   });
-  const [view, setView] = useState('grid'); // 'grid' or 'list'
-  const navigate = useNavigate();
+  const [view, setView] = useState('grid');
+
+  if (loading) {
+    return <div>Loading sessions...</div>;
+  }
+
+  if (error) {
+    return <div>Error loading sessions: {error.message}</div>;
+  }
 
   const filteredSessions = sessions.filter(session => {
     const matchesSearch = session.title.toLowerCase().includes(filters.search.toLowerCase()) ||
@@ -37,7 +48,6 @@ const Sessions = () => {
     const matchesLanguage = filters.language === 'all' || session.language === filters.language;
     const matchesPrivacy = filters.privacy === 'all' || session.isPrivate === (filters.privacy === 'private');
     
-    // Date range filtering
     let matchesDate = true;
     if (filters.dateRange !== 'all') {
       const sessionDate = new Date(session.startTime);
@@ -53,6 +63,8 @@ const Sessions = () => {
         case 'month':
           const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
           matchesDate = sessionDate >= monthAgo;
+          break;
+        default:
           break;
       }
     }
@@ -76,7 +88,6 @@ const Sessions = () => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error creating session:', error);
-      // Handle error (show notification)
     }
   };
 
@@ -86,7 +97,6 @@ const Sessions = () => {
       navigate(`/dashboard/codeEditor/${sessionId}`);
     } catch (error) {
       console.error('Error joining session:', error);
-      // Handle error (show notification)
     }
   };
 
@@ -110,6 +120,13 @@ const Sessions = () => {
               List
             </button>
           </div>
+          <button 
+            className="refresh-button"
+            onClick={refreshSessions}
+            disabled={loading}
+          >
+            Refresh
+          </button>
         </div>
         <button 
           className="create-session-btn"
@@ -140,7 +157,6 @@ const Sessions = () => {
         ))}
       </div>
 
-      {/* Modals */}
       {showCreateModal && (
         <CreateSessionModal 
           onClose={() => setShowCreateModal(false)}
@@ -158,4 +174,4 @@ const Sessions = () => {
   );
 };
 
-export default Sessions; 
+export default Sessions;
