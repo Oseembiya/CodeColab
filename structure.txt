@@ -1,35 +1,329 @@
-CodeCola/
-│── frontend/              # Frontend (React App)
-│   │── public/            # Static assets (favicons, images, etc.)
-│   │── src/               # Source code
-│   │   │── assets/        # Images, icons, styles
-│   │   │── components/    # Reusable React components (UI elements)
-│   │   │── pages/         # React pages ( Signup, Login, Home, Dashboard, Session etc.)
-│   │   │── context/       # Context API or Redux store
-│   │   │── hooks/         # Custom React hooks
-│   │   │── utils/         # Helper functions
-│   │   │── services/      # API service handlers (Firebase, MongoDB)
-│   │   │── App.jsx         # Main React app entry
-│   │   │── index.jsx       # React root file
-│   │── package.json       # Frontend dependencies
-│   │── .env               # Environment variables (frontend)
-│── backend/               # Backend (Node.js & Express)
-│   │── config/            # Configurations (DB, auth)
-│   │── controllers/       # Business logic (handling API requests)
-│   │── models/            # MongoDB models (User, Rooms, etc.)
-│   │── routes/            # API routes
-│   │── services/          # Utility services (auth, database, etc.)
-│   │── socket/            # Socket.IO event handling
-│   │── middleware/        # Middleware (auth checks, security)
-│   │── index.js           # Main backend entry point
-│   │── package.json       # Backend dependencies
-│   │── .env               # Backend environment variables
-│── database/              # MongoDB database setup (if needed)
-│── docs/                  # Documentation (API docs, project reports)
-│── scripts/               # Deployment & automation scripts
-│── tests/                 # Unit & integration tests
-│── .gitignore             # Files to ignore in Git
-│── README.md              # Project description & setup guide
-│── docker-compose.yml     # Docker setup (if used)
-│── vercel.json            # Deployment config (if using Vercel)
-│── aws-config.json        # AWS hosting configuration
+
+## 2. Core Services Architecture
+
+### 2.1 Authentication Service
+```javascript
+interface AuthService {
+  signUp(email: string, password: string): Promise<User>;
+  signIn(email: string, password: string): Promise<User>;
+  signOut(): Promise<void>;
+  getCurrentUser(): User | null;
+  onAuthStateChanged(callback: (user: User | null) => void): void;
+}
+
+// Implementation using Firebase Auth
+class FirebaseAuthService implements AuthService {
+  // Implementation details
+}
+```
+
+### 2.2 Real-time Collaboration Service
+```javascript
+interface CollaborationService {
+  // Room Management
+  createRoom(): Promise<Room>;
+  joinRoom(roomId: string): Promise<Room>;
+  leaveRoom(roomId: string): Promise<void>;
+  
+  // Code Synchronization
+  syncCode(roomId: string, code: string): void;
+  onCodeChange(callback: (code: string) => void): void;
+  
+  // Whiteboard Synchronization
+  syncWhiteboard(roomId: string, data: WhiteboardData): void;
+  onWhiteboardChange(callback: (data: WhiteboardData) => void): void;
+}
+```
+
+### 2.3 Video Communication Service
+```javascript
+interface VideoService {
+  initializeStream(): Promise<MediaStream>;
+  joinVideoRoom(roomId: string): Promise<void>;
+  leaveVideoRoom(roomId: string): Promise<void>;
+  toggleVideo(): void;
+  toggleAudio(): void;
+  onParticipantJoined(callback: (participant: Participant) => void): void;
+  onParticipantLeft(callback: (participantId: string) => void): void;
+}
+```
+
+## 3. Data Models
+
+### 3.1 User Model
+```typescript
+interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  createdAt: Date;
+  sessions: Session[];
+}
+```
+
+### 3.2 Session Model
+```typescript
+interface Session {
+  id: string;
+  createdBy: string;
+  participants: Participant[];
+  code: string;
+  language: string;
+  whiteboardData: WhiteboardData;
+  createdAt: Date;
+  updatedAt: Date;
+  status: 'active' | 'ended';
+}
+```
+
+### 3.3 Whiteboard Model
+```typescript
+interface WhiteboardData {
+  id: string;
+  sessionId: string;
+  objects: FabricObject[];
+  version: number;
+}
+```
+
+## 4. State Management
+
+### 4.1 Global State Structure
+```typescript
+interface AppState {
+  auth: {
+    user: User | null;
+    loading: boolean;
+    error: Error | null;
+  };
+  session: {
+    currentSession: Session | null;
+    participants: Participant[];
+    code: string;
+    whiteboardData: WhiteboardData;
+  };
+  video: {
+    localStream: MediaStream | null;
+    remoteStreams: Map<string, MediaStream>;
+    audioEnabled: boolean;
+    videoEnabled: boolean;
+  };
+}
+```
+
+## 5. API Endpoints
+
+### 5.1 REST API Routes
+```typescript
+// Authentication
+POST   /api/auth/register
+POST   /api/auth/login
+POST   /api/auth/logout
+
+// Sessions
+GET    /api/sessions
+POST   /api/sessions
+GET    /api/sessions/:id
+PUT    /api/sessions/:id
+DELETE /api/sessions/:id
+
+// Users
+GET    /api/users/:id
+PUT    /api/users/:id
+GET    /api/users/:id/sessions
+```
+
+### 5.2 WebSocket Events
+```typescript
+// Room Events
+ROOM:JOIN
+ROOM:LEAVE
+ROOM:USER_JOINED
+ROOM:USER_LEFT
+
+// Code Sync Events
+CODE:CHANGE
+CODE:SYNC
+
+// Whiteboard Events
+WHITEBOARD:CHANGE
+WHITEBOARD:SYNC
+
+// Video Events
+VIDEO:OFFER
+VIDEO:ANSWER
+VIDEO:ICE_CANDIDATE
+```
+
+## 6. Security Implementation
+
+### 6.1 Authentication Flow
+```typescript
+interface AuthFlow {
+  // JWT Token Management
+  generateToken(user: User): string;
+  verifyToken(token: string): User;
+  refreshToken(refreshToken: string): string;
+
+  // Session Management
+  validateSession(token: string): boolean;
+  revokeSession(userId: string): void;
+}
+```
+
+### 6.2 Security Middleware
+```typescript
+interface SecurityMiddleware {
+  authenticate(req: Request): Promise<User>;
+  authorize(req: Request, roles: string[]): boolean;
+  validateInput(schema: ValidationSchema): void;
+  rateLimiter(limit: number, duration: number): void;
+}
+```
+
+## 7. Real-time Communication Flow
+
+```mermaid
+graph TD
+    A[Client 1] -->|Join Room| B[WebSocket Server]
+    C[Client 2] -->|Join Room| B
+    B -->|Broadcast Join| A
+    B -->|Broadcast Join| C
+    A -->|Code Change| B
+    B -->|Sync Code| C
+    C -->|Whiteboard Update| B
+    B -->|Sync Whiteboard| A
+    A -->|Video Offer| B
+    B -->|Video Offer| C
+    C -->|Video Answer| B
+    B -->|Video Answer| A
+```
+
+## 8. Deployment Architecture
+
+```mermaid
+graph TD
+    A[Client] -->|HTTPS| B[AWS Load Balancer]
+    B -->|HTTP| C[Node.js Server]
+    C -->|WebSocket| D[Socket.io Server]
+    C -->|Queries| E[MongoDB]
+    C -->|Auth| F[Firebase Auth]
+    D -->|P2P| G[WebRTC]
+```
+
+## 9. Error Handling
+
+```typescript
+interface ErrorHandler {
+  // Error Types
+  AuthenticationError extends Error;
+  ValidationError extends Error;
+  NetworkError extends Error;
+  
+  // Error Handling
+  handleAuthError(error: AuthenticationError): Response;
+  handleValidationError(error: ValidationError): Response;
+  handleNetworkError(error: NetworkError): Response;
+  
+  // Error Logging
+  logError(error: Error, context: ErrorContext): void;
+}
+```
+
+## 10. Monitoring and Analytics
+
+```typescript
+interface Monitoring {
+  // Performance Monitoring
+  trackPageLoad(page: string): void;
+  trackApiLatency(endpoint: string, duration: number): void;
+  
+  // Error Tracking
+  captureError(error: Error, context: ErrorContext): void;
+  
+  // Usage Analytics
+  trackUserActivity(userId: string, action: string): void;
+  trackSessionMetrics(sessionId: string, metrics: SessionMetrics): void;
+}
+```
+
+This architecture design system provides:
+
+1. Clear project structure and organization
+2. Well-defined interfaces for core services
+3. Comprehensive data models
+4. Structured state management
+5. API endpoint documentation
+6. Security implementation guidelines
+7. Real-time communication flow
+8. Deployment architecture
+9. Error handling system
+10. Monitoring and analytics integration
+
+codecolab/
+├── frontend/
+│ ├── src/
+│ │ ├── components/
+│ │ │ ├── auth/ # Authentication components
+│ │ │ ├── collaboration/ # Real-time collaboration features
+│ │ │ ├── editor/ # Code editor components
+│ │ │ ├── video/ # WebRTC video chat components
+│ │ │ ├── whiteboard/ # Interactive whiteboard components
+│ │ │ └── common/ # Shared UI components
+│ │ ├── hooks/ # Custom React hooks
+│ │ ├── services/ # API and external service integrations
+│ │ ├── store/ # State management
+│ │ ├── utils/ # Utility functions
+│ │ └── pages/ # Route components
+│ └── public/
+├── backend/
+│ ├── src/
+│ │ ├── controllers/ # Request handlers
+│ │ ├── models/ # Database schemas
+│ │ ├── routes/ # API routes
+│ │ ├── services/ # Business logic
+│ │ ├── socket/ # WebSocket handlers
+│ │ └── utils/ # Helper functions
+│ └── config/ # Configuration files
+
+
+# Overall Progress: 25-30/100
+
+Breakdown:
+1. Frontend Base Setup: 10/10
+   - Project configuration
+   - Routing
+   - Basic structure
+   - Dependencies
+
+2. Authentication: 8/10
+   - Firebase integration
+   - Login/Signup
+   - Protected routes
+
+3. UI Components: 7/15
+   - Navigation
+   - Basic layouts
+   - Profile page
+   - Code editor interface
+
+4. Code Editor: 5/15
+   - Monaco editor
+   - Basic functionality
+   - Language selection
+
+5. Not Started Yet (0/50):
+   - Real-time collaboration (0/15)
+   - Whiteboard feature (0/10)
+   - Video chat (0/10)
+   - Backend development (0/10)
+   - Database integration (0/5)
+
+The major features that will take up the remaining ~70-75% are:
+- Real-time collaboration functionality
+- Interactive whiteboard
+- Video communication
+- Backend server
+- Database integration
+- Real-time synchronization
