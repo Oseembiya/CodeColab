@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fa';
 import { memo, useState } from 'react';
 import { auth } from '../firebaseConfig';
+import NotificationModal from './notifications/NotificationModal';
 
 const Navigation = memo(() => {
   const location = useLocation();
@@ -18,6 +19,8 @@ const Navigation = memo(() => {
   const user = auth.currentUser;
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -137,14 +140,16 @@ const Navigation = memo(() => {
           <div className="navbar-icons">
             <button 
               className="notification-button"
-              onClick={() => console.log('Notifications clicked')}
+              onClick={() => setShowNotifications(true)}
+              aria-label="Show notifications"
             >
               <FaBell />
               <span className="notification-badge">2</span>
             </button>
             <button 
               className="notification-button"
-              onClick={() => console.log('Messages clicked')}
+              onClick={() => setShowMessages(true)}
+              aria-label="Show messages"
             >
               <FaEnvelope />
               <span className="notification-badge">3</span>
@@ -196,6 +201,18 @@ const Navigation = memo(() => {
           </div>
         </div>
       </div>
+
+      <NotificationModal 
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        type="notification"
+      />
+
+      <NotificationModal 
+        isOpen={showMessages}
+        onClose={() => setShowMessages(false)}
+        type="email"
+      />
     </>
   );
 });
