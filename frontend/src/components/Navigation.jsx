@@ -11,6 +11,7 @@ import {
 import { memo, useState } from 'react';
 import { auth } from '../firebaseConfig';
 import NotificationModal from './notifications/NotificationModal';
+import { useSession } from '../contexts/SessionContext';
 
 const Navigation = memo(() => {
   const location = useLocation();
@@ -19,6 +20,7 @@ const Navigation = memo(() => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
+  const { activeSession } = useSession();
 
   const handleSignOut = async () => {
     try {
@@ -121,6 +123,13 @@ const Navigation = memo(() => {
             />
           </button>
         </div>
+
+        {activeSession && (
+          <div className="active-session-indicator">
+            <span className="session-status">Active Session</span>
+            <span className="session-name">{activeSession.title}</span>
+          </div>
+        )}
       </nav>
 
       {isSidebarOpen && (

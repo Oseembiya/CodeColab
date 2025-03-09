@@ -1,0 +1,32 @@
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.participants-bar {
+  background: #2d2d2d;
+  padding: 10px;
+  border-bottom: 1px solid #404040;
+}
+
+.participants-list {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.participant {
+  background: #404040;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #ffffff;
+}
+
+.monaco-editor-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+/* Add to your existing editor styles */ 

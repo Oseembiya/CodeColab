@@ -7,7 +7,7 @@ import SessionCard from '../components/sessions/SessionCard';
 import SessionFilters from '../components/sessions/SessionFilters';
 import { useAuth } from '../hooks/useAuth';
 import { useSessions } from '../hooks/useSessions';
-
+import { useSession } from '../contexts/SessionContext';
 
 const Sessions = () => {
   const navigate = useNavigate();
@@ -22,6 +22,7 @@ const Sessions = () => {
     deleteSession,
     refreshSessions 
   } = useSessions();
+  const { createSession: sessionContextCreateSession } = useSession();
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -75,29 +76,20 @@ const Sessions = () => {
 
   const handleCreateSession = async (sessionData) => {
     try {
-      const newSession = await createSession({
-        ...sessionData,
-        ownerId: user.uid,
-        status: sessionData.startNow ? 'active' : 'scheduled',
-        participants: [{ id: user.uid, role: 'owner' }],
-        createdAt: new Date().toISOString()
-      });
-
-      if (sessionData.startNow) {
-        navigate(`/dashboard/codeEditor/${newSession.id}`);
-      }
+      const sessionId = await sessionContextCreateSession(sessionData);
       setShowCreateModal(false);
+      navigate(`/dashboard/sessions/${sessionId}`);
     } catch (error) {
-      console.error('Error creating session:', error);
+      console.error('Failed to create session:', error);
     }
   };
 
   const handleJoinSession = async (sessionId, code) => {
     try {
       await joinSession(sessionId, code);
-      navigate(`/dashboard/codeEditor/${sessionId}`);
+      navigate(`/dashboard/sessions/${sessionId}`);
     } catch (error) {
-      console.error('Error joining session:', error);
+      console.error('Failed to join session:', error);
     }
   };
 
