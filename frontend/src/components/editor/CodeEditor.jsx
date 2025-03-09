@@ -1,15 +1,19 @@
 import { useState, useRef, useEffect, useCallback, Suspense, lazy } from "react";
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { io } from "socket.io-client";
 import { useAuth } from "../../hooks/useAuth";
 import EditorToolbar from "./EditorToolbar";
 import OutputPanel from "./OutputPanel";
+import VideoChat from "../collaboration/VideoChat";
+import SessionInfo from "../sessions/SessionInfo";
+import { FaExpandAlt, FaCompressAlt } from 'react-icons/fa';
 
 // Lazy load Monaco editor
 const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 
 const CodeEditor = ({ collaborative = false }) => {
   const { sessionId } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
   const [language, setLanguage] = useState("javascript");
   const [output, setOutput] = useState("");
@@ -20,9 +24,11 @@ const CodeEditor = ({ collaborative = false }) => {
   const [outputHeight, setOutputHeight] = useState(200);
   const [isDragging, setIsDragging] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const dragStartY = useRef(0);
-  const dragStartHeight = useRef(0);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [participants, setParticipants] = useState(new Map());
+  const [sessionInfo, setSessionInfo] = useState(null);
+  const [showVideo, setShowVideo] = useState(true);
+  const [layout, setLayout] = useState('default');
 
   const languages = [
     { id: "javascript", name: "JavaScript" },
@@ -42,52 +48,56 @@ const CodeEditor = ({ collaborative = false }) => {
     kotlin: 78
   };
 
-  // Initialize Socket.IO connection
   useEffect(() => {
-    if (!collaborative || !sessionId) return;
+    if (collaborative && sessionId) {
+      const fetchSessionInfo = async () => {
+        try {
+          const response = await fetch(`/api/sessions/${sessionId}`);
+          const data = await response.json();
+          setSessionInfo(data);
+        } catch (error) {
+          console.error('Error fetching session info:', error);
+        }
+      };
+      fetchSessionInfo();
 
-    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
-    socketRef.current = io(SOCKET_URL);
-    const socket = socketRef.current;
+      const socket = io(import.meta.env.VITE_SOCKET_URL);
+      socketRef.current = socket;
 
-    socket.emit('join-session', {
-      sessionId,
-      userId: user.uid,
-      username: user.displayName
-    });
-
-    // Handle code updates from other users
-    socket.on('code-update', ({ content, userId }) => {
-      if (userId !== user.uid && editorRef.current) {
-        const currentPosition = editorRef.current.getPosition();
-        editorRef.current.setValue(content);
-        editorRef.current.setPosition(currentPosition);
-      }
-    });
-
-    // Handle user joined/left events
-    socket.on('user-joined', ({ userId, username }) => {
-      setParticipants(prev => new Map(prev).set(userId, { username }));
-    });
-
-    socket.on('user-left', ({ userId }) => {
-      setParticipants(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(userId);
-        return newMap;
+      socket.emit('join-session', {
+        sessionId,
+        userId: user.uid,
+        username: user.displayName
       });
-    });
 
-    return () => {
-      socket.disconnect();
-    };
+      socket.on('code-update', ({ content, userId }) => {
+        if (userId !== user.uid && editorRef.current) {
+          const position = editorRef.current.getPosition();
+          editorRef.current.setValue(content);
+          editorRef.current.setPosition(position);
+        }
+      });
+
+      socket.on('user-joined', ({ userId, username }) => {
+        setParticipants(prev => new Map(prev).set(userId, { username }));
+      });
+
+      socket.on('user-left', ({ userId }) => {
+        setParticipants(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(userId);
+          return newMap;
+        });
+      });
+
+      return () => socket.disconnect();
+    }
   }, [collaborative, sessionId, user]);
 
   const handleEditorDidMount = (editor) => {
     editorRef.current = editor;
 
     if (collaborative) {
-      // Set up change event listener for collaborative editing
       editor.onDidChangeModelContent(() => {
         const content = editor.getValue();
         socketRef.current?.emit('code-change', {
@@ -99,7 +109,6 @@ const CodeEditor = ({ collaborative = false }) => {
     }
   };
 
-  // Handle local code changes
   const handleEditorChange = (event) => {
     if (collaborative && socketRef.current) {
       socketRef.current.emit('code-change', {
@@ -110,7 +119,6 @@ const CodeEditor = ({ collaborative = false }) => {
     }
   };
 
-  // Handle cursor movement
   const handleCursorMove = (event) => {
     if (collaborative && socketRef.current) {
       const position = event.position;
@@ -122,12 +130,10 @@ const CodeEditor = ({ collaborative = false }) => {
     }
   };
 
-  // Handle language change
   const handleLanguageChange = (event) => {
     setLanguage(event.target.value);
   };
 
-  // Handle run code
   const handleRunCode = async () => {
     if (!editorRef.current) return;
 
@@ -136,13 +142,12 @@ const CodeEditor = ({ collaborative = false }) => {
     setOutput("Running code...");
 
     try {
-      // First API call to submit the code
       const submitResponse = await fetch('https://judge0-ce.p.rapidapi.com/submissions', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
-          'X-RapidAPI-Key': import.meta.env.VITE_RAPIDAPI_KEY, // Make sure this is in your .env file
+          'X-RapidAPI-Key': import.meta.env.VITE_RAPIDAPI_KEY,
         },
         body: JSON.stringify({
           source_code: code,
@@ -160,13 +165,12 @@ const CodeEditor = ({ collaborative = false }) => {
         throw new Error('No token received from Judge0');
       }
 
-      // Poll for results
       let result;
       let attempts = 0;
       const maxAttempts = 10;
 
       while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between attempts
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         const statusResponse = await fetch(`https://judge0-ce.p.rapidapi.com/submissions/${token}`, {
           headers: {
@@ -181,38 +185,31 @@ const CodeEditor = ({ collaborative = false }) => {
 
         result = await statusResponse.json();
 
-        // Check if processing is complete
-        if (result.status.id > 2) { // 1: In Queue, 2: Processing
+        if (result.status.id > 2) {
           break;
         }
 
         attempts++;
       }
 
-      // Format the output
       let outputText = '';
 
-      // Add status message
       if (result.status) {
         outputText += `Status: ${result.status.description}\n\n`;
       }
 
-      // Add stdout if exists
       if (result.stdout) {
         outputText += `Output:\n${result.stdout}\n`;
       }
 
-      // Add stderr if exists
       if (result.stderr) {
         outputText += `\nErrors:\n${result.stderr}\n`;
       }
 
-      // Add compile output if exists
       if (result.compile_output) {
         outputText += `\nCompilation Output:\n${result.compile_output}\n`;
       }
 
-      // Add execution details
       outputText += `\nExecution Time: ${result.time || '0'} seconds`;
       outputText += `\nMemory Used: ${result.memory || '0'} KB`;
 
@@ -226,7 +223,6 @@ const CodeEditor = ({ collaborative = false }) => {
     }
   };
 
-  // Handle check answer
   const handleCheckAnswer = async () => {
     if (collaborative) {
       console.error("Cannot check answer in collaborative mode");
@@ -259,7 +255,6 @@ const CodeEditor = ({ collaborative = false }) => {
     }
   };
 
-  // Handle drag start
   const handleDragStart = (event) => {
     if (event instanceof TouchEvent) {
       dragStartY.current = event.touches[0].clientY;
@@ -271,7 +266,6 @@ const CodeEditor = ({ collaborative = false }) => {
     setIsDragging(true);
   };
 
-  // Handle touch start
   const handleTouchStart = (event) => {
     if (event instanceof TouchEvent) {
       dragStartY.current = event.touches[0].clientY;
@@ -283,7 +277,6 @@ const CodeEditor = ({ collaborative = false }) => {
     setIsDragging(true);
   };
 
-  // Handle touch move
   const handleTouchMove = (event) => {
     if (isDragging) {
       const touch = event instanceof TouchEvent ? event.touches[0] : event;
@@ -293,71 +286,119 @@ const CodeEditor = ({ collaborative = false }) => {
     }
   };
 
-  // Handle touch end
   const handleTouchEnd = () => {
     setIsDragging(false);
   };
 
-  return (
-    <div className="editor-container">
-      <EditorToolbar 
-        onRun={handleRunCode}
-        onCheck={handleCheckAnswer}
-        isLoading={isLoading}
-        language={language}
-        onLanguageChange={handleLanguageChange}
-        languages={languages}
-        isCorrect={isCorrect}
-      />
+  const handleLayoutChange = (newLayout) => {
+    setLayout(newLayout);
+  };
 
+  return (
+    <div className={`editor-container ${layout} ${isFullScreen ? 'fullscreen' : ''}`}>
       {collaborative && (
-        <div className="participants-bar">
-          <h3>Participants</h3>
-          <div className="participants-list">
-            {Array.from(participants.entries()).map(([userId, { username }]) => (
-              <div key={userId} className="participant">
-                {username}
-              </div>
-            ))}
+        <div className="session-header">
+          {sessionInfo && <SessionInfo session={sessionInfo} />}
+          <div className="layout-controls">
+            <button 
+              onClick={() => handleLayoutChange('default')}
+              className={layout === 'default' ? 'active' : ''}
+            >
+              Default View
+            </button>
+            <button 
+              onClick={() => handleLayoutChange('video-focus')}
+              className={layout === 'video-focus' ? 'active' : ''}
+            >
+              Video Focus
+            </button>
+            <button 
+              onClick={() => handleLayoutChange('code-focus')}
+              className={layout === 'code-focus' ? 'active' : ''}
+            >
+              Code Focus
+            </button>
+            <button 
+              onClick={() => setShowVideo(!showVideo)}
+              className={showVideo ? 'active' : ''}
+            >
+              Toggle Video
+            </button>
           </div>
         </div>
       )}
 
       <div className="editor-main">
-        <div className="monaco-editor-wrapper">
-          <Suspense fallback={<div>Loading editor...</div>}>
-            <MonacoEditor
-              height="100%"
-              language={language}
-              theme="vs-dark"
-              defaultValue="// Start coding here"
-              onMount={handleEditorDidMount}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                automaticLayout: true,
-                lineNumbers: 'on',
-                roundedSelection: false,
-                scrollBeyondLastLine: false,
-                readOnly: false,
-                cursorStyle: 'line',
-              }}
-              onChange={handleEditorChange}
-              onCursorPositionChange={handleCursorMove}
-            />
-          </Suspense>
+        <div className="editor-content">
+          <EditorToolbar 
+            onRun={handleRunCode}
+            onCheck={handleCheckAnswer}
+            isLoading={isLoading}
+            language={language}
+            onLanguageChange={handleLanguageChange}
+            languages={languages}
+            isCorrect={isCorrect}
+          />
+
+          <div className="monaco-editor-wrapper">
+            <Suspense fallback={<div>Loading editor...</div>}>
+              <MonacoEditor
+                height="100%"
+                language={language}
+                theme="vs-dark"
+                defaultValue="// Start coding here"
+                onMount={handleEditorDidMount}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  automaticLayout: true,
+                  lineNumbers: 'on',
+                  roundedSelection: false,
+                  scrollBeyondLastLine: false,
+                  readOnly: false,
+                  cursorStyle: 'line',
+                }}
+                onChange={handleEditorChange}
+                onCursorPositionChange={handleCursorMove}
+              />
+            </Suspense>
+
+            <button 
+              className="fullscreen-toggle"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+            >
+              {isFullScreen ? <FaCompressAlt /> : <FaExpandAlt />}
+            </button>
+          </div>
+
+          <OutputPanel 
+            output={output}
+            height={outputHeight}
+            isCollapsed={isCollapsed}
+            onDragStart={handleDragStart}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onCollapse={() => setIsCollapsed(!isCollapsed)}
+          />
         </div>
 
-        <OutputPanel 
-          output={output}
-          height={outputHeight}
-          isCollapsed={isCollapsed}
-          onDragStart={handleDragStart}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onCollapse={() => setIsCollapsed(!isCollapsed)}
-        />
+        {collaborative && showVideo && (
+          <div className={`collaboration-panel ${layout}`}>
+            <VideoChat 
+              sessionId={sessionId}
+              userId={user.uid}
+            />
+            <div className="participants-list">
+              <h3>Participants</h3>
+              {Array.from(participants.entries()).map(([userId, { username }]) => (
+                <div key={userId} className="participant">
+                  {username}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

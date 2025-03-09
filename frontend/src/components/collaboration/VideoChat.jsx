@@ -1,58 +1,172 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Peer from 'peerjs';
 import PropTypes from 'prop-types';
-import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash } from 'react-icons/fa';
+import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaSync } from 'react-icons/fa';
 
 const VideoChat = ({ sessionId, userId }) => {
   const [peers, setPeers] = useState(new Map());
   const [stream, setStream] = useState(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [error, setError] = useState(null);
   const peerRef = useRef(null);
   const streamRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const isUnmountingRef = useRef(false);
 
-  useEffect(() => {
-    // Initialize PeerJS
-    peerRef.current = new Peer(`${sessionId}-${userId}`, {
-      host: import.meta.env.VITE_PEER_HOST || 'localhost',
-      port: import.meta.env.VITE_PEER_PORT || 9000,
-      path: '/myapp'
-    });
+  const cleanupPeer = useCallback(() => {
+    if (peerRef.current) {
+      try {
+        // Remove all event listeners first
+        peerRef.current.removeAllListeners();
+        
+        // Close any existing connections
+        peerRef.current.disconnect();
+        
+        // Destroy the peer after a short delay
+        setTimeout(() => {
+          if (peerRef.current && !isUnmountingRef.current) {
+            peerRef.current.destroy();
+            peerRef.current = null;
+          }
+        }, 100);
+      } catch (err) {
+        console.warn('Cleanup warning:', err);
+      }
+    }
+  }, []);
 
-    const peer = peerRef.current;
-
-    // Get user media
-    navigator.mediaDevices
-      .getUserMedia({ 
-        video: true, 
-        audio: true 
-      })
-      .then(stream => {
-        setStream(stream);
-        streamRef.current = stream;
-
-        // Handle incoming calls
-        peer.on('call', call => {
-          call.answer(stream);
-          call.on('stream', remoteStream => {
-            setPeers(prev => new Map(prev).set(call.peer, remoteStream));
-          });
+  const cleanupStream = useCallback(() => {
+    if (streamRef.current) {
+      try {
+        const tracks = streamRef.current.getTracks();
+        tracks.forEach(track => {
+          track.stop();
+          streamRef.current.removeTrack(track);
         });
+        streamRef.current = null;
+      } catch (err) {
+        console.warn('Stream cleanup warning:', err);
+      }
+    }
+  }, []);
 
-        // Handle peer errors
-        peer.on('error', error => {
-          console.error('PeerJS error:', error);
-        });
-      })
-      .catch(err => {
-        console.error('Failed to get user media:', err);
+  const initializePeer = useCallback(async () => {
+    if (isUnmountingRef.current) return;
+
+    cleanupPeer();
+
+    try {
+      setConnectionStatus('connecting');
+      setError(null);
+
+      const peer = new Peer(`${sessionId}-${userId}`, {
+        host: import.meta.env.VITE_PEER_HOST || 'localhost',
+        port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
+        path: '/myapp',
+        debug: 1,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+          ]
+        },
+        // Add connection timeout
+        connectionTimeout: 5000,
+        // Add retry options
+        retryOptions: {
+          maxAttempts: 3,
+          delay: 1000
+        }
       });
 
+      // Store the peer instance
+      peerRef.current = peer;
+
+      // Set up event listeners
+      peer.on('open', (id) => {
+        if (!isUnmountingRef.current) {
+          console.log('Connected to peer server with ID:', id);
+          setConnectionStatus('connected');
+        }
+      });
+
+      peer.on('error', (err) => {
+        if (!isUnmountingRef.current) {
+          console.error('Peer error:', err);
+          setError(err.message);
+          setConnectionStatus('error');
+        }
+      });
+
+      peer.on('disconnected', () => {
+        if (!isUnmountingRef.current) {
+          console.log('Disconnected from peer server');
+          setConnectionStatus('disconnected');
+        }
+      });
+
+      // Initialize media stream
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+
+      if (!isUnmountingRef.current) {
+        setStream(mediaStream);
+        streamRef.current = mediaStream;
+
+        // Handle incoming calls
+        peer.on('call', (call) => {
+          call.answer(mediaStream);
+          
+          call.on('stream', (remoteStream) => {
+            if (!isUnmountingRef.current) {
+              setPeers(prev => new Map(prev).set(call.peer, remoteStream));
+            }
+          });
+
+          call.on('close', () => {
+            if (!isUnmountingRef.current) {
+              setPeers(prev => {
+                const newPeers = new Map(prev);
+                newPeers.delete(call.peer);
+                return newPeers;
+              });
+            }
+          });
+        });
+      }
+
+    } catch (err) {
+      if (!isUnmountingRef.current) {
+        console.error('Failed to initialize peer:', err);
+        setError(err.message);
+        setConnectionStatus('error');
+      }
+    }
+  }, [sessionId, userId, cleanupPeer]);
+
+  useEffect(() => {
+    isUnmountingRef.current = false;
+    initializePeer();
+
     return () => {
-      streamRef.current?.getTracks().forEach(track => track.stop());
-      peer.destroy();
+      isUnmountingRef.current = true;
+      
+      // Clear any pending reconnection attempts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+
+      // Cleanup stream first
+      cleanupStream();
+      
+      // Then cleanup peer with a slight delay
+      setTimeout(cleanupPeer, 100);
     };
-  }, [sessionId, userId]);
+  }, [sessionId, userId, initializePeer, cleanupPeer, cleanupStream]);
 
   const toggleVideo = () => {
     if (streamRef.current) {
