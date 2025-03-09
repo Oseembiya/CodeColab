@@ -129,9 +129,11 @@
   gap: var(--spacing-lg);
 }
 
+
 .form-group label {
   font-weight: 500;
   color: var(--text-color);
+  width: 100%;
 }
 
 /* Form Controls */
