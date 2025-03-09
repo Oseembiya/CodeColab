@@ -161,7 +161,6 @@ const AuthForm = ({ isLogin }) => {
 
   const handleGoogleAuth = async () => {
     try {
-      // Dynamically import Google auth when needed
       const { auth } = await import('../../firebaseConfig');
       const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
       
@@ -170,7 +169,42 @@ const AuthForm = ({ isLogin }) => {
       navigate('/dashboard');
     } catch (error) {
       console.error("Google authentication error:", error);
-      setFirebaseError('An error occurred during Google authentication');
+      
+      // Handle specific error cases
+      switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          setFirebaseError('Sign-in cancelled. Please try again.');
+          break;
+        case 'auth/popup-blocked':
+          setFirebaseError('Pop-up was blocked by your browser. Please enable pop-ups and try again.');
+          break;
+        case 'auth/cancelled-popup-request':
+          setFirebaseError('Another sign-in attempt is in progress.');
+          break;
+        case 'auth/network-request-failed':
+          setFirebaseError('Network error. Please check your connection and try again.');
+          break;
+        default:
+          setFirebaseError('An error occurred during Google authentication. Please try again.');
+      }
+
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setFirebaseError('');
+      }, 5000);
+    }
+  };
+
+  // Update the Google sign-in button to show loading state
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleClick = async () => {
+    setIsGoogleLoading(true);
+    setFirebaseError('');
+    try {
+      await handleGoogleAuth();
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -291,9 +325,11 @@ const AuthForm = ({ isLogin }) => {
           <button 
             type="button" 
             className="google-button" 
-            onClick={handleGoogleAuth}
+            onClick={handleGoogleClick}
+            disabled={isGoogleLoading}
           >
-            <FaGoogle /> Sign in with Google
+            <FaGoogle /> 
+            {isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}
           </button>
           
           <p className="login-link">

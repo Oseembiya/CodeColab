@@ -71,9 +71,9 @@ const JoinSessionModal = ({ isOpen, onClose, onJoin }) => {
             <button 
               type="submit"
               disabled={loading || !code.trim()}
-              className="submit-button"
+              className={`join-button ${loading ? 'loading' : ''}`}
             >
-              {loading ? 'Joining...' : 'Join Session'}
+              {loading ? '' : 'Join Session'}
             </button>
           </div>
         </form>

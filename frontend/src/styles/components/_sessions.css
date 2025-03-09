@@ -232,13 +232,62 @@
 }
 
 .join-button {
-  background-color: var(--success-light);
-  color: var(--success-dark);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+}
+
+.join-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+}
+
+.join-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.join-button::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+}
+
+.join-button:hover::after {
+  animation: shine 1.5s ease infinite;
+}
+
+.join-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 }
 
 .edit-button:hover,
-.delete-button:hover,
-.join-button:hover {
+.delete-button:hover {
   transform: translateY(-1px);
   filter: brightness(0.95);
 }
@@ -507,12 +556,14 @@
 }
 
 .join-session-btn {
-  background: var(--secondary-color);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: white;
+  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
 }
 
 .join-session-btn:hover {
-  background: var(--secondary-color-dark);
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
 }
 
 .create-session-btn {
@@ -522,5 +573,122 @@
 
 .create-session-btn:hover {
   background: var(--primary-color-dark);
-} 
+}
+
+/* Join Session Modal Button */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+.modal-actions .join-button {
+  min-width: 120px;
+  justify-content: center;
+}
+
+/* Join Session Header Button */
+.join-session-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+}
+
+.join-session-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+}
+
+.join-session-btn:active {
+  transform: translateY(0);
+}
+
+.join-session-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+}
+
+.join-session-btn:hover::after {
+  animation: shine 1.5s ease infinite;
+}
+
+/* Loading state */
+.join-button.loading,
+.join-session-btn.loading {
+  position: relative;
+  color: transparent;
+}
+
+.join-button.loading::before,
+.join-session-btn.loading::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .join-button,
+  .join-session-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.875rem 1.5rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .join-button {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .join-button,
+  .join-session-btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+  }
+}
+
 /* Add more styles as needed */ 

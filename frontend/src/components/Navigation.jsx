@@ -94,16 +94,25 @@ const Navigation = memo(() => {
 
         <div className="navbar-profile">
           <div className="navbar-icons">
-            <button onClick={() => setShowNotifications(true)}>
+            <button 
+              onClick={() => setShowNotifications(true)}
+              aria-label="Show notifications"
+              data-count="3"
+            >
               <FaBell />
             </button>
-            <button onClick={() => setShowMessages(true)}>
+            <button 
+              onClick={() => setShowMessages(true)}
+              aria-label="Show messages"
+              data-count="2"
+            >
               <FaEnvelope />
             </button>
           </div>
           <button 
             className="user-profile-section"
             onClick={() => navigate('/dashboard/profile')}
+            aria-label="View profile"
           >
             <img 
               src={user?.photoURL || "/default-avatar.png"} 

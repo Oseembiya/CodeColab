@@ -164,36 +164,84 @@
   opacity: 0.7;
 }
 
-/* Buttons */
+/* Edit Button Styles */
 .edit-button {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: var(--secondary-color);
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: white;
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
 }
 
+.edit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+}
+
+.edit-button:active {
+  transform: translateY(0);
+}
+
+/* Add shine effect */
+.edit-button::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+}
+
+.edit-button:hover::after {
+  animation: shine 1.5s ease infinite;
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
+}
+
+/* Submit Button (matching style) */
 .submit-button {
-  padding: var(--spacing-sm) var(--spacing-xl);
-  background-color: var(--secondary-color);
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: white;
   border: none;
   border-radius: var(--radius-md);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
 }
 
-.edit-button:hover,
 .submit-button:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
 }
 
 /* Enhanced Status Message Styling */
@@ -504,12 +552,6 @@
   }
 }
 
-/* Add these CSS variables to your root */
-:root {
-  --secondary-light: #7275d6;
-  --secondary-rgb: 92, 95, 187;
-  --radius-full: 9999px;
-}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
@@ -531,9 +573,11 @@
     grid-template-columns: 1fr;
   }
 
-  .edit-button {
-  width: 100%;
+  .edit-button,
+  .submit-button {
+    width: 100%;
     justify-content: center;
+    padding: 0.875rem 1.5rem;
   }
 
   .profile-tabs {
@@ -596,6 +640,12 @@
 
   .stat-item {
     padding: var(--spacing-sm);
+  }
+
+  .edit-button,
+  .submit-button {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
   }
 }
 
