@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback, Suspense, lazy } from "react";
+import { useParams } from 'react-router-dom';
 import EditorToolbar from "../components/editor/EditorToolbar";
 import OutputPanel from "../components/editor/OutputPanel";
 
 // Lazy load Monaco editor with a loading state
 const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 
-const CodeEditor = () => {
+const CodeEditor = ({ collaborative = false }) => {
+  const { sessionId } = useParams();
   const [language, setLanguage] = useState("javascript");
   const [output, setOutput] = useState("");
   const [isCorrect, setIsCorrect] = useState(null);
@@ -151,6 +153,13 @@ const CodeEditor = () => {
     };
   }, [handleDrag, handleDragEnd, handleTouchMove, handleTouchEnd]);
 
+  useEffect(() => {
+    if (collaborative && sessionId) {
+      // Set up collaborative features when in a session
+      // This will be implemented later with Socket.IO
+    }
+  }, [collaborative, sessionId]);
+
   return (
     <div className="editor-container">
       <EditorToolbar 
@@ -164,6 +173,13 @@ const CodeEditor = () => {
       />
 
       <div className="editor-main">
+        {collaborative && (
+          <div className="collaboration-info">
+            Session ID: {sessionId}
+            {/* Add participant list and other collaboration UI here */}
+          </div>
+        )}
+
         <div className="monaco-editor-wrapper">
           <Suspense fallback={<div>Loading editor...</div>}>
             <MonacoEditor

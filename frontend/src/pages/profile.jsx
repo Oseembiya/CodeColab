@@ -5,7 +5,7 @@ import {
   FaUser, FaEdit, FaKey, FaUserCircle, 
   FaCode, FaHistory, FaStar, FaCog,
   FaGithub, FaLinkedin, FaTwitter, FaGlobe,
-  FaUsers
+  FaUsers, FaCheck, FaTimes, FaExclamationCircle, FaCheckCircle
 } from "react-icons/fa";
 
 const Profile = () => {
@@ -79,6 +79,17 @@ const Profile = () => {
         });
         setSuccess("Profile updated successfully!");
         setIsEditing(false);
+        
+        // Add fade-out animation before removing
+        setTimeout(() => {
+          const messageContainer = document.querySelector('.status-message-container');
+          if (messageContainer) {
+            messageContainer.classList.add('fade-out');
+            setTimeout(() => {
+              setSuccess("");
+            }, 300); // Match the animation duration
+          }
+        }, 2700); // Start fade-out before the message is removed
       }
     } catch (err) {
       setError("Failed to update profile: " + err.message);
@@ -125,8 +136,25 @@ const Profile = () => {
         </div>
 
         {(error || success) && (
-          <div className={`status-message ${error ? 'error' : 'success'}`}>
-            {error || success}
+          <div className={`status-message-container ${error ? 'error' : 'success'}`}>
+            <div className="status-message-content">
+              <div className="status-icon">
+                {error ? <FaExclamationCircle /> : <FaCheckCircle />}
+              </div>
+              <p>{error || success}</p>
+              <button 
+                className="close-message" 
+                onClick={() => {
+                  const messageContainer = document.querySelector('.status-message-container');
+                  messageContainer.classList.add('fade-out');
+                  setTimeout(() => {
+                    error ? setError("") : setSuccess("");
+                  }, 300);
+                }}
+              >
+                <FaTimes />
+              </button>
+            </div>
           </div>
         )}
 
@@ -227,12 +255,13 @@ const Profile = () => {
                   <div className="form-row">
                     <div className="form-group">
                       <label htmlFor="github">
-                        <FaGithub /> GitHub
+                        <FaGithub /> GitHub Profile URL
                       </label>
                       <input
                         type="url"
                         id="github"
                         name="github"
+                        placeholder="https://github.com/yourusername"
                         value={formData.github}
                         onChange={handleChange}
                         disabled={!isEditing}
@@ -240,12 +269,13 @@ const Profile = () => {
                     </div>
                     <div className="form-group">
                       <label htmlFor="linkedin">
-                        <FaLinkedin /> LinkedIn
+                        <FaLinkedin /> LinkedIn Profile URL
                       </label>
                       <input
                         type="url"
                         id="linkedin"
                         name="linkedin"
+                        placeholder="https://linkedin.com/in/yourusername"
                         value={formData.linkedin}
                         onChange={handleChange}
                         disabled={!isEditing}
@@ -253,6 +283,133 @@ const Profile = () => {
                     </div>
                   </div>
                 </div>
+
+                <div className="personal-links">
+                  <div className="section-header">
+                    <h3>Professional Links</h3>
+                  </div>
+                  <div className="links-grid">
+                    {formData.github ? (
+                      <a 
+                        href={formData.github}
+                        className="link-item"
+                        data-type="github"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <div className="link-icon">
+                          <FaGithub />
+                        </div>
+                        <div className="link-content">
+                          <div className="link-title">GitHub</div>
+                          <div className="link-url">{formData.github}</div>
+                        </div>
+                      </a>
+                    ) : (
+                      <div className="link-item" data-type="github">
+                        <div className="link-icon">
+                          <FaGithub />
+                        </div>
+                        <div className="link-content">
+                          <div className="link-title">GitHub</div>
+                          <div className="link-url">Not added yet</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.linkedin ? (
+                      <a 
+                        href={formData.linkedin}
+                        className="link-item"
+                        data-type="linkedin"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <div className="link-icon">
+                          <FaLinkedin />
+                        </div>
+                        <div className="link-content">
+                          <div className="link-title">LinkedIn</div>
+                          <div className="link-url">{formData.linkedin}</div>
+                        </div>
+                      </a>
+                    ) : (
+                      <div className="link-item" data-type="linkedin">
+                        <div className="link-icon">
+                          <FaLinkedin />
+                        </div>
+                        <div className="link-content">
+                          <div className="link-title">LinkedIn</div>
+                          <div className="link-url">Not added yet</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.twitter ? (
+                      <a 
+                        href={formData.twitter}
+                        className="link-item"
+                        data-type="twitter"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <div className="link-icon">
+                          <FaTwitter />
+                        </div>
+                        <div className="link-content">
+                          <div className="link-title">Twitter</div>
+                          <div className="link-url">{formData.twitter}</div>
+                        </div>
+                      </a>
+                    ) : (
+                      <div className="link-item" data-type="twitter">
+                        <div className="link-icon">
+                          <FaTwitter />
+                        </div>
+                        <div className="link-content">
+                          <div className="link-title">Twitter</div>
+                          <div className="link-url">Not added yet</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.website ? (
+                      <a 
+                        href={formData.website}
+                        className="link-item"
+                        data-type="portfolio"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <div className="link-icon">
+                          <FaGlobe />
+                        </div>
+                        <div className="link-content">
+                          <div className="link-title">Portfolio</div>
+                          <div className="link-url">{formData.website}</div>
+                        </div>
+                      </a>
+                    ) : (
+                      <div className="link-item" data-type="portfolio">
+                        <div className="link-icon">
+                          <FaGlobe />
+                        </div>
+                        <div className="link-content">
+                          <div className="link-title">Portfolio</div>
+                          <div className="link-url">Not added yet</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {isEditing && (
+                  <div className="form-actions">
+                    <button type="submit" className="submit-button">
+                      Save Changes
+                    </button>
+                  </div>
+                )}
               </form>
             )}
 

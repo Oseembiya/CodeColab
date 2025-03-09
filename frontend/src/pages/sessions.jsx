@@ -8,6 +8,7 @@ import SessionFilters from '../components/sessions/SessionFilters';
 import { useAuth } from '../hooks/useAuth';
 import { useSessions } from '../hooks/useSessions';
 
+
 const Sessions = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -128,12 +129,20 @@ const Sessions = () => {
             Refresh
           </button>
         </div>
-        <button 
-          className="create-session-btn"
-          onClick={() => setShowCreateModal(true)}
-        >
-          <FaPlus /> New Session
-        </button>
+        <div className="header-actions">
+          <button 
+            className="join-session-btn"
+            onClick={() => setShowJoinModal(true)}
+          >
+            <FaUsers /> Join Session
+          </button>
+          <button 
+            className="create-session-btn"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <FaPlus /> New Session
+          </button>
+        </div>
       </div>
 
       {/* Filters Section */}
@@ -166,6 +175,7 @@ const Sessions = () => {
 
       {showJoinModal && (
         <JoinSessionModal 
+          isOpen={showJoinModal}
           onClose={() => setShowJoinModal(false)}
           onJoin={handleJoinSession}
         />
