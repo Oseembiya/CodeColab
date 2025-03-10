@@ -1,8 +1,18 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { FaTimes } from 'react-icons/fa';
 
+const generateJoinCode = () => {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from(
+    { length: 6 },
+    () => characters.charAt(Math.floor(Math.random() * characters.length))
+  ).join('');
+};
+
 const CreateSessionModal = ({ onClose, onSubmit }) => {
+  const joinCodeRef = useRef('');
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -11,7 +21,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
     isPrivate: false,
     startNow: true,
     scheduledTime: '',
-    joinCode: Math.random().toString(36).substring(2, 8).toUpperCase()
+    joinCode: ''
   });
 
   const languages = [
@@ -22,17 +32,48 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
     { id: 'csharp', name: 'C#' }
   ];
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
+    
+    setFormData(prev => {
+      if (name === 'isPrivate') {
+        const newIsPrivate = type === 'checkbox' ? checked : value;
+        
+        if (newIsPrivate) {
+          if (!joinCodeRef.current) {
+            joinCodeRef.current = generateJoinCode();
+            console.log('Generated Join Code:', joinCodeRef.current);
+          }
+          return {
+            ...prev,
+            isPrivate: true,
+            joinCode: joinCodeRef.current
+          };
+        } else {
+          joinCodeRef.current = '';
+          return {
+            ...prev,
+            isPrivate: false,
+            joinCode: ''
+          };
+        }
+      }
+      
+      return {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      };
+    });
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
+  };
+
+  const handleClose = () => {
+    joinCodeRef.current = '';
+    onClose();
   };
 
   return (
@@ -40,7 +81,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
       <div className="create-session-content">
         <div className="create-session-header">
           <h2>Create New Session</h2>
-          <button className="close-button" onClick={onClose}>
+          <button className="close-button" onClick={handleClose}>
             <FaTimes />
           </button>
         </div>
@@ -176,7 +217,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
           </div>
 
           <div className="create-session-footer">
-            <button type="button" className="cancel-button" onClick={onClose}>
+            <button type="button" className="cancel-button" onClick={handleClose}>
               Cancel
             </button>
             <button type="submit" className="submit-button">
