@@ -3,8 +3,16 @@ import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen, FaEdit, FaTrash } from 'r
 
 const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
+    if (!dateString) {
+      return 'Date not available';
+    }
+    try {
+      const date = typeof dateString === 'object' ? dateString : new Date(dateString);
+      return date.toLocaleString();
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
   };
 
   const getStatusClass = (status) => {
@@ -14,6 +22,15 @@ const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
       default: return 'status-badge gray';
     }
   };
+
+  // Ensure maxParticipants is a number
+  const participantCount = Number(session.maxParticipants) || 0;
+
+  // Add boolean conversion for isPrivate
+  const isPrivate = Boolean(session.isPrivate);
+
+  // Add default language handling
+  const displayLanguage = session.language || 'javascript';
 
   return (
     <div className={`session-card ${view}`}>
@@ -29,19 +46,19 @@ const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
       <div className="session-details">
         <div className="detail-item">
           <FaClock />
-          <span>{formatDate(session.startTime)}</span>
+          <span>{formatDate(session.startTime || session.createdAt)}</span>
         </div>
         <div className="detail-item">
           <FaUsers />
-          <span>{session.participants?.length || 0}/{session.maxParticipants}</span>
+          <span>{session.participants?.length || 0}/{participantCount}</span>
         </div>
         <div className="detail-item">
           <FaCode />
-          <span>{session.language}</span>
+          <span>{displayLanguage}</span>
         </div>
         <div className="detail-item">
-          {session.isPrivate ? <FaLock /> : <FaLockOpen />}
-          <span>{session.isPrivate ? 'Private' : 'Public'}</span>
+          {isPrivate ? <FaLock /> : <FaLockOpen />}
+          <span>{isPrivate ? 'Private' : 'Public'}</span>
         </div>
       </div>
 
@@ -71,11 +88,12 @@ SessionCard.propTypes = {
     title: PropTypes.string.isRequired,
     description: PropTypes.string,
     status: PropTypes.string.isRequired,
-    startTime: PropTypes.string.isRequired,
-    language: PropTypes.string.isRequired,
-    maxParticipants: PropTypes.number.isRequired,
+    startTime: PropTypes.string,
+    createdAt: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+    language: PropTypes.string,
+    maxParticipants: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
     participants: PropTypes.array,
-    isPrivate: PropTypes.bool.isRequired
+    isPrivate: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]).isRequired // Allow both boolean and string
   }).isRequired,
   isOwner: PropTypes.bool.isRequired,
   onJoin: PropTypes.func.isRequired,

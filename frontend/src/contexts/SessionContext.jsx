@@ -16,20 +16,26 @@ export const SessionProvider = ({ children }) => {
 
   const createSession = async (sessionData) => {
     try {
-      const docRef = await addDoc(collection(db, 'sessions'), {
+      const sessionToCreate = {
         ...sessionData,
+        language: sessionData.language || 'javascript',
+        maxParticipants: Number(sessionData.maxParticipants),
         createdAt: new Date().toISOString(),
-        status: 'active'
-      });
+        startTime: sessionData.startNow ? new Date().toISOString() : sessionData.scheduledTime,
+        status: 'active',
+        isPrivate: Boolean(sessionData.isPrivate),
+      };
+
+      const docRef = await addDoc(collection(db, 'sessions'), sessionToCreate);
       
-      setActiveSession({ id: docRef.id, ...sessionData });
+      setActiveSession({ id: docRef.id, ...sessionToCreate });
       return docRef.id;
     } catch (error) {
       console.error('Error creating session:', error);
       throw error;
     }
   };
-
+  
   const joinSession = async (sessionId, joinCode) => {
     try {
       const sessionRef = doc(db, 'sessions', sessionId);

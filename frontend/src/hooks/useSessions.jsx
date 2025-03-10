@@ -24,10 +24,18 @@ export const useSessions = () => {
       const q = query(sessionsRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       
-      const sessionData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const sessionData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          language: data.language || 'javascript',
+          maxParticipants: Number(data.maxParticipants),
+          createdAt: data.createdAt?.toString() || new Date().toISOString(),
+          startTime: data.startTime?.toString() || data.createdAt?.toString(),
+          isPrivate: Boolean(data.isPrivate),
+        };
+      });
       
       setSessions(sessionData);
       setLoading(false);
@@ -45,18 +53,23 @@ export const useSessions = () => {
 
   const createSession = async (sessionData) => {
     try {
-      const docRef = await addDoc(collection(db, 'sessions'), {
+      const sessionToCreate = {
         ...sessionData,
-        createdAt: new Date().toISOString()
-      });
+        maxParticipants: Number(sessionData.maxParticipants),
+        createdAt: new Date().toISOString(),
+        startTime: sessionData.startNow ? new Date().toISOString() : sessionData.scheduledTime,
+        status: 'active'
+      };
+
+      const docRef = await addDoc(collection(db, 'sessions'), sessionToCreate);
       
       // Update local state
       setSessions(prev => [{
         id: docRef.id,
-        ...sessionData
+        ...sessionToCreate
       }, ...prev]);
       
-      return { id: docRef.id, ...sessionData };
+      return { id: docRef.id, ...sessionToCreate };
     } catch (err) {
       console.error('Error creating session:', err);
       throw err;
