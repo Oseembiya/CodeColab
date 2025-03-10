@@ -1,9 +1,18 @@
-import { useState} from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaEye, FaEyeSlash, FaGoogle } from 'react-icons/fa';
 import PropTypes from 'prop-types';
-
-
+import { 
+  getAuth, 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
+} from 'firebase/auth';
+import { auth } from '../../firebaseConfig';
 
 const AuthForm = ({ isLogin }) => {
   const navigate = useNavigate();
@@ -104,7 +113,6 @@ const AuthForm = ({ isLogin }) => {
     return newErrors;
   };
 
-  // Lazy load Firebase functions when needed
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFirebaseError('');
@@ -112,10 +120,6 @@ const AuthForm = ({ isLogin }) => {
     const newErrors = validateForm();
 
     if (Object.keys(newErrors).length === 0) {
-      // Dynamically import Firebase auth when needed
-      const { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } 
-        = await import('../../firebaseConfig');
-
       try {
         if (isLogin) {
           await signInWithEmailAndPassword(auth, formData.email, formData.password);
@@ -125,6 +129,7 @@ const AuthForm = ({ isLogin }) => {
             formData.email, 
             formData.password
           );
+          
           await updateProfile(userCredential.user, {
             displayName: formData.fullName
           });
@@ -161,44 +166,50 @@ const AuthForm = ({ isLogin }) => {
 
   const handleGoogleAuth = async () => {
     try {
-      const { auth } = await import('../../firebaseConfig');
-      const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
-      
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      navigate('/dashboard');
-    } catch (error) {
-      if(!error.message?.includes("Cross-Origin-Opener-Policy")) {
-        set
-      }
-     
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
-      // Handle specific error cases
-      switch (error.code) {
-        case 'auth/popup-closed-by-user':
-          setFirebaseError('Sign-in cancelled. Please try again.');
-          break;
-        case 'auth/popup-blocked':
-          setFirebaseError('Pop-up was blocked by your browser. Please enable pop-ups and try again.');
-          break;
-        case 'auth/cancelled-popup-request':
-          setFirebaseError('Another sign-in attempt is in progress.');
-          break;
-        case 'auth/network-request-failed':
-          setFirebaseError('Network error. Please check your connection and try again.');
-          break;
-        default:
-          setFirebaseError('An error occurred during Google authentication. Please try again.');
+      if (isMobile) {
+        await signInWithRedirect(auth, provider);
+      } else {
+        const result = await signInWithPopup(auth, provider);
+        if (result.user) {
+          setSuccessMessage('Sign in successful! Redirecting...');
+          setTimeout(() => navigate('/dashboard'), 1000);
+        }
+      }
+    } catch (error) {
+      console.error('Google Auth Error:', error);
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        setFirebaseError('Sign-in cancelled. Please try again.');
+      } else if (error.code === 'auth/popup-blocked') {
+        setFirebaseError('Pop-up was blocked. Please enable pop-ups or try signing in with email.');
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        setFirebaseError('');
+      } else if (error.code === 'auth/network-request-failed') {
+        setFirebaseError('Network error. Please check your connection and try again.');
+      } else {
+        setFirebaseError('An error occurred during sign in. Please try again.');
       }
 
-      // Clear error message after 5 seconds
-      setTimeout(() => {
-        setFirebaseError('');
-      }, 5000);
+      setTimeout(() => setFirebaseError(''), 5000);
     }
   };
 
-  // Update the Google sign-in button to show loading state
+  const checkRedirectResult = async () => {
+    try {
+      const result = await getRedirectResult(auth);
+      if (result?.user) {
+        setSuccessMessage('Sign in successful! Redirecting...');
+        setTimeout(() => navigate('/dashboard'), 1000);
+      }
+    } catch (error) {
+      console.error('Redirect Result Error:', error);
+      setFirebaseError('An error occurred during sign in. Please try again.');
+    }
+  };
+
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleGoogleClick = async () => {
