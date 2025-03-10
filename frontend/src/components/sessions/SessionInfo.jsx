@@ -17,7 +17,7 @@ const SessionInfo = ({ session, onLeave }) => {
           className="leave-button"
           onClick={handleLeave}
         >
-          Leave Session
+          Leave
         </button>
       </div>
       
