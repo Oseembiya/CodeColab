@@ -1,7 +1,8 @@
 .editor-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  padding: var(--spacing-md);
+  padding-bottom: 0px;
 }
 
 .editor-container.fullscreen {
