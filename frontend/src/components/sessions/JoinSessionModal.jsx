@@ -2,30 +2,44 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { FaTimes } from 'react-icons/fa';
 
-const JoinSessionModal = ({ isOpen, onClose, onJoin }) => {
+const JoinSessionModal = ({ isOpen, onClose, onJoin, error: parentError, sessionId }) => {
   const [code, setCode] = useState('');
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!code.trim()) {
-      setError('Please enter a session code');
+      setLocalError('Please enter a session code');
+      return;
+    }
+
+    if (!sessionId) {
+      setLocalError('Invalid session');
       return;
     }
 
     setLoading(true);
-    setError('');
+    setLocalError('');
 
     try {
-      await onJoin(code.trim());
+      await onJoin(code.trim().toUpperCase());
       setCode('');
-      onClose();
     } catch (err) {
-      setError(err.message || 'Failed to join session');
+      console.error("Join session error:", err);
+      setLocalError(err.message || 'Failed to join session');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Reset form when modal closes
+  const handleClose = () => {
+    setCode('');
+    setLocalError('');
+    setLoading(false);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -34,8 +48,8 @@ const JoinSessionModal = ({ isOpen, onClose, onJoin }) => {
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>Join Session</h2>
-          <button className="close-button" onClick={onClose}>
+          <h2>Join Private Session</h2>
+          <button className="close-button" onClick={handleClose}>
             <FaTimes />
           </button>
         </div>
@@ -48,7 +62,7 @@ const JoinSessionModal = ({ isOpen, onClose, onJoin }) => {
               id="sessionCode"
               value={code}
               onChange={(e) => {
-                setError('');
+                setLocalError('');
                 setCode(e.target.value.toUpperCase());
               }}
               placeholder="Enter session code"
@@ -56,13 +70,17 @@ const JoinSessionModal = ({ isOpen, onClose, onJoin }) => {
               disabled={loading}
               required
             />
-            {error && <div className="error-message">{error}</div>}
+            {(localError || parentError) && (
+              <div className="error-message">
+                {localError || parentError}
+              </div>
+            )}
           </div>
 
           <div className="modal-actions">
             <button 
               type="button" 
-              onClick={onClose}
+              onClick={handleClose}
               disabled={loading}
               className="cancel-button"
             >
@@ -73,7 +91,7 @@ const JoinSessionModal = ({ isOpen, onClose, onJoin }) => {
               disabled={loading || !code.trim()}
               className={`join-button ${loading ? 'loading' : ''}`}
             >
-              {loading ? '' : 'Join Session'}
+              {loading ? 'Joining...' : 'Join Session'}
             </button>
           </div>
         </form>
@@ -85,7 +103,9 @@ const JoinSessionModal = ({ isOpen, onClose, onJoin }) => {
 JoinSessionModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  onJoin: PropTypes.func.isRequired
+  onJoin: PropTypes.func.isRequired,
+  error: PropTypes.string,
+  sessionId: PropTypes.string
 };
 
 export default JoinSessionModal; 

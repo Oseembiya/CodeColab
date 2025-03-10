@@ -26,6 +26,8 @@ const Sessions = () => {
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [joinError, setJoinError] = useState('');
   const [filters, setFilters] = useState({
     search: '',
     status: 'all',
@@ -84,17 +86,43 @@ const Sessions = () => {
     }
   };
 
-  const handleJoinSession = async (sessionId, code) => {
+  const initiateJoinSession = (sessionId) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) {
+      setJoinError('Session not found');
+      return;
+    }
+
+    if (session.isPrivate) {
+      setSelectedSessionId(sessionId);
+      setShowJoinModal(true);
+      setJoinError('');
+    } else {
+      handleJoinSession(sessionId);
+    }
+  };
+
+  const handleJoinSession = async (sessionId, joinCode = null) => {
     try {
-      await joinSession(sessionId, code);
+      if (!sessionId) {
+        throw new Error('Invalid session ID');
+      }
+
+      const joinedSession = await joinSession(sessionId, joinCode);
+      setShowJoinModal(false);
+      setSelectedSessionId(null);
+      setJoinError('');
       navigate(`/dashboard/sessions/${sessionId}`);
     } catch (error) {
       console.error('Failed to join session:', error);
+      setJoinError(error.message);
     }
   };
 
   return (
     <div className="sessions-container">
+      {error && <div className="error-message">{error}</div>}
+      
       {/* Header Section */}
       <div className="sessions-header">
         <div className="header-left">
@@ -150,7 +178,7 @@ const Sessions = () => {
             key={session.id}
             session={session}
             isOwner={session.ownerId === user.uid}
-            onJoin={() => handleJoinSession(session.id)}
+            onJoin={() => initiateJoinSession(session.id)}
             onEdit={(updatedData) => updateSession(session.id, updatedData)}
             onDelete={() => deleteSession(session.id)}
             view={view}
@@ -165,13 +193,17 @@ const Sessions = () => {
         />
       )}
 
-      {showJoinModal && (
-        <JoinSessionModal 
-          isOpen={showJoinModal}
-          onClose={() => setShowJoinModal(false)}
-          onJoin={handleJoinSession}
-        />
-      )}
+      <JoinSessionModal 
+        isOpen={showJoinModal}
+        onClose={() => {
+          setShowJoinModal(false);
+          setSelectedSessionId(null);
+          setJoinError('');
+        }}
+        onJoin={(code) => handleJoinSession(selectedSessionId, code)}
+        error={joinError}
+        sessionId={selectedSessionId}
+      />
     </div>
   );
 };

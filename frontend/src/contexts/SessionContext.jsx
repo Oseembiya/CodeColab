@@ -45,13 +45,33 @@ export const SessionProvider = ({ children }) => {
         throw new Error('Session not found');
       }
 
-      const session = sessionDoc.data();
-      if (session.isPrivate && session.joinCode !== joinCode) {
-        throw new Error('Invalid join code');
+      const session = { id: sessionId, ...sessionDoc.data() };
+      
+      // Add validation for private sessions
+      if (session.isPrivate) {
+        if (!joinCode) {
+          throw new Error('Join code required for private session');
+        }
+        if (session.joinCode !== joinCode.toUpperCase()) {
+          throw new Error('Invalid join code');
+        }
       }
 
-      setActiveSession({ id: sessionId, ...session });
-      return session;
+      // Update participants array
+      const updatedSession = {
+        ...session,
+        participants: session.participants || []
+      };
+
+      // Update the active session
+      setActiveSession(updatedSession);
+      
+      // Update the session document with new participant
+      await updateDoc(sessionRef, {
+        participants: [...updatedSession.participants]
+      });
+
+      return updatedSession;
     } catch (error) {
       console.error('Error joining session:', error);
       throw error;

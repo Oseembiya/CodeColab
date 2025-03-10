@@ -106,8 +106,13 @@ export const useSessions = () => {
     }
   };
 
-  const joinSession = async (sessionId, code) => {
+  const joinSession = async (sessionId, code = null) => {
     try {
+      // Validate sessionId
+      if (!sessionId || typeof sessionId !== 'string') {
+        throw new Error('Invalid session ID');
+      }
+
       const sessionRef = doc(db, 'sessions', sessionId);
       const sessionDoc = await getDoc(sessionRef);
       
@@ -115,12 +120,20 @@ export const useSessions = () => {
         throw new Error('Session not found');
       }
 
-      const session = sessionDoc.data();
-      if (session.isPrivate && session.joinCode !== code) {
-        throw new Error('Invalid join code');
+      const session = { id: sessionId, ...sessionDoc.data() };
+      
+      // Validate private session access
+      if (session.isPrivate) {
+        if (!code) {
+          throw new Error('Join code required for private session');
+        }
+        if (session.joinCode !== code) {
+          throw new Error('Invalid join code');
+        }
       }
 
-      return { id: sessionDoc.id, ...session };
+      // Return the joined session
+      return session;
     } catch (err) {
       console.error('Error joining session:', err);
       throw err;
