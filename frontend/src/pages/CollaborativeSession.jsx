@@ -1,9 +1,10 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '../contexts/SessionContext';
 import { useAuth } from '../hooks/useAuth';
 import CodeEditor from '../components/editor/CodeEditor';
 import VideoChat from '../components/collaboration/VideoChat';
+import SessionInfo from '../components/sessions/SessionInfo';
 
 // Lazy load the Whiteboard component
 const Whiteboard = lazy(() => import('../components/whiteboard/Whiteboard'));
@@ -14,6 +15,7 @@ const CollaborativeSession = () => {
   const { activeSession, joinSession } = useSession();
   const [view, setView] = useState('split'); // split, code, whiteboard
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const initializeSession = async () => {
@@ -29,6 +31,12 @@ const CollaborativeSession = () => {
     initializeSession();
   }, [sessionId, activeSession, joinSession]);
 
+  const handleLeave = () => {
+    // Clean up any connections/sockets
+    // Navigate back to sessions list
+    navigate('/dashboard/sessions');
+  };
+
   if (error) {
     return <div className="error-container">{error}</div>;
   }
@@ -39,6 +47,10 @@ const CollaborativeSession = () => {
 
   return (
     <div className="collaborative-session">
+      <SessionInfo 
+        session={activeSession} 
+        onLeave={handleLeave}
+      />
       {/* Session Header */}
       <div className="session-header">
         <h2>{activeSession.title}</h2>

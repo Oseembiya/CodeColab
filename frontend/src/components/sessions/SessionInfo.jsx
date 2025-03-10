@@ -1,12 +1,24 @@
 import PropTypes from 'prop-types';
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from 'react-icons/fa';
 
-const SessionInfo = ({ session }) => {
+const SessionInfo = ({ session, onLeave }) => {
+  const handleLeave = () => {
+    if (window.confirm('Are you sure you want to leave this session?')) {
+      onLeave();
+    }
+  };
+
   return (
     <div className="session-info">
       <div className="session-info-header">
         <h2>{session.title}</h2>
         {session.isPrivate ? <FaLock /> : <FaLockOpen />}
+        <button 
+          className="leave-button"
+          onClick={handleLeave}
+        >
+          Leave Session
+        </button>
       </div>
       
       <div className="session-meta">
@@ -47,7 +59,8 @@ SessionInfo.propTypes = {
     participants: PropTypes.array,
     isPrivate: PropTypes.bool,
     joinCode: PropTypes.string
-  }).isRequired
+  }).isRequired,
+  onLeave: PropTypes.func.isRequired
 };
 
 export default SessionInfo; 
