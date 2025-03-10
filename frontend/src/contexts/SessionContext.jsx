@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { 
   collection, 
@@ -12,7 +12,20 @@ import {
 const SessionContext = createContext(null);
 
 export const SessionProvider = ({ children }) => {
-  const [activeSession, setActiveSession] = useState(null);
+  const [activeSession, setActiveSession] = useState(() => {
+    // Try to load from localStorage on initial render
+    const saved = localStorage.getItem('activeSession');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // Persist activeSession to localStorage whenever it changes
+  useEffect(() => {
+    if (activeSession) {
+      localStorage.setItem('activeSession', JSON.stringify(activeSession));
+    } else {
+      localStorage.removeItem('activeSession');
+    }
+  }, [activeSession]);
 
   const createSession = async (sessionData) => {
     try {
@@ -36,8 +49,16 @@ export const SessionProvider = ({ children }) => {
     }
   };
   
-  const joinSession = async (sessionId, joinCode) => {
+  const joinSession = async (sessionId, joinCode = null) => {
     try {
+      console.log('Joining session with:', { sessionId, joinCode, hasActiveSession: !!activeSession });
+      
+      // If we already have an active session with this ID, return it
+      if (activeSession && activeSession.id === sessionId) {
+        console.log('Already in session, returning active session');
+        return activeSession;
+      }
+
       const sessionRef = doc(db, 'sessions', sessionId);
       const sessionDoc = await getDoc(sessionRef);
       
@@ -46,13 +67,20 @@ export const SessionProvider = ({ children }) => {
       }
 
       const session = { id: sessionId, ...sessionDoc.data() };
+      console.log('Session data:', { isPrivate: session.isPrivate, hasJoinCode: !!joinCode });
       
-      // Add validation for private sessions
+      // Validate private session access
       if (session.isPrivate) {
-        if (!joinCode) {
+        // Check if we have a stored join code
+        const storedJoinInfo = localStorage.getItem('lastJoinedSession');
+        const parsedJoinInfo = storedJoinInfo ? JSON.parse(storedJoinInfo) : null;
+        const finalJoinCode = joinCode || (parsedJoinInfo?.id === sessionId ? parsedJoinInfo.joinCode : null);
+
+        if (!finalJoinCode) {
           throw new Error('Join code required for private session');
         }
-        if (session.joinCode !== joinCode.toUpperCase()) {
+
+        if (session.joinCode !== finalJoinCode?.toUpperCase()) {
           throw new Error('Invalid join code');
         }
       }
@@ -63,14 +91,9 @@ export const SessionProvider = ({ children }) => {
         participants: session.participants || []
       };
 
-      // Update the active session
+      // Set as active session
       setActiveSession(updatedSession);
       
-      // Update the session document with new participant
-      await updateDoc(sessionRef, {
-        participants: [...updatedSession.participants]
-      });
-
       return updatedSession;
     } catch (error) {
       console.error('Error joining session:', error);
@@ -78,11 +101,16 @@ export const SessionProvider = ({ children }) => {
     }
   };
 
+  const clearActiveSession = () => {
+    setActiveSession(null);
+    localStorage.removeItem('activeSession');
+  };
+
   const value = {
     activeSession,
     createSession,
     joinSession,
-    // Add more methods as needed
+    clearActiveSession
   };
 
   return (

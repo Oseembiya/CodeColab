@@ -104,18 +104,27 @@ const Sessions = () => {
 
   const handleJoinSession = async (sessionId, joinCode = null) => {
     try {
-      if (!sessionId) {
-        throw new Error('Invalid session ID');
+      console.log('Starting join process:', { sessionId, joinCode });
+      
+      // Store the join info before attempting to join
+      if (joinCode) {
+        localStorage.setItem('lastJoinedSession', JSON.stringify({
+          id: sessionId,
+          joinCode: joinCode.toUpperCase()
+        }));
       }
-
-      const joinedSession = await joinSession(sessionId, joinCode);
+      
+      const result = await joinSession(sessionId, joinCode);
       setShowJoinModal(false);
       setSelectedSessionId(null);
       setJoinError('');
+      
       navigate(`/dashboard/sessions/${sessionId}`);
     } catch (error) {
       console.error('Failed to join session:', error);
       setJoinError(error.message);
+      // Clean up stored join info on error
+      localStorage.removeItem('lastJoinedSession');
     }
   };
 

@@ -20,10 +20,11 @@ const Navigation = memo(() => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
-  const { activeSession } = useSession();
+  const { activeSession, clearActiveSession } = useSession();
 
   const handleSignOut = async () => {
     try {
+      clearActiveSession();
       await auth.signOut();
       navigate('/login');
     } catch (error) {

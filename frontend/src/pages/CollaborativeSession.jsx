@@ -11,25 +11,54 @@ const Whiteboard = lazy(() => import('../components/whiteboard/Whiteboard'));
 
 const CollaborativeSession = () => {
   const { sessionId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { activeSession, joinSession } = useSession();
   const [view, setView] = useState('split'); // split, code, whiteboard
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const initializeSession = async () => {
       try {
-        if (!activeSession || activeSession.id !== sessionId) {
-          await joinSession(sessionId);
+        setIsLoading(true);
+        
+        // Check if we're already in this session
+        if (activeSession && activeSession.id === sessionId) {
+          setIsLoading(false);
+          return;
         }
-      } catch (err) {
-        setError(err.message);
+
+        // If no active session, try to get stored join info
+        const storedJoinInfo = localStorage.getItem('lastJoinedSession');
+        const parsedJoinInfo = storedJoinInfo ? JSON.parse(storedJoinInfo) : null;
+        
+        // Only use stored join info if it matches the current session
+        const joinCode = parsedJoinInfo?.id === sessionId ? parsedJoinInfo.joinCode : null;
+
+        console.log('Initializing session with:', { sessionId, joinCode, hasActiveSession: !!activeSession });
+        
+        if (!sessionId) {
+          navigate('/dashboard/sessions');
+          return;
+        }
+
+        await joinSession(sessionId, joinCode);
+        setIsLoading(false);
+        
+        // Clear the stored join info after successful join
+        localStorage.removeItem('lastJoinedSession');
+      } catch (error) {
+        console.error('Session initialization error:', error);
+        setError(error.message);
+        setTimeout(() => {
+          navigate('/dashboard/sessions');
+        }, 2000);
       }
     };
 
     initializeSession();
-  }, [sessionId, activeSession, joinSession]);
+  }, [sessionId, activeSession, joinSession, navigate]);
 
   const handleLeave = () => {
     // Clean up any connections/sockets
@@ -38,11 +67,16 @@ const CollaborativeSession = () => {
   };
 
   if (error) {
-    return <div className="error-container">{error}</div>;
+    return (
+      <div className="error-container">
+        <div className="error-message">{error}</div>
+        <div>Redirecting to sessions page...</div>
+      </div>
+    );
   }
 
-  if (!activeSession) {
-    return <div className="loading">Loading session...</div>;
+  if (isLoading) {
+    return <div>Loading session...</div>;
   }
 
   return (
@@ -53,7 +87,7 @@ const CollaborativeSession = () => {
       />
       {/* Session Header */}
       <div className="session-header">
-        <h2>{activeSession.title}</h2>
+        <h2>{activeSession?.title}</h2>
         <div className="view-controls">
           <button 
             className={view === 'split' ? 'active' : ''} 
