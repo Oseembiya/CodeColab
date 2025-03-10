@@ -13,7 +13,7 @@ const Dashboard = lazy(() => import("./pages/dashboard"));
 const Profile = lazy(() => import("./pages/profile"));
 const Sessions = lazy(() => import("./pages/sessions")); // Make sure filename matches exactly
 const CodeEditor = lazy(() => import("./pages/codeEditor")); // Keep this
-const CollaborativeSession = lazy(() => import("./pages/CollaborativeSession"));
+const CollaborationSession = lazy(() => import("./pages/CollaborativeSession"));
 
 // Improve loading component
 const LoadingFallback = () => (
@@ -42,7 +42,7 @@ const App = () => {
               >
                 <Route path="profile" element={<Profile />} />
                 <Route path="sessions" element={<Sessions />} />
-                <Route path="sessions/:sessionId" element={<CollaborativeSession />} />
+                <Route path="sessions/:sessionId" element={<CollaborationSession />} />
                 <Route path="editor" element={<CodeEditor />} /> {/* Solo coding */}
               </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
