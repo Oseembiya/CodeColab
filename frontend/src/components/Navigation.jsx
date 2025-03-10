@@ -85,14 +85,23 @@ const Navigation = memo(() => {
       </div>
 
       <nav className={`navbar ${!isSidebarOpen ? 'navbar-expanded' : ''}`}>
-        <button 
-          className="hamburger-menu"
-          onClick={() => setSidebarOpen(!isSidebarOpen)}
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
+        <div className="navbar-left">
+          <button 
+            className="hamburger-menu"
+            onClick={() => setSidebarOpen(!isSidebarOpen)}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+
+        {activeSession && (
+          <div className="active-session-indicator">
+            <span className="session-status">Active Session:</span>
+            <span className="session-name">{activeSession.title}</span>
+          </div>
+        )}
 
         <div className="navbar-profile">
           <div className="navbar-icons">
@@ -123,13 +132,6 @@ const Navigation = memo(() => {
             />
           </button>
         </div>
-
-        {activeSession && (
-          <div className="active-session-indicator">
-            <span className="session-status">Active Session</span>
-            <span className="session-name">{activeSession.title}</span>
-          </div>
-        )}
       </nav>
 
       {isSidebarOpen && (

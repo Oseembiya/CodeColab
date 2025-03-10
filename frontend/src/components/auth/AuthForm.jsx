@@ -168,7 +168,10 @@ const AuthForm = ({ isLogin }) => {
       await signInWithPopup(auth, provider);
       navigate('/dashboard');
     } catch (error) {
-      console.error("Google authentication error:", error);
+      if(!error.message?.includes("Cross-Origin-Opener-Policy")) {
+        set
+      }
+     
       
       // Handle specific error cases
       switch (error.code) {

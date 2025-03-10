@@ -76,4 +76,19 @@
     text-align: center;
     gap: 0.5rem;
   }
+}
+
+.leave-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: auto;
+  transition: background-color 0.2s;
+}
+
+.leave-button:hover {
+  background-color: #c82333;
 } 
