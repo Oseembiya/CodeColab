@@ -30,6 +30,10 @@ const CodeEditor = ({ collaborative = false }) => {
   const [showVideo, setShowVideo] = useState(true);
   const [layout, setLayout] = useState('default');
 
+  // Add these useRef declarations
+  const dragStartY = useRef(null);
+  const dragStartHeight = useRef(null);
+
   const languages = [
     { id: "javascript", name: "JavaScript" },
     { id: "python", name: "Python" },
@@ -109,11 +113,11 @@ const CodeEditor = ({ collaborative = false }) => {
     }
   };
 
-  const handleEditorChange = (event) => {
+  const handleEditorChange = (value, event) => {
     if (collaborative && socketRef.current) {
       socketRef.current.emit('code-change', {
         sessionId,
-        change: event.changes[0],
+        content: value,
         userId: user.uid
       });
     }
