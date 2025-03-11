@@ -56,6 +56,13 @@ const VideoChat = ({ sessionId, userId }) => {
     }
   }, []);
 
+  const generatePeerId = useCallback(() => {
+    // Generate a unique peer ID using timestamp and random string
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 15);
+    return `${sessionId}-${userId}-${timestamp}-${random}`;
+  }, [sessionId, userId]);
+
   const initializePeer = useCallback(async () => {
     if (isUnmountingRef.current) return;
 
@@ -65,7 +72,7 @@ const VideoChat = ({ sessionId, userId }) => {
       setConnectionStatus('connecting');
       setError(null);
 
-      const peer = new Peer(`${sessionId}-${userId}`, {
+      const peer = new Peer(generatePeerId(), {
         host: import.meta.env.VITE_PEER_HOST || 'localhost',
         port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
         path: '/myapp',
@@ -76,8 +83,6 @@ const VideoChat = ({ sessionId, userId }) => {
             { urls: 'stun:global.stun.twilio.com:3478' }
           ]
         },
-        // Add connection timeout
-        connectionTimeout: 5000,
         // Add retry options
         retryOptions: {
           maxAttempts: 3,
@@ -101,6 +106,16 @@ const VideoChat = ({ sessionId, userId }) => {
           console.error('Peer error:', err);
           setError(err.message);
           setConnectionStatus('error');
+
+          // Only attempt reconnection for specific errors
+          if (err.type === 'network' || err.type === 'disconnected') {
+            setTimeout(() => {
+              if (!isUnmountingRef.current) {
+                console.log('Attempting to reconnect...');
+                initializePeer();
+              }
+            }, 5000);
+          }
         }
       });
 
@@ -108,6 +123,14 @@ const VideoChat = ({ sessionId, userId }) => {
         if (!isUnmountingRef.current) {
           console.log('Disconnected from peer server');
           setConnectionStatus('disconnected');
+          
+          // Attempt to reconnect
+          setTimeout(() => {
+            if (!isUnmountingRef.current && peerRef.current) {
+              console.log('Attempting to reconnect...');
+              peer.reconnect();
+            }
+          }, 2000);
         }
       });
 
@@ -140,6 +163,10 @@ const VideoChat = ({ sessionId, userId }) => {
               });
             }
           });
+
+          call.on('error', (error) => {
+            console.error('Call error:', error);
+          });
         });
       }
 
@@ -150,7 +177,7 @@ const VideoChat = ({ sessionId, userId }) => {
         setConnectionStatus('error');
       }
     }
-  }, [sessionId, userId, cleanupPeer]);
+  }, [sessionId, userId, generatePeerId, cleanupPeer]);
 
   useEffect(() => {
     isUnmountingRef.current = false;
@@ -159,18 +186,22 @@ const VideoChat = ({ sessionId, userId }) => {
     return () => {
       isUnmountingRef.current = true;
       
+      // Clean up media streams
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      // Clean up peer connection
+      if (peerRef.current) {
+        peerRef.current.destroy();
+      }
+      
       // Clear any pending reconnection attempts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-
-      // Cleanup stream first
-      cleanupStream();
-      
-      // Then cleanup peer with a slight delay
-      setTimeout(cleanupPeer, 100);
     };
-  }, [sessionId, userId, initializePeer, cleanupPeer, cleanupStream]);
+  }, [initializePeer]);
 
   const toggleVideo = () => {
     if (streamRef.current) {

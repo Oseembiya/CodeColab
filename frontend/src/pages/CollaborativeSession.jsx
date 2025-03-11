@@ -1,22 +1,66 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '../contexts/SessionContext';
 import { db, auth } from '../firebaseConfig';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { io } from 'socket.io-client';
 import SessionInfo from '../components/sessions/SessionInfo';
-import CollaborativeEditor from '../components/editor/CollaborativeEditor';
-import VideoChat from '../components/collaboration/VideoChat';
-import Whiteboard from '../components/whiteboard/Whiteboard';
+
+const CollaborativeEditor = lazy(() => import('../components/editor/CollaborativeEditor'));
+const VideoChat = lazy(() => import('../components/collaboration/VideoChat'));
+const Whiteboard = lazy(() => import('../components/whiteboard/Whiteboard'));
 
 const CollaborativeSession = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { activeSession, clearActiveSession } = useSession();
+  const { activeSession, joinSession, clearActiveSession } = useSession();
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const socketRef = useRef(null);
+  const userId = auth.currentUser?.uid;
 
-  // Set up real-time listener for session updates
+  useEffect(() => {
+    if (!sessionId || !userId) return;
+
+    // Initialize socket connection
+    socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
+      transports: ['websocket']
+    });
+
+    // Join the session room
+    socketRef.current.emit('join-session', {
+      sessionId,
+      userId,
+      username: auth.currentUser?.displayName || 'Anonymous',
+      photoURL: auth.currentUser?.photoURL
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [sessionId, userId]);
+
+  useEffect(() => {
+    const initSession = async () => {
+      if (!sessionId || !userId) {
+        navigate('/dashboard');
+        return;
+      }
+
+      try {
+        await joinSession(sessionId);
+      } catch (error) {
+        console.error('Error joining session:', error);
+        setError(error.message);
+      }
+    };
+
+    initSession();
+  }, [sessionId, userId, joinSession, navigate]);
+
   useEffect(() => {
     setLoading(true);
     let unsubscribe;
@@ -63,7 +107,7 @@ const CollaborativeSession = () => {
     };
   }, [sessionId, activeSession]);
 
-  const handleLeaveSession = () => {
+  const handleLeave = () => {
     clearActiveSession();
     navigate('/dashboard/sessions');
   };
@@ -79,31 +123,42 @@ const CollaborativeSession = () => {
     );
   }
 
+  if (!activeSession) {
+    return <div>Loading session...</div>;
+  }
+
   return (
     <div className="collaborative-session">
       <SessionInfo 
-        session={sessionData} 
-        onLeave={handleLeaveSession}
+        session={activeSession}
+        onLeave={handleLeave}
+        socket={socketRef.current}
       />
       
       <div className="session-content">
         <div className="editor-section">
-          <CollaborativeEditor
-            sessionId={sessionId}
-            userId={auth.currentUser?.uid}
-            language={sessionData?.language || 'javascript'}
-          />
+          <Suspense fallback={<div>Loading editor...</div>}>
+            <CollaborativeEditor
+              sessionId={sessionId}
+              userId={userId}
+              language={sessionData?.language || 'javascript'}
+            />
+          </Suspense>
         </div>
         
         <div className="collaboration-panel">
-          <VideoChat
-            sessionId={sessionId}
-            userId={auth.currentUser?.uid}
-          />
-          <Whiteboard
-            sessionId={sessionId}
-            userId={auth.currentUser?.uid}
-          />
+          <Suspense fallback={<div>Loading video chat...</div>}>
+            <VideoChat
+              sessionId={sessionId}
+              userId={userId}
+            />
+          </Suspense>
+          <Suspense fallback={<div>Loading whiteboard...</div>}>
+            <Whiteboard
+              sessionId={sessionId}
+              userId={userId}
+            />
+          </Suspense>
         </div>
       </div>
     </div>

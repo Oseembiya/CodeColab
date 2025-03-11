@@ -1,7 +1,30 @@
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from 'react-icons/fa';
 
-const SessionInfo = ({ session, onLeave }) => {
+const SessionInfo = ({ session, onLeave, socket }) => {
+  const [participantCount, setParticipantCount] = useState(0);
+  const [maxParticipants, setMaxParticipants] = useState(session?.maxParticipants || 4);
+
+  useEffect(() => {
+    if (!socket || !session?.id) return;
+
+    // Set initial count from session
+    setParticipantCount(session.participants?.length || 0);
+
+    // Listen for participant count updates
+    const handleParticipantUpdate = ({ participants, count }) => {
+      console.log('Received participant update:', { count, participants });
+      setParticipantCount(count);
+    };
+
+    socket.on('participants-update', handleParticipantUpdate);
+
+    return () => {
+      socket.off('participants-update', handleParticipantUpdate);
+    };
+  }, [socket, session?.id]);
+
   if (!session || !session.title) {
     return (
       <div className="session-info loading">
@@ -36,7 +59,7 @@ const SessionInfo = ({ session, onLeave }) => {
         </div>
         <div className="meta-item">
           <FaUsers />
-          <span>Participants: {session.participants?.length || 0}/{session.maxParticipants}</span>
+          <span>Participants: {participantCount}/{maxParticipants}</span>
         </div>
         <div className="meta-item">
           <FaCode />
@@ -59,6 +82,7 @@ const SessionInfo = ({ session, onLeave }) => {
 
 SessionInfo.propTypes = {
   session: PropTypes.shape({
+    id: PropTypes.string,
     title: PropTypes.string,
     description: PropTypes.string,
     startTime: PropTypes.string,
@@ -68,7 +92,8 @@ SessionInfo.propTypes = {
     isPrivate: PropTypes.bool,
     joinCode: PropTypes.string
   }),
-  onLeave: PropTypes.func.isRequired
+  onLeave: PropTypes.func.isRequired,
+  socket: PropTypes.object.isRequired
 };
 
 SessionInfo.defaultProps = {

@@ -66,12 +66,15 @@ io.on('connection', (socket) => {
       joinedAt: new Date().toISOString()
     });
 
-    // Broadcast updated participants list to all clients in the session
-    io.to(sessionId).emit('participants-update', {
-      participants: Array.from(sessionUsers.entries()).map(([id, user]) => ({
-        userId: id,
-        ...user
-      })),
+    // Immediately emit updated participants list
+    const participantsList = Array.from(sessionUsers.entries()).map(([id, user]) => ({
+      userId: id,
+      ...user
+    }));
+
+    // Emit to all clients in the session, including the sender
+    io.in(sessionId).emit('participants-update', {
+      participants: participantsList,
       count: sessionUsers.size
     });
 
@@ -106,12 +109,19 @@ io.on('connection', (socket) => {
           users.delete(userId);
           
           // Broadcast updated count and participants list
+          const participantsList = Array.from(users.entries()).map(([id, user]) => ({
+            userId: id,
+            ...user
+          }));
+
           io.to(sessionId).emit('participants-update', {
-            participants: Array.from(users.entries()).map(([id, user]) => ({
-              userId: id,
-              ...user
-            })),
+            participants: participantsList,
             count: users.size
+          });
+
+          io.to(sessionId).emit('participant-count-update', {
+            count: users.size,
+            maxParticipants: 4
           });
           
           console.log(`User left session ${sessionId}. Remaining participants: ${users.size}`);
