@@ -99,7 +99,7 @@ const Navigation = memo(() => {
 
         {activeSession && (
           <div className="active-session-indicator">
-            <span className="session-status">Active Session:</span>
+            <span className="session-status">live Session:</span>
             <span className="session-name">{activeSession.title}</span>
           </div>
         )}
