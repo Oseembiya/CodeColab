@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db } from '../firebaseConfig';
 import { 
   collection, 
@@ -26,6 +26,11 @@ export const SessionProvider = ({ children }) => {
       localStorage.removeItem('activeSession');
     }
   }, [activeSession]);
+
+  const clearActiveSession = useCallback(() => {
+    setActiveSession(null);
+    localStorage.removeItem('activeSession');
+  }, []);
 
   const createSession = async (sessionData) => {
     try {
@@ -99,11 +104,6 @@ export const SessionProvider = ({ children }) => {
       console.error('Error joining session:', error);
       throw error;
     }
-  };
-
-  const clearActiveSession = () => {
-    setActiveSession(null);
-    localStorage.removeItem('activeSession');
   };
 
   const value = {
