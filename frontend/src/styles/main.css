@@ -4,6 +4,7 @@
 @import './layouts/_dashboard.css';
 @import './layouts/_profile.css';
 @import './components/_sessions.css';
+@import './components/_collaborative-session.css';
 @import './whiteboard.css';
 @import './video-chat.css';
 @import './editor.css';
