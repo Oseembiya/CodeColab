@@ -20,6 +20,7 @@
 
 .session-content.split {
   grid-template-columns: 1fr 1fr;
+  position: relative;
 }
 
 .session-content.code {
@@ -33,6 +34,7 @@
 .left-panel, .right-panel {
   position: relative;
   height: 100%;
+  overflow: hidden;
 }
 
 .video-panel {
@@ -43,15 +45,33 @@
   z-index: 100;
 }
 
+.session-content.split .video-panel {
+  position: absolute;
+  width: auto;
+  max-width: 300px;
+  bottom: 1rem;
+  right: 1rem;
+}
+
+.session-content.split .left-panel .video-panel {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: auto;
+  max-width: 90%;
+}
+
 .video-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.5rem;
+  width: 100%;
 }
 
 .video-container {
   position: relative;
   padding-top: 56.25%; /* 16:9 aspect ratio */
+  width: 100%;
 }
 
 .video-container video {

@@ -1,15 +1,16 @@
-import { memo } from 'react';
+import React, { memo } from 'react';
 import { FaPlay, FaCheck } from 'react-icons/fa';
 import PropTypes from 'prop-types';
 
 const EditorToolbar = memo(({ 
   onRun, 
-  onCheck, 
+  onCheck = () => {}, 
   isLoading, 
   language, 
   onLanguageChange, 
   languages,
-  isCorrect 
+  isCorrect,
+  isRunning = false
 }) => (
   <div className="editor-header">
     <div className="editor-buttons">
@@ -50,7 +51,7 @@ const EditorToolbar = memo(({
 
 EditorToolbar.propTypes = {
   onRun: PropTypes.func.isRequired,
-  onCheck: PropTypes.func.isRequired,
+  onCheck: PropTypes.func,
   isLoading: PropTypes.bool.isRequired,
   language: PropTypes.string.isRequired,
   onLanguageChange: PropTypes.func.isRequired,
@@ -58,7 +59,8 @@ EditorToolbar.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired
   })).isRequired,
-  isCorrect: PropTypes.bool
+  isCorrect: PropTypes.bool,
+  isRunning: PropTypes.bool
 };
 
 EditorToolbar.displayName = 'EditorToolbar';

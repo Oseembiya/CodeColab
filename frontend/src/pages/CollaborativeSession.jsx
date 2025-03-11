@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '../contexts/SessionContext';
 import { useAuth } from '../hooks/useAuth';
-import CodeEditor from '../components/editor/CodeEditor';
+import CollaborativeEditor from '../components/editor/CollaborativeEditor';
 import VideoChat from '../components/collaboration/VideoChat';
 import SessionInfo from '../components/sessions/SessionInfo';
 
@@ -13,7 +13,7 @@ const CollaborativeSession = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { activeSession, joinSession } = useSession();
+  const { activeSession, joinSession, clearActiveSession } = useSession();
   const [view, setView] = useState('split'); // split, code, whiteboard
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,68 +22,60 @@ const CollaborativeSession = () => {
     const initializeSession = async () => {
       try {
         setIsLoading(true);
-        
-        // Check if we're already in this session
-        if (activeSession && activeSession.id === sessionId) {
-          setIsLoading(false);
-          return;
+        setError(null);
+
+        if (!activeSession || activeSession.id !== sessionId) {
+          const joinInfo = localStorage.getItem('lastJoinedSession');
+          const parsedJoinInfo = joinInfo ? JSON.parse(joinInfo) : null;
+          
+          if (parsedJoinInfo?.id === sessionId) {
+            await joinSession(sessionId, parsedJoinInfo.joinCode);
+          } else {
+            await joinSession(sessionId);
+          }
         }
-
-        // If no active session, try to get stored join info
-        const storedJoinInfo = localStorage.getItem('lastJoinedSession');
-        const parsedJoinInfo = storedJoinInfo ? JSON.parse(storedJoinInfo) : null;
-        
-        // Only use stored join info if it matches the current session
-        const joinCode = parsedJoinInfo?.id === sessionId ? parsedJoinInfo.joinCode : null;
-
-        console.log('Initializing session with:', { sessionId, joinCode, hasActiveSession: !!activeSession });
-        
-        if (!sessionId) {
-          navigate('/dashboard/sessions');
-          return;
-        }
-
-        await joinSession(sessionId, joinCode);
+      } catch (err) {
+        console.error('Failed to initialize session:', err);
+        setError(err.message);
+      } finally {
         setIsLoading(false);
-        
-        // Clear the stored join info after successful join
-        localStorage.removeItem('lastJoinedSession');
-      } catch (error) {
-        console.error('Session initialization error:', error);
-        setError(error.message);
-        setTimeout(() => {
-          navigate('/dashboard/sessions');
-        }, 2000);
       }
     };
 
     initializeSession();
-  }, [sessionId, activeSession, joinSession, navigate]);
+  }, [sessionId, activeSession, joinSession]);
 
-  const handleLeave = () => {
-    // Clean up any connections/sockets
-    // Navigate back to sessions list
+  const handleLeaveSession = () => {
+    clearActiveSession();
+    localStorage.removeItem('lastJoinedSession');
     navigate('/dashboard/sessions');
   };
+
+  if (isLoading) {
+    return <div className="loading">Loading session...</div>;
+  }
 
   if (error) {
     return (
       <div className="error-container">
-        <div className="error-message">{error}</div>
-        <div>Redirecting to sessions page...</div>
+        <h2>Error joining session</h2>
+        <p>{error}</p>
+        <button onClick={() => navigate('/dashboard/sessions')}>
+          Return to Sessions
+        </button>
       </div>
     );
   }
 
-  if (isLoading) {
-    return <div>Loading session...</div>;
+  if (!activeSession) {
+    return <div>No active session found</div>;
   }
 
   return (
     <div className="collaborative-session">
       <SessionInfo 
-        session={activeSession} 
-        onLeave={handleLeave}
+        session={activeSession}
+        onLeave={handleLeaveSession}
       />
       {/* Session Header */}
       <div className="session-header">
@@ -113,9 +105,10 @@ const CollaborativeSession = () => {
       {/* Main Content */}
       <div className={`session-content ${view}`}>
         <div className="left-panel">
-          <CodeEditor 
-            collaborative={true} 
-            sessionId={sessionId} 
+          <CollaborativeEditor
+            sessionId={sessionId}
+            userId={user.uid}
+            initialLanguage={activeSession.language}
           />
         </div>
 

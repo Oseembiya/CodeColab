@@ -4,13 +4,39 @@
   right: 20px;
   width: 300px;
   z-index: 1000;
+  transition: all 0.3s ease;
 }
 
+/* Add this new style for when video chat is in left panel */
+.left-panel .video-chat-container {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  width: 100%;
+  padding: 10px;
+}
+
+/* Adjust video grid for left panel */
+.left-panel .video-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+/* Make videos slightly smaller in left panel */
+.left-panel .video-container {
+  padding-top: 56.25%; /* maintain 16:9 aspect ratio */
+}
+
+/* Ensure controls are visible in both modes */
 .video-controls {
   display: flex;
   justify-content: center;
   gap: 10px;
   margin-bottom: 10px;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
 }
 
 .control-button {

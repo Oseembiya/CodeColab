@@ -34,20 +34,43 @@
   flex-direction: column;
   min-width: 0;
   position: relative;
-  overflow: hidden;
 }
 
-.collaboration-panel {
+.editor-content .video-panel {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
   width: 300px;
-  background: #2d2d2d;
-  border-left: 1px solid #404040;
-  display: flex;
-  flex-direction: column;
+  z-index: 1001;
 }
 
-/* Layouts */
-.editor-container.video-focus .collaboration-panel {
-  width: 50%;
+.output-panel:not(.collapsed) ~ .video-panel {
+  bottom: calc(300px + 1rem);
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+  background: var(--background-color);
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.video-container {
+  position: relative;
+  padding-top: 56.25%;
+}
+
+.video-container video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .editor-container.code-focus .collaboration-panel {
@@ -144,4 +167,29 @@
   background-color: var(--background-color);
   border-top: 1px solid var(--line-color);
   z-index: 10;
+}
+
+/* Add specific styles for video panel in fullscreen mode */
+.editor-container.fullscreen .video-panel {
+  position: fixed; /* Change to fixed in fullscreen */
+  bottom: 1rem;
+  right: 1rem;
+  width: 300px;
+  z-index: 1002; /* Higher than fullscreen container */
+}
+
+/* Adjust video panel position when output is expanded in fullscreen */
+.editor-container.fullscreen .output-panel:not(.collapsed) ~ .video-panel {
+  bottom: calc(300px + 1rem);
+}
+
+/* Ensure video stays visible */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+  background: var(--background-color);
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 } 
