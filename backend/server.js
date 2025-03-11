@@ -78,6 +78,12 @@ io.on('connection', (socket) => {
       count: sessionUsers.size
     });
 
+    // Emit updates to both participants and observers
+    io.to(sessionId).to(`observe:${sessionId}`).emit('participants-update', {
+      participants: participantsList,
+      count: sessionUsers.size
+    });
+
     console.log(`User ${username} joined session ${sessionId}. Total participants: ${sessionUsers.size}`);
   });
 
@@ -101,6 +107,23 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle session observation
+  socket.on('observe-session', ({ sessionId }) => {
+    socket.join(`observe:${sessionId}`);
+    
+    // Send initial participant count
+    const sessionUsers = activeSessions.get(sessionId);
+    if (sessionUsers) {
+      socket.emit('participants-update', {
+        count: sessionUsers.size,
+        participants: Array.from(sessionUsers.entries()).map(([id, user]) => ({
+          userId: id,
+          ...user
+        }))
+      });
+    }
+  });
+
   // Handle disconnection with participant count update
   socket.on('disconnect', () => {
     activeSessions.forEach((users, sessionId) => {
@@ -108,20 +131,14 @@ io.on('connection', (socket) => {
         if (user.socketId === socket.id) {
           users.delete(userId);
           
-          // Broadcast updated count and participants list
           const participantsList = Array.from(users.entries()).map(([id, user]) => ({
             userId: id,
             ...user
           }));
 
-          io.to(sessionId).emit('participants-update', {
+          io.to(sessionId).to(`observe:${sessionId}`).emit('participants-update', {
             participants: participantsList,
             count: users.size
-          });
-
-          io.to(sessionId).emit('participant-count-update', {
-            count: users.size,
-            maxParticipants: 4
           });
           
           console.log(`User left session ${sessionId}. Remaining participants: ${users.size}`);

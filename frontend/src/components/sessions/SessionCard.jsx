@@ -1,11 +1,34 @@
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen, FaEdit, FaTrash } from 'react-icons/fa';
+import { io } from 'socket.io-client';
 
 const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
+  const [participantCount, setParticipantCount] = useState(session.participants?.length || 0);
+  
+  useEffect(() => {
+    // Only connect to socket if session is active
+    if (session.status !== 'active') return;
+
+    const socket = io(import.meta.env.VITE_SOCKET_URL, {
+      transports: ['websocket']
+    });
+
+    // Join the session room as an observer
+    socket.emit('observe-session', { sessionId: session.id });
+
+    // Listen for participant updates
+    socket.on('participants-update', ({ count }) => {
+      setParticipantCount(count);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [session.id, session.status]);
+
   const formatDate = (dateString) => {
-    if (!dateString) {
-      return 'Date not available';
-    }
+    if (!dateString) return 'Date not available';
     try {
       const date = typeof dateString === 'object' ? dateString : new Date(dateString);
       return date.toLocaleString();
@@ -24,7 +47,7 @@ const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
   };
 
   // Ensure maxParticipants is a number
-  const participantCount = Number(session.maxParticipants) || 0;
+  const maxParticipants = Number(session.maxParticipants) || 0;
 
   // Add boolean conversion for isPrivate
   const isPrivate = Boolean(session.isPrivate);
@@ -50,7 +73,7 @@ const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
         </div>
         <div className="detail-item">
           <FaUsers />
-          <span>{session.participants?.length || 0}/{participantCount}</span>
+          <span>{participantCount}/{maxParticipants}</span>
         </div>
         <div className="detail-item">
           <FaCode />
@@ -73,8 +96,12 @@ const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
             </button>
           </>
         ) : (
-          <button onClick={() => onJoin(session.id)} className="join-button">
-            Join Session
+          <button 
+            onClick={() => onJoin(session.id)} 
+            className="join-button"
+            disabled={participantCount >= maxParticipants}
+          >
+            {participantCount >= maxParticipants ? 'Session Full' : 'Join Session'}
           </button>
         )}
       </div>
