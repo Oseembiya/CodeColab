@@ -1,101 +1,77 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '../contexts/SessionContext';
-import { useAuth } from '../hooks/useAuth';
+import { db, auth } from '../firebaseConfig';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import SessionInfo from '../components/sessions/SessionInfo';
 import CollaborativeEditor from '../components/editor/CollaborativeEditor';
 import VideoChat from '../components/collaboration/VideoChat';
-import SessionInfo from '../components/sessions/SessionInfo';
-import { auth } from '../firebaseConfig';
-import { io } from 'socket.io-client';
-
-// Lazy load the Whiteboard component
-const Whiteboard = lazy(() => import('../components/whiteboard/Whiteboard'));
+import Whiteboard from '../components/whiteboard/Whiteboard';
 
 const CollaborativeSession = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { activeSession, joinSession, clearActiveSession } = useSession();
-  const [view, setView] = useState('split'); // split, code, whiteboard
+  const { activeSession, clearActiveSession } = useSession();
+  const [sessionData, setSessionData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentSession, setCurrentSession] = useState(activeSession);
-  const userId = auth.currentUser?.uid;
 
+  // Set up real-time listener for session updates
   useEffect(() => {
+    setLoading(true);
+    let unsubscribe;
+
     const initializeSession = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
-
-        if (!activeSession || activeSession.id !== sessionId) {
-          const joinInfo = localStorage.getItem('lastJoinedSession');
-          const parsedJoinInfo = joinInfo ? JSON.parse(joinInfo) : null;
-          
-          if (parsedJoinInfo?.id === sessionId) {
-            await joinSession(sessionId, parsedJoinInfo.joinCode);
-          } else {
-            await joinSession(sessionId);
-          }
+        // First, try to use activeSession if it matches current sessionId
+        if (activeSession && activeSession.id === sessionId) {
+          setSessionData(activeSession);
+          setLoading(false);
         }
+
+        // Set up real-time listener for session updates
+        const sessionRef = doc(db, 'sessions', sessionId);
+        unsubscribe = onSnapshot(sessionRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = { id: snapshot.id, ...snapshot.data() };
+            setSessionData(data);
+            setLoading(false);
+          } else {
+            setError('Session not found');
+            setLoading(false);
+          }
+        }, (err) => {
+          console.error('Error listening to session:', err);
+          setError(err.message);
+          setLoading(false);
+        });
+
       } catch (err) {
-        console.error('Failed to initialize session:', err);
+        console.error('Error initializing session:', err);
         setError(err.message);
-      } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
     initializeSession();
-  }, [sessionId, activeSession, joinSession]);
 
-  useEffect(() => {
-    if (!sessionId || !userId) {
-      navigate('/dashboard');
-      return;
-    }
-
-    const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      transports: ['websocket']
-    });
-
-    // Join session with user info
-    socket.emit('join-session', {
-      sessionId,
-      userId,
-      username: auth.currentUser?.displayName,
-      photoURL: auth.currentUser?.photoURL
-    });
-
-    // Handle participants update
-    socket.on('participants-update', ({ participants, count }) => {
-      setCurrentSession(prev => ({
-        ...prev,
-        participants: participants,
-        currentParticipants: count
-      }));
-    });
-
+    // Cleanup listener on unmount
     return () => {
-      socket.disconnect();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
-  }, [sessionId, userId, navigate]);
+  }, [sessionId, activeSession]);
 
   const handleLeaveSession = () => {
     clearActiveSession();
-    localStorage.removeItem('lastJoinedSession');
     navigate('/dashboard/sessions');
   };
-
-  if (isLoading) {
-    return <div className="loading">Loading session...</div>;
-  }
 
   if (error) {
     return (
       <div className="error-container">
-        <h2>Error joining session</h2>
-        <p>{error}</p>
+        <p>Error: {error}</p>
         <button onClick={() => navigate('/dashboard/sessions')}>
           Return to Sessions
         </button>
@@ -103,71 +79,30 @@ const CollaborativeSession = () => {
     );
   }
 
-  if (!currentSession) {
-    return <div>Loading session...</div>;
-  }
-
   return (
     <div className="collaborative-session">
       <SessionInfo 
-        session={{
-          ...currentSession,
-          participants: currentSession.participants || [],
-          maxParticipants: currentSession.maxParticipants || 4
-        }}
+        session={sessionData} 
         onLeave={handleLeaveSession}
       />
-      {/* Session Header */}
-      <div className="session-header">
-        <h2>{currentSession?.title}</h2>
-        <div className="view-controls">
-          <button 
-            className={view === 'split' ? 'active' : ''} 
-            onClick={() => setView('split')}
-          >
-            Split View
-          </button>
-          <button 
-            className={view === 'code' ? 'active' : ''} 
-            onClick={() => setView('code')}
-          >
-            Code Only
-          </button>
-          <button 
-            className={view === 'whiteboard' ? 'active' : ''} 
-            onClick={() => setView('whiteboard')}
-          >
-            Whiteboard
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className={`session-content ${view}`}>
-        <div className="left-panel">
+      
+      <div className="session-content">
+        <div className="editor-section">
           <CollaborativeEditor
             sessionId={sessionId}
-            userId={userId}
-            initialLanguage={currentSession.language}
+            userId={auth.currentUser?.uid}
+            language={sessionData?.language || 'javascript'}
           />
         </div>
-
-        <div className="right-panel">
-          {view !== 'code' && (
-            <Suspense fallback={<div>Loading whiteboard...</div>}>
-              <Whiteboard 
-                sessionId={sessionId} 
-                userId={userId}
-              />
-            </Suspense>
-          )}
-        </div>
-
-        {/* Video Chat Panel */}
-        <div className="video-panel">
-          <VideoChat 
-            sessionId={sessionId} 
-            userId={userId}
+        
+        <div className="collaboration-panel">
+          <VideoChat
+            sessionId={sessionId}
+            userId={auth.currentUser?.uid}
+          />
+          <Whiteboard
+            sessionId={sessionId}
+            userId={auth.currentUser?.uid}
           />
         </div>
       </div>

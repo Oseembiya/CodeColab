@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { db } from '../firebaseConfig';
+import { db, auth } from '../firebaseConfig';
 import { 
   collection, 
   addDoc, 
@@ -36,17 +36,24 @@ export const SessionProvider = ({ children }) => {
     try {
       const sessionToCreate = {
         ...sessionData,
-        language: sessionData.language || 'javascript',
-        maxParticipants: Number(sessionData.maxParticipants),
         createdAt: new Date().toISOString(),
-        startTime: sessionData.startNow ? new Date().toISOString() : sessionData.scheduledTime,
         status: 'active',
-        isPrivate: Boolean(sessionData.isPrivate),
+        participants: [auth.currentUser.uid],
+        owner: auth.currentUser.uid,
       };
 
       const docRef = await addDoc(collection(db, 'sessions'), sessionToCreate);
       
-      setActiveSession({ id: docRef.id, ...sessionToCreate });
+      // Create the complete session object
+      const createdSession = {
+        id: docRef.id,
+        ...sessionToCreate
+      };
+
+      // Update active session immediately
+      setActiveSession(createdSession);
+      localStorage.setItem('activeSession', JSON.stringify(createdSession));
+
       return docRef.id;
     } catch (error) {
       console.error('Error creating session:', error);
