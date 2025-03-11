@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   // Join session room
-  socket.on('join-session', ({ sessionId, userId, username }) => {
+  socket.on('join-session', ({ sessionId, userId, username, photoURL }) => {
     socket.join(sessionId);
     
     if (!activeSessions.has(sessionId)) {
@@ -61,18 +61,21 @@ io.on('connection', (socket) => {
     const sessionUsers = activeSessions.get(sessionId);
     sessionUsers.set(userId, {
       socketId: socket.id,
-      username,
-      cursor: { line: 0, column: 0 }
+      username: username || 'Anonymous',
+      photoURL: photoURL || '/default-avatar.png',
+      joinedAt: new Date().toISOString()
     });
 
-    // Broadcast user joined
-    io.to(sessionId).emit('user-joined', {
-      userId,
-      username,
-      users: Array.from(sessionUsers.values())
+    // Broadcast updated participants list to all clients in the session
+    io.to(sessionId).emit('participants-update', {
+      participants: Array.from(sessionUsers.entries()).map(([id, user]) => ({
+        userId: id,
+        ...user
+      })),
+      count: sessionUsers.size
     });
 
-    console.log(`User ${username} joined session ${sessionId}`);
+    console.log(`User ${username} joined session ${sessionId}. Total participants: ${sessionUsers.size}`);
   });
 
   // Handle code changes
@@ -95,14 +98,23 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle disconnection
+  // Handle disconnection with participant count update
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
     activeSessions.forEach((users, sessionId) => {
       users.forEach((user, userId) => {
         if (user.socketId === socket.id) {
           users.delete(userId);
-          io.to(sessionId).emit('user-left', { userId });
+          
+          // Broadcast updated count and participants list
+          io.to(sessionId).emit('participants-update', {
+            participants: Array.from(users.entries()).map(([id, user]) => ({
+              userId: id,
+              ...user
+            })),
+            count: users.size
+          });
+          
+          console.log(`User left session ${sessionId}. Remaining participants: ${users.size}`);
         }
       });
     });

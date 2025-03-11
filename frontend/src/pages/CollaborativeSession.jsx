@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth';
 import CollaborativeEditor from '../components/editor/CollaborativeEditor';
 import VideoChat from '../components/collaboration/VideoChat';
 import SessionInfo from '../components/sessions/SessionInfo';
+import { auth } from '../firebaseConfig';
+import { io } from 'socket.io-client';
 
 // Lazy load the Whiteboard component
 const Whiteboard = lazy(() => import('../components/whiteboard/Whiteboard'));
@@ -17,6 +19,8 @@ const CollaborativeSession = () => {
   const [view, setView] = useState('split'); // split, code, whiteboard
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSession, setCurrentSession] = useState(activeSession);
+  const userId = auth.currentUser?.uid;
 
   useEffect(() => {
     const initializeSession = async () => {
@@ -45,6 +49,38 @@ const CollaborativeSession = () => {
     initializeSession();
   }, [sessionId, activeSession, joinSession]);
 
+  useEffect(() => {
+    if (!sessionId || !userId) {
+      navigate('/dashboard');
+      return;
+    }
+
+    const socket = io(import.meta.env.VITE_SOCKET_URL, {
+      transports: ['websocket']
+    });
+
+    // Join session with user info
+    socket.emit('join-session', {
+      sessionId,
+      userId,
+      username: auth.currentUser?.displayName,
+      photoURL: auth.currentUser?.photoURL
+    });
+
+    // Handle participants update
+    socket.on('participants-update', ({ participants, count }) => {
+      setCurrentSession(prev => ({
+        ...prev,
+        participants: participants,
+        currentParticipants: count
+      }));
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [sessionId, userId, navigate]);
+
   const handleLeaveSession = () => {
     clearActiveSession();
     localStorage.removeItem('lastJoinedSession');
@@ -67,19 +103,23 @@ const CollaborativeSession = () => {
     );
   }
 
-  if (!activeSession) {
-    return <div>No active session found</div>;
+  if (!currentSession) {
+    return <div>Loading session...</div>;
   }
 
   return (
     <div className="collaborative-session">
       <SessionInfo 
-        session={activeSession}
+        session={{
+          ...currentSession,
+          participants: currentSession.participants || [],
+          maxParticipants: currentSession.maxParticipants || 4
+        }}
         onLeave={handleLeaveSession}
       />
       {/* Session Header */}
       <div className="session-header">
-        <h2>{activeSession?.title}</h2>
+        <h2>{currentSession?.title}</h2>
         <div className="view-controls">
           <button 
             className={view === 'split' ? 'active' : ''} 
@@ -107,8 +147,8 @@ const CollaborativeSession = () => {
         <div className="left-panel">
           <CollaborativeEditor
             sessionId={sessionId}
-            userId={user.uid}
-            initialLanguage={activeSession.language}
+            userId={userId}
+            initialLanguage={currentSession.language}
           />
         </div>
 
@@ -117,7 +157,7 @@ const CollaborativeSession = () => {
             <Suspense fallback={<div>Loading whiteboard...</div>}>
               <Whiteboard 
                 sessionId={sessionId} 
-                userId={user.uid}
+                userId={userId}
               />
             </Suspense>
           )}
@@ -127,7 +167,7 @@ const CollaborativeSession = () => {
         <div className="video-panel">
           <VideoChat 
             sessionId={sessionId} 
-            userId={user.uid}
+            userId={userId}
           />
         </div>
       </div>

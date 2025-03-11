@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import PropTypes from 'prop-types';
 import BaseEditor from './BaseEditor';
 import { executeCode } from '../../services/codeExecution';
+import { auth } from '../../firebaseConfig';
 
 // Add debounce utility
 const debounce = (func, wait) => {
@@ -40,10 +41,7 @@ const CollaborativeEditor = ({ sessionId, userId, initialLanguage }) => {
 
   useEffect(() => {
     const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      transports: ['websocket'], // Force WebSocket transport
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
+      transports: ['websocket']
     });
     
     socketRef.current = socket;
@@ -51,6 +49,8 @@ const CollaborativeEditor = ({ sessionId, userId, initialLanguage }) => {
     socket.emit('join-session', {
       sessionId,
       userId,
+      username: auth.currentUser?.displayName || 'Anonymous',
+      photoURL: auth.currentUser?.photoURL
     });
 
     socket.on('code-update', ({ content, senderId }) => {
