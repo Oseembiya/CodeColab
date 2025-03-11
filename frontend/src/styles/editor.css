@@ -1,8 +1,9 @@
 .editor-container {
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-md);
-  padding-bottom: 0px;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
 .editor-container.fullscreen {
@@ -32,6 +33,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .collaboration-panel {
@@ -128,6 +131,17 @@
 .monaco-editor-wrapper {
   flex: 1;
   position: relative;
+  overflow: hidden;
 }
 
-/* Add to your existing editor styles */ 
+/* Add to your existing editor styles */
+
+.output-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: var(--background-color);
+  border-top: 1px solid var(--line-color);
+  z-index: 10;
+} 
