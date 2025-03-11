@@ -8,7 +8,7 @@ import {
   FaTimes,
   FaUsers
 } from 'react-icons/fa';
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { auth } from '../firebaseConfig';
 import NotificationModal from './notifications/NotificationModal';
 import { useSession } from '../contexts/SessionContext';
@@ -31,6 +31,12 @@ const Navigation = memo(() => {
       console.error("Error signing out:", error);
     }
   };
+
+  useEffect(() => {
+    if (!location.pathname.includes('/sessions/') && activeSession) {
+      clearActiveSession();
+    }
+  }, [location.pathname, activeSession, clearActiveSession]);
 
   return (
     <>
@@ -97,7 +103,7 @@ const Navigation = memo(() => {
           </button>
         </div>
 
-        {activeSession && (
+        {activeSession && location.pathname.includes('/sessions/') && (
           <div className="active-session-indicator">
             <span className="session-status">live Session:</span>
             <span className="session-name">{activeSession.title}</span>
