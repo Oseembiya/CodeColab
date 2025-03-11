@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Peer from 'peerjs';
 import PropTypes from 'prop-types';
-import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaSync } from 'react-icons/fa';
+import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaSync, FaGripVertical } from 'react-icons/fa';
 
 const VideoChat = ({ sessionId, userId }) => {
   const [peers, setPeers] = useState(new Map());
@@ -14,6 +14,10 @@ const VideoChat = ({ sessionId, userId }) => {
   const streamRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const isUnmountingRef = useRef(false);
+  const [position, setPosition] = useState({ x: window.innerWidth - 320, y: window.innerHeight - 400 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef(null);
+  const dragStartRef = useRef({ x: 0, y: 0 });
 
   const cleanupPeer = useCallback(() => {
     if (peerRef.current) {
@@ -188,8 +192,70 @@ const VideoChat = ({ sessionId, userId }) => {
     }
   };
 
+  const handleMouseDown = (e) => {
+    if (e.target.closest('.video-controls')) return;
+    
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    };
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isDragging) return;
+
+    const newX = e.clientX - dragStartRef.current.x;
+    const newY = e.clientY - dragStartRef.current.y;
+
+    // Get window dimensions and container dimensions
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const containerWidth = dragRef.current.offsetWidth;
+    const containerHeight = dragRef.current.offsetHeight;
+
+    // Keep video within window bounds
+    const boundedX = Math.min(Math.max(0, newX), windowWidth - containerWidth);
+    const boundedY = Math.min(Math.max(0, newY), windowHeight - containerHeight);
+
+    setPosition({ x: boundedX, y: boundedY });
+  }, [isDragging]);
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove]);
+
   return (
-    <div className="video-chat-container">
+    <div 
+      className={`video-chat-container ${isDragging ? 'dragging' : ''}`}
+      ref={dragRef}
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        cursor: isDragging ? 'grabbing' : 'grab'
+      }}
+      onMouseDown={handleMouseDown}
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY });
+      }}
+    >
+      <div className="video-drag-handle">
+        <FaGripVertical />
+      </div>
       <div className="video-controls">
         <button 
           onClick={toggleVideo}
