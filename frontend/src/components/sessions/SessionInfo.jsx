@@ -2,6 +2,14 @@ import PropTypes from 'prop-types';
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from 'react-icons/fa';
 
 const SessionInfo = ({ session, onLeave }) => {
+  if (!session || !session.title) {
+    return (
+      <div className="session-info loading">
+        <p>Loading session information...</p>
+      </div>
+    );
+  }
+
   const handleLeave = () => {
     if (window.confirm('Are you sure you want to leave this session?')) {
       onLeave();
@@ -51,16 +59,20 @@ const SessionInfo = ({ session, onLeave }) => {
 
 SessionInfo.propTypes = {
   session: PropTypes.shape({
-    title: PropTypes.string.isRequired,
+    title: PropTypes.string,
     description: PropTypes.string,
-    startTime: PropTypes.string.isRequired,
-    language: PropTypes.string.isRequired,
-    maxParticipants: PropTypes.number.isRequired,
+    startTime: PropTypes.string,
+    language: PropTypes.string,
+    maxParticipants: PropTypes.number,
     participants: PropTypes.array,
     isPrivate: PropTypes.bool,
     joinCode: PropTypes.string
-  }).isRequired,
+  }),
   onLeave: PropTypes.func.isRequired
+};
+
+SessionInfo.defaultProps = {
+  session: null
 };
 
 export default SessionInfo; 
