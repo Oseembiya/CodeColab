@@ -1,12 +1,15 @@
-import { useState } from "react";
-import { auth } from "../firebaseConfig";
+import { useState, useEffect } from "react";
+import { auth, storage } from "../firebaseConfig";
 import { updateProfile, updatePassword } from "firebase/auth";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { 
   FaUser, FaEdit, FaKey, FaUserCircle, 
   FaCode, FaHistory, FaStar, FaCog,
   FaGithub, FaLinkedin, FaTwitter, FaGlobe,
-  FaUsers, FaCheck, FaTimes, FaExclamationCircle, FaCheckCircle
+  FaUsers, FaCheck, FaTimes, FaExclamationCircle, FaCheckCircle,
+  FaCamera
 } from "react-icons/fa";
+import { v4 as uuidv4 } from 'uuid';
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState('personal');
@@ -35,7 +38,8 @@ const Profile = () => {
     // Security
     currentPassword: "",
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    timestamp: null
   });
 
   // Mock data for statistics and activity
@@ -58,6 +62,9 @@ const Profile = () => {
     { name: 'React', level: 85 },
     { name: 'Node.js', level: 80 }
   ];
+
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -122,6 +129,88 @@ const Profile = () => {
     }
   };
 
+  const handlePhotoUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('Image must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingPhoto(true);
+      setPhotoError(null);
+      setError("");
+
+      // Create unique filename
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${auth.currentUser.uid}-${uuidv4()}.${fileExtension}`;
+      
+      // Create storage reference
+      const storageRef = ref(storage, `profile-photos/${fileName}`);
+      
+      // Upload file
+      await uploadBytes(storageRef, file);
+      
+      // Get download URL
+      const photoURL = await getDownloadURL(storageRef);
+      
+      // Update user profile
+      await updateProfile(auth.currentUser, { photoURL });
+      
+      setSuccess("Profile photo updated successfully!");
+      
+      // Force a re-render of the profile image
+      setFormData(prev => ({ ...prev, timestamp: Date.now() }));
+
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      setPhotoError('Failed to upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const renderProfileAvatar = () => (
+    <div className="profile-avatar">
+      {auth.currentUser?.photoURL ? (
+        <img 
+          src={`${auth.currentUser.photoURL}?t=${formData.timestamp || ''}`}
+          alt="Profile"
+          className="avatar-large"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "/default-avatar.png";
+          }}
+        />
+      ) : (
+        <FaUserCircle className="avatar-icon" />
+      )}
+      
+      {isEditing && (
+        <label className="avatar-icon" htmlFor="photo-upload">
+          <input
+            type="file"
+            id="photo-upload"
+            accept="image/*"
+            onChange={handlePhotoUpload}
+            disabled={uploadingPhoto}
+            className="hidden"
+          />
+          <FaCamera />
+        </label>
+      )}
+    </div>
+  );
+
   return (
     <div className="profile-main-content">
       <div className="profile-container">
@@ -160,16 +249,7 @@ const Profile = () => {
 
         <div className="profile-section">
           <div className="profile-overview">
-            <div className="profile-avatar">
-              <img 
-                src={auth.currentUser?.photoURL || "/default-avatar.png"} 
-                alt="Profile" 
-                className="avatar-large"
-              />
-              <button type="button" className="avatar-icon">
-                <FaUser />
-              </button>
-            </div>
+            {renderProfileAvatar()}
             <div className="profile-stats">
               {Object.entries(statistics).map(([key, value]) => (
                 <div key={key} className="stat-item">
@@ -524,5 +604,4 @@ const Profile = () => {
     </div>
   );
 };
-
 export default Profile; 
