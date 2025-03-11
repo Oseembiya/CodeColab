@@ -6,8 +6,13 @@ const SoloEditor = () => {
   const [language, setLanguage] = useState('javascript');
 
   const handleRunCode = async (code) => {
-    const result = await executeCode(code, language);
-    return result;
+    try {
+      const result = await executeCode(code, language);
+      return result;
+    } catch (error) {
+      console.error('Code execution error:', error);
+      throw error;
+    }
   };
 
   const handleCheckAnswer = async (code) => {
@@ -17,7 +22,7 @@ const SoloEditor = () => {
   return (
     <BaseEditor
       language={language}
-      onLanguageChange={(e) => setLanguage(e.target.value)}
+      onLanguageChange={setLanguage}
       onRunCode={handleRunCode}
       showCheckAnswer={true}
       onCheckAnswer={handleCheckAnswer}

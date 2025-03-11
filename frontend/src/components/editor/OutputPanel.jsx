@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 
 const OutputPanel = memo(({ 
   output, 
+  error,
   height, 
   isCollapsed, 
   onDragStart,
@@ -34,7 +35,7 @@ const OutputPanel = memo(({
       <div className="output-header">
         <h3>Output</h3>
       </div>
-      <div className="output-scroll">
+      <div className={`output-scroll ${error ? 'error' : ''}`}>
         {output && <pre>{output}</pre>}
       </div>
     </div>
@@ -43,6 +44,7 @@ const OutputPanel = memo(({
 
 OutputPanel.propTypes = {
   output: PropTypes.string,
+  error: PropTypes.string,
   height: PropTypes.number.isRequired,
   isCollapsed: PropTypes.bool.isRequired,
   onDragStart: PropTypes.func.isRequired,

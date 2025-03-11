@@ -11,7 +11,7 @@ const BaseEditor = ({
   onEditorMount,
   onEditorChange,
   onCursorMove,
-  language,
+  language = 'javascript',
   onLanguageChange,
   onRunCode,
   initialValue = "// Start coding here",
@@ -21,6 +21,7 @@ const BaseEditor = ({
 }) => {
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [outputHeight, setOutputHeight] = useState(200);
   const [isDragging, setIsDragging] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -45,9 +46,10 @@ const BaseEditor = ({
     setOutput("Running code...");
 
     try {
-      const result = await onRunCode(editorRef.current.getValue());
+      const result = await onRunCode(editorRef.current.getValue(), language);
       setOutput(result);
     } catch (error) {
+      console.error('Execution error:', error);
       setOutput(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -82,7 +84,8 @@ const BaseEditor = ({
     setIsDragging(false);
   };
 
-  const handleLanguageChange = (newLanguage) => {
+  const handleLanguageChange = (e) => {
+    const newLanguage = e.target.value;
     onLanguageChange(newLanguage);
   };
 
@@ -141,6 +144,7 @@ const BaseEditor = ({
 
         <OutputPanel 
           output={output}
+          error={error}
           height={outputHeight}
           isCollapsed={isCollapsed}
           onDragStart={handleDragStart}

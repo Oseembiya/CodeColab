@@ -18,8 +18,8 @@ const debounce = (func, wait) => {
   };
 };
 
-const CollaborativeEditor = ({ sessionId, userId, initialLanguage }) => {
-  const [language, setLanguage] = useState(initialLanguage);
+const CollaborativeEditor = ({ sessionId, userId }) => {
+  const [language, setLanguage] = useState('javascript');
   const socketRef = useRef(null);
   const editorRef = useRef(null);
   const lastUpdateRef = useRef('');
@@ -93,8 +93,7 @@ const CollaborativeEditor = ({ sessionId, userId, initialLanguage }) => {
     debouncedCodeChange(value);
   }, [debouncedCodeChange]);
 
-  const handleLanguageChange = (e) => {
-    const newLanguage = e.target.value;
+  const handleLanguageChange = (newLanguage) => {
     setLanguage(newLanguage);
     socketRef.current?.emit('language-change', {
       sessionId,
@@ -104,8 +103,13 @@ const CollaborativeEditor = ({ sessionId, userId, initialLanguage }) => {
   };
 
   const handleRunCode = async (code) => {
-    const result = await executeCode(code, language);
-    return result;
+    try {
+      const result = await executeCode(code, language);
+      return result;
+    } catch (error) {
+      console.error('Code execution error:', error);
+      throw error;
+    }
   };
 
   const handleCheck = useCallback(() => {
@@ -127,7 +131,6 @@ const CollaborativeEditor = ({ sessionId, userId, initialLanguage }) => {
 CollaborativeEditor.propTypes = {
   sessionId: PropTypes.string.isRequired,
   userId: PropTypes.string.isRequired,
-  initialLanguage: PropTypes.string
 };
 
 export default CollaborativeEditor; 
