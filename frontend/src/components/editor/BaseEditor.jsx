@@ -1,4 +1,4 @@
-import { useState, useRef, Suspense, lazy } from 'react';
+import { useState, useRef, Suspense, lazy, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import EditorToolbar from './EditorToolbar';
 import OutputPanel from './OutputPanel';
@@ -32,8 +32,31 @@ const BaseEditor = ({
   const dragStartY = useRef(null);
   const dragStartHeight = useRef(null);
 
-  const handleEditorDidMount = (editor) => {
+  const [fontSize, setFontSize] = useState(14);
+  const [editorOptions, setEditorOptions] = useState({
+    minimap: { enabled: false },
+    fontSize: 14,
+    automaticLayout: true,
+    lineNumbers: 'on',
+    roundedSelection: false,
+    scrollBeyondLastLine: false,
+    readOnly: false,
+    cursorStyle: 'line',
+    tabSize: 2,
+    wordWrap: 'on',
+    formatOnPaste: true,
+    formatOnType: true
+  });
+
+  const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
+    
+    // Add keyboard shortcuts
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, handleRunCode);
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, handleFormat);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Equal, handleZoomIn);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Minus, handleZoomOut);
+
     if (onEditorMount) {
       onEditorMount(editor);
     }
@@ -94,11 +117,85 @@ const BaseEditor = ({
     console.log('Check functionality not implemented');
   };
 
+  const handleFormat = useCallback(() => {
+    if (editorRef.current) {
+      editorRef.current.getAction('editor.action.formatDocument').run();
+    }
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setFontSize(prev => Math.min(prev + 2, 24));
+    setEditorOptions(prev => ({
+      ...prev,
+      fontSize: Math.min(prev.fontSize + 2, 24)
+    }));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setFontSize(prev => Math.max(prev - 2, 12));
+    setEditorOptions(prev => ({
+      ...prev,
+      fontSize: Math.max(prev.fontSize - 2, 12)
+    }));
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    editorRef.current?.trigger('keyboard', 'undo', null);
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    editorRef.current?.trigger('keyboard', 'redo', null);
+  }, []);
+
+  const handleCopy = useCallback(() => {
+    const code = editorRef.current?.getValue();
+    if (code) {
+      navigator.clipboard.writeText(code);
+    }
+  }, []);
+
+  const handleDownload = useCallback(() => {
+    const code = editorRef.current?.getValue();
+    if (code) {
+      const blob = new Blob([code], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `code.${language}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  }, [language]);
+
+  const handleUpload = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result;
+        if (content && editorRef.current) {
+          editorRef.current.setValue(content);
+        }
+      };
+      reader.readAsText(file);
+    }
+  }, []);
+
   return (
     <div className={`editor-container ${isFullScreen ? 'fullscreen' : ''}`}>
       <EditorToolbar 
         onRun={handleRunCode}
-        onCheck={showCheckAnswer ? onCheckAnswer : handleCheck}
+        onCheck={showCheckAnswer ? onCheckAnswer : undefined}
+        onFormat={handleFormat}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onCopy={handleCopy}
+        onDownload={handleDownload}
+        onUpload={handleUpload}
         isLoading={isLoading}
         language={language}
         onLanguageChange={handleLanguageChange}
@@ -109,6 +206,8 @@ const BaseEditor = ({
           { id: "cpp", name: "C++" },
           { id: "csharp", name: "C#" }
         ]}
+        fontSize={fontSize}
+        onFontSizeChange={setFontSize}
       />
 
       <div className="editor-content">
@@ -121,16 +220,7 @@ const BaseEditor = ({
               value={initialValue}
               onChange={onEditorChange}
               onMount={handleEditorDidMount}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                automaticLayout: true,
-                lineNumbers: 'on',
-                roundedSelection: false,
-                scrollBeyondLastLine: false,
-                readOnly: readOnly,
-                cursorStyle: 'line',
-              }}
+              options={editorOptions}
             />
           </Suspense>
 
