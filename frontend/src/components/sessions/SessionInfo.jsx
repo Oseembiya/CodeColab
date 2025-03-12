@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen, FaChevronUp } from 'react-icons/fa';
+import AlertDialog from '../notifications/AlertDialog';
 
 const SessionInfo = ({ session, onLeave, socket }) => {
   const [participantCount, setParticipantCount] = useState(0);
   const [maxParticipants, setMaxParticipants] = useState(session?.maxParticipants || 4);
   const [isHidden, setIsHidden] = useState(false);
+  const [showLeaveAlert, setShowLeaveAlert] = useState(false);
 
   useEffect(() => {
     if (!socket || !session?.id) return;
@@ -35,56 +37,71 @@ const SessionInfo = ({ session, onLeave, socket }) => {
   }
 
   const handleLeave = () => {
-    if (window.confirm('Are you sure you want to leave this session?')) {
-      onLeave();
-    }
+    setShowLeaveAlert(true);
+  };
+
+  const handleConfirmLeave = () => {
+    setShowLeaveAlert(false);
+    onLeave();
+  };
+
+  const handleCancelLeave = () => {
+    setShowLeaveAlert(false);
   };
 
   return (
-    <div className={`session-info ${isHidden ? 'hidden' : ''}`}>
-      <div className="session-info-header">
-        <h2>{session.title}</h2>
-        {session.isPrivate ? <FaLock /> : <FaLockOpen />}
+    <>
+      <div className={`session-info ${isHidden ? 'hidden' : ''}`}>
+        <div className="session-info-header">
+          <h2>{session.title}</h2>
+          {session.isPrivate ? <FaLock /> : <FaLockOpen />}
+          <button 
+            className="leave-button"
+            onClick={handleLeave}
+          >
+            Leave
+          </button>
+        </div>
+        
+        <div className="session-meta">
+          <div className="meta-item">
+            <FaClock />
+            <span>Started: {new Date(session.startTime).toLocaleString()}</span>
+          </div>
+          <div className="meta-item">
+            <FaUsers />
+            <span>Participants: {participantCount}/{maxParticipants}</span>
+          </div>
+          <div className="meta-item">
+            <FaCode />
+            <span>Language: {session.language}</span>
+          </div>
+        </div>
+        
+        {session.description && (
+          <p className="session-description">{session.description}</p>
+        )}
+
+        {session.isPrivate && session.joinCode && (
+          <div className="session-join-code">
+            Join Code: <span>{session.joinCode}</span>
+          </div>
+        )}
+
         <button 
-          className="leave-button"
-          onClick={handleLeave}
+          className="session-info-toggle"
+          onClick={() => setIsHidden(!isHidden)}
         >
-          Leave
+          <FaChevronUp />
         </button>
       </div>
-      
-      <div className="session-meta">
-        <div className="meta-item">
-          <FaClock />
-          <span>Started: {new Date(session.startTime).toLocaleString()}</span>
-        </div>
-        <div className="meta-item">
-          <FaUsers />
-          <span>Participants: {participantCount}/{maxParticipants}</span>
-        </div>
-        <div className="meta-item">
-          <FaCode />
-          <span>Language: {session.language}</span>
-        </div>
-      </div>
-      
-      {session.description && (
-        <p className="session-description">{session.description}</p>
-      )}
 
-      {session.isPrivate && session.joinCode && (
-        <div className="session-join-code">
-          Join Code: <span>{session.joinCode}</span>
-        </div>
-      )}
-
-      <button 
-        className="session-info-toggle"
-        onClick={() => setIsHidden(!isHidden)}
-      >
-        <FaChevronUp />
-      </button>
-    </div>
+      <AlertDialog
+        isOpen={showLeaveAlert}
+        onConfirm={handleConfirmLeave}
+        onCancel={handleCancelLeave}
+      />
+    </>
   );
 };
 
