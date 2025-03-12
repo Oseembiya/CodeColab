@@ -4,6 +4,8 @@
   height: 100%;
   position: relative;
   overflow: hidden;
+  transition: all 0.3s ease;
+  width: 100%;
 }
 
 .editor-container.fullscreen {
@@ -14,7 +16,7 @@
   bottom: 0;
   z-index: 1000;
   background: #1e1e1e;
-  height: 100vh !important;
+  height: 100vh;
 }
 
 .session-header {
@@ -27,6 +29,7 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  width: 100%;
 }
 
 .editor-content {
@@ -35,7 +38,8 @@
   flex-direction: column;
   min-width: 0;
   position: relative;
-  height: calc(100% - 60px);
+  height: 100%;
+  width: 100%;
 }
 
 .editor-content .video-panel {
@@ -157,7 +161,9 @@
   flex: 1;
   position: relative;
   overflow: hidden;
+  width: 100%;
   height: calc(100% - 300px);
+  transition: height 0.3s ease;
 }
 
 /* Add to your existing editor styles */
@@ -170,13 +176,12 @@
   height: 300px;
   background-color: var(--background-color);
   border-top: 1px solid var(--line-color);
-  z-index: 10;
+  z-index: 100;
   transition: transform 0.3s ease;
 }
 
 .output-panel.collapsed {
   transform: translateY(calc(100% - 35px));
-  height: 35px;
 }
 
 .output-panel.collapsed ~ .monaco-editor-wrapper {
@@ -184,15 +189,19 @@
 }
 
 .editor-container.fullscreen .monaco-editor-wrapper {
-  height: calc(100vh - 360px);
+  height: calc(100% - 300px);
 }
 
 .editor-container.fullscreen .output-panel.collapsed ~ .monaco-editor-wrapper {
-  height: calc(100vh - 95px);
+  height: calc(100% - 35px);
 }
 
-.monaco-editor-wrapper {
-  transition: height 0.3s ease;
+.editor-container.fullscreen .output-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1001;
 }
 
 /* Add specific styles for video panel in fullscreen mode */

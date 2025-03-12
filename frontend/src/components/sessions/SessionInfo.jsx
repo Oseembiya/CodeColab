@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from 'react-icons/fa';
+import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen, FaChevronUp } from 'react-icons/fa';
 
 const SessionInfo = ({ session, onLeave, socket }) => {
   const [participantCount, setParticipantCount] = useState(0);
   const [maxParticipants, setMaxParticipants] = useState(session?.maxParticipants || 4);
+  const [isHidden, setIsHidden] = useState(false);
 
   useEffect(() => {
     if (!socket || !session?.id) return;
@@ -40,7 +41,7 @@ const SessionInfo = ({ session, onLeave, socket }) => {
   };
 
   return (
-    <div className="session-info">
+    <div className={`session-info ${isHidden ? 'hidden' : ''}`}>
       <div className="session-info-header">
         <h2>{session.title}</h2>
         {session.isPrivate ? <FaLock /> : <FaLockOpen />}
@@ -76,6 +77,13 @@ const SessionInfo = ({ session, onLeave, socket }) => {
           Join Code: <span>{session.joinCode}</span>
         </div>
       )}
+
+      <button 
+        className="session-info-toggle"
+        onClick={() => setIsHidden(!isHidden)}
+      >
+        <FaChevronUp />
+      </button>
     </div>
   );
 };

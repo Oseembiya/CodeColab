@@ -1,9 +1,65 @@
 .session-info {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--background-color);
   color: white;
   padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
   margin-bottom: 15px;
+  z-index: 99;
+  transition: transform 0.3s ease;
+  border-bottom: 1px solid var(--line-color);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Add this for the slide up state */
+.session-info.hidden {
+  transform: translateY(-100%);
+}
+
+/* Add a toggle button */
+.session-info-toggle {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--background-color);
+  border: 1px solid var(--line-color);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 4px 12px;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.session-info-toggle:hover {
+  background: var(--hover-color);
+}
+
+.session-info-toggle svg {
+  transition: transform 0.3s ease;
+}
+
+.session-info.hidden .session-info-toggle svg {
+  transform: rotate(180deg);
+}
+
+/* Adjust the editor container to account for session info */
+.editor-container {
+  height: calc(100% - var(--spacing-xl));
+  transition: margin-top 0.3s ease;
+}
+
+/* When session info is hidden, remove the margin */
+.editor-container.info-hidden {
+  margin-top: 0;
+  height: 100%;
 }
 
 .session-info-header {
@@ -64,8 +120,12 @@
   margin-left: 5px;
 }
 
-/* Responsive design */
+/* Responsive adjustments */
 @media (max-width: 768px) {
+  .session-info {
+    padding: 10px;
+  }
+
   .session-meta {
     flex-direction: column;
     gap: 0.5rem;
@@ -75,6 +135,11 @@
     flex-direction: column;
     text-align: center;
     gap: 0.5rem;
+  }
+
+  .session-info-toggle {
+    padding: 2px 8px;
+    bottom: -20px;
   }
 }
 

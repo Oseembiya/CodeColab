@@ -5,10 +5,8 @@ import { db, auth } from '../firebaseConfig';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { io } from 'socket.io-client';
 import SessionInfo from '../components/sessions/SessionInfo';
-
-const CollaborativeEditor = lazy(() => import('../components/editor/CollaborativeEditor'));
-const VideoChat = lazy(() => import('../components/collaboration/VideoChat'));
-const Whiteboard = lazy(() => import('../components/whiteboard/Whiteboard'));
+import CollaborativeEditor from '../components/editor/CollaborativeEditor';
+import VideoChat from '../components/collaboration/VideoChat';
 
 const CollaborativeSession = () => {
   const { sessionId } = useParams();
@@ -137,28 +135,14 @@ const CollaborativeSession = () => {
       
       <div className="session-content">
         <div className="editor-section">
-          <Suspense fallback={<div>Loading editor...</div>}>
-            <CollaborativeEditor
-              sessionId={sessionId}
-              userId={userId}
-              language={sessionData?.language || 'javascript'}
-            />
-          </Suspense>
-        </div>
-        
-        <div className="collaboration-panel">
-          <Suspense fallback={<div>Loading video chat...</div>}>
-            <VideoChat
-              sessionId={sessionId}
-              userId={userId}
-            />
-          </Suspense>
-          <Suspense fallback={<div>Loading whiteboard...</div>}>
-            <Whiteboard
-              sessionId={sessionId}
-              userId={userId}
-            />
-          </Suspense>
+          <CollaborativeEditor
+            sessionId={sessionId}
+            userId={userId}
+          />
+          <VideoChat
+            sessionId={sessionId}
+            userId={userId}
+          />
         </div>
       </div>
     </div>

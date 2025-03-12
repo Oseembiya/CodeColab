@@ -6,7 +6,8 @@ import {
   FaBell, 
   FaEnvelope, 
   FaTimes,
-  FaUsers
+  FaUsers,
+  FaPencilAlt
 } from 'react-icons/fa';
 import { memo, useState, useEffect } from 'react';
 import { auth } from '../firebaseConfig';
@@ -80,6 +81,14 @@ const Navigation = memo(() => {
           >
             <FaUsers />
             <span>Collaborative Sessions</span>
+          </Link>
+
+          <Link 
+            to="/dashboard/whiteboard" 
+            className={`menu-item ${location.pathname === '/dashboard/whiteboard' ? 'active' : ''}`}
+          >
+            <FaPencilAlt />
+            <span>Whiteboard</span>
           </Link>
         </div>
 

@@ -14,6 +14,7 @@ const Profile = lazy(() => import("./pages/profile"));
 const Sessions = lazy(() => import("./pages/sessions")); // Make sure filename matches exactly
 const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage")); // Add this
 const CollaborationSession = lazy(() => import("./pages/CollaborativeSession"));
+const Whiteboard = lazy(() => import("./pages/Whiteboard"));
 
 // Improve loading component
 const LoadingFallback = () => (
@@ -44,6 +45,7 @@ const App = () => {
                 <Route path="sessions" element={<Sessions />} />
                 <Route path="sessions/:sessionId" element={<CollaborationSession />} />
                 <Route path="editor" element={<CodeEditorPage />} /> {/* Solo coding */}
+                <Route path="whiteboard" element={<Whiteboard />} />
               </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
