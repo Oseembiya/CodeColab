@@ -163,7 +163,7 @@ const Sessions = () => {
             className="join-session-btn"
             onClick={() => setShowJoinModal(true)}
           >
-            <FaUsers /> Join Session
+            <FaUsers /> Join private Session 
           </button>
           <button 
             className="create-session-btn"
