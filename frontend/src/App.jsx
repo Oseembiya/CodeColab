@@ -12,7 +12,7 @@ const ProtectedRoute = lazy(() => import("./pages/protectedRoute"));
 const Login = lazy(() => import("./pages/login"));
 const Dashboard = lazy(() => import("./pages/dashboard"));
 const Profile = lazy(() => import("./pages/profile"));
-const Sessions = lazy(() => import("./components/sessions/sessions")); // Make sure filename matches exactly
+const Sessions = lazy(() => import("./components/sessions/sessions")); 
 const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage")); // Add this
 const CollaborationSession = lazy(() => import("./pages/CollaborativeSession"));
 const Whiteboard = lazy(() => import("./pages/Whiteboard"));
