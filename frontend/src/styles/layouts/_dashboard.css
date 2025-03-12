@@ -1,10 +1,6 @@
 .container {
-  display: grid;
-  grid-template-columns: 210px 1fr;
-  grid-template-rows: 60px 1fr;
+  display: flex;
   min-height: 100vh;
-  width: 100%;
-  position: relative;
 }
 
 /* Sidebar styling */
@@ -25,7 +21,7 @@
 .navbar {
   grid-row: 1;
   grid-column: 2;
-  left: 210px;
+  left: 200px;
   transition: left 0.3s ease;
 }
 
@@ -35,16 +31,17 @@
 
 /* Main content area */
 .main-content {
-  grid-row: 2;
-  grid-column: 2;
-  height: calc(100vh - 60px);
+  flex: 1;
+  margin-left: 200px; /* Width of your sidebar */
+  padding-top: 60px; /* Height of your navbar */
+  height: calc(100vh - 0px);
   overflow-y: auto;
   transition: all 0.3s ease;
   width: 100%;
   position: relative;
 }
 
-.sidebar-closed ~ .main-content {
+.sidebar-closed + .main-content {
   margin-left: 0;
 }
 

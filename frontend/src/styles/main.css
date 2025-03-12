@@ -1,5 +1,6 @@
-@import './components/_form.css';
 @import './_reset.css';
+@import './components/_form.css';
+@import './components/_main-dashboard.css';
 @import './components/_navigation.css';
 @import './layouts/_dashboard.css';
 @import './layouts/_profile.css';
