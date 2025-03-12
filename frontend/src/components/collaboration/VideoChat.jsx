@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Peer from 'peerjs';
 import PropTypes from 'prop-types';
 import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaSync, FaGripVertical } from 'react-icons/fa';
+import io from 'socket.io-client';
 
 const VideoChat = ({ sessionId, userId }) => {
   const [peers, setPeers] = useState(new Map());
@@ -11,6 +12,7 @@ const VideoChat = ({ sessionId, userId }) => {
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [error, setError] = useState(null);
   const peerRef = useRef(null);
+  const socketRef = useRef(null);
   const streamRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const isUnmountingRef = useRef(false);
@@ -63,125 +65,91 @@ const VideoChat = ({ sessionId, userId }) => {
     return `${sessionId}-${userId}-${timestamp}-${random}`;
   }, [sessionId, userId]);
 
-  const initializePeer = useCallback(async () => {
-    if (isUnmountingRef.current) return;
-
-    cleanupPeer();
-
+  const initializeVideoChat = useCallback(async () => {
     try {
-      setConnectionStatus('connecting');
-      setError(null);
-
-      const peer = new Peer(generatePeerId(), {
-        host: import.meta.env.VITE_PEER_HOST || 'localhost',
-        port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
-        path: '/myapp',
-        debug: 1,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
-          ]
-        },
-        // Add retry options
-        retryOptions: {
-          maxAttempts: 3,
-          delay: 1000
-        }
+      // 1. Initialize Socket.IO connection
+      socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
+        transports: ['websocket', 'polling']
       });
 
-      // Store the peer instance
-      peerRef.current = peer;
-
-      // Set up event listeners
-      peer.on('open', (id) => {
-        if (!isUnmountingRef.current) {
-          console.log('Connected to peer server with ID:', id);
-          setConnectionStatus('connected');
-        }
-      });
-
-      peer.on('error', (err) => {
-        if (!isUnmountingRef.current) {
-          console.error('Peer error:', err);
-          setError(err.message);
-          setConnectionStatus('error');
-
-          // Only attempt reconnection for specific errors
-          if (err.type === 'network' || err.type === 'disconnected') {
-            setTimeout(() => {
-              if (!isUnmountingRef.current) {
-                console.log('Attempting to reconnect...');
-                initializePeer();
-              }
-            }, 5000);
-          }
-        }
-      });
-
-      peer.on('disconnected', () => {
-        if (!isUnmountingRef.current) {
-          console.log('Disconnected from peer server');
-          setConnectionStatus('disconnected');
-          
-          // Attempt to reconnect
-          setTimeout(() => {
-            if (!isUnmountingRef.current && peerRef.current) {
-              console.log('Attempting to reconnect...');
-              peer.reconnect();
-            }
-          }, 2000);
-        }
-      });
-
-      // Initialize media stream
+      // 2. Get user media stream
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true
       });
+      streamRef.current = mediaStream;
+      setStream(mediaStream);
 
-      if (!isUnmountingRef.current) {
-        setStream(mediaStream);
-        streamRef.current = mediaStream;
+      // 3. Initialize PeerJS
+      const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
+        host: import.meta.env.VITE_PEER_HOST || 'localhost',
+        port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
+        path: '/myapp'
+      });
 
-        // Handle incoming calls
-        peer.on('call', (call) => {
-          call.answer(mediaStream);
-          
-          call.on('stream', (remoteStream) => {
-            if (!isUnmountingRef.current) {
-              setPeers(prev => new Map(prev).set(call.peer, remoteStream));
-            }
-          });
+      peerRef.current = peer;
 
-          call.on('close', () => {
-            if (!isUnmountingRef.current) {
-              setPeers(prev => {
-                const newPeers = new Map(prev);
-                newPeers.delete(call.peer);
-                return newPeers;
-              });
-            }
-          });
+      // 4. Handle peer open event
+      peer.on('open', (peerId) => {
+        console.log('My peer ID is:', peerId);
+        socketRef.current.emit('join-video', {
+          sessionId,
+          userId,
+          peerId
+        });
+      });
 
-          call.on('error', (error) => {
-            console.error('Call error:', error);
+      // 5. Handle incoming calls
+      peer.on('call', (call) => {
+        console.log('Receiving call from:', call.peer);
+        call.answer(streamRef.current);
+        
+        call.on('stream', (remoteStream) => {
+          console.log('Received remote stream from:', call.peer);
+          setPeers(prev => new Map(prev).set(call.peer, remoteStream));
+        });
+
+        call.on('close', () => {
+          console.log('Call closed with:', call.peer);
+          setPeers(prev => {
+            const newPeers = new Map(prev);
+            newPeers.delete(call.peer);
+            return newPeers;
           });
         });
-      }
+      });
+
+      // 6. Handle socket events
+      socketRef.current.on('user-joined', ({ peerId: newPeerId }) => {
+        console.log('New user joined with peer ID:', newPeerId);
+        if (newPeerId !== peer.id && streamRef.current) {
+          const call = peer.call(newPeerId, streamRef.current);
+          
+          call.on('stream', (remoteStream) => {
+            console.log('Received stream from new user:', newPeerId);
+            setPeers(prev => new Map(prev).set(newPeerId, remoteStream));
+          });
+        }
+      });
+
+      socketRef.current.on('user-left', ({ peerId }) => {
+        console.log('User left:', peerId);
+        setPeers(prev => {
+          const newPeers = new Map(prev);
+          newPeers.delete(peerId);
+          return newPeers;
+        });
+      });
 
     } catch (err) {
-      if (!isUnmountingRef.current) {
-        console.error('Failed to initialize peer:', err);
-        setError(err.message);
-        setConnectionStatus('error');
-      }
+      console.error('Error initializing video chat:', err);
+      setError(err.message);
     }
-  }, [sessionId, userId, generatePeerId, cleanupPeer]);
+  }, [sessionId, userId]);
 
   useEffect(() => {
     isUnmountingRef.current = false;
-    initializePeer();
+    initializeVideoChat();
 
     return () => {
       isUnmountingRef.current = true;
@@ -200,8 +168,46 @@ const VideoChat = ({ sessionId, userId }) => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      
+      // Clean up socket connection
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
-  }, [initializePeer]);
+  }, [initializeVideoChat]);
+
+  useEffect(() => {
+    const socket = io(import.meta.env.VITE_SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      autoConnect: true,
+      withCredentials: true
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setError('Connection error. Please try again.');
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket connected successfully');
+      setError(null);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        // Reconnect manually if server disconnected
+        socket.connect();
+      }
+    });
+
+    // Clean up on unmount
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const toggleVideo = () => {
     if (streamRef.current) {
@@ -332,10 +338,16 @@ const VideoChat = ({ sessionId, userId }) => {
               autoPlay
               playsInline
             />
-            <div className="video-label">Peer</div>
+            <div className="video-label">Participant</div>
           </div>
         ))}
       </div>
+
+      {error && (
+        <div className="video-error">
+          Error: {error}
+        </div>
+      )}
     </div>
   );
 };
