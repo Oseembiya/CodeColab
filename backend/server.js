@@ -6,7 +6,11 @@ const { PeerServer } = require('peer');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  methods: ["GET", "POST"],
+  credentials: true
+}));
 
 const httpServer = createServer(app);
 
@@ -14,9 +18,12 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
-  transports: ['websocket'], // Force WebSocket transport
+  allowEIO3: true, // Allow Engine.IO version 3
+  transports: ['websocket', 'polling'], // Allow both WebSocket and polling
   pingTimeout: 60000,
   pingInterval: 25000,
   maxHttpBufferSize: 1e6, // 1 MB
@@ -46,6 +53,9 @@ const activeSessions = new Map();
 // Implement rate limiting for code updates
 const updateRateLimiter = new Map();
 const RATE_LIMIT_WINDOW = 100; // ms
+
+// Add at the top with other declarations
+const videoParticipants = new Map(); // Track video participants per session
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -146,6 +156,29 @@ io.on('connection', (socket) => {
       });
     });
   });
+
+  // Handle video chat participants
+  socket.on('join-video', ({ sessionId, userId, peerId }) => {
+    console.log(`User ${userId} joined video chat in session ${sessionId} with peer ID ${peerId}`);
+    
+    // Join the video room
+    socket.join(`video-${sessionId}`);
+    
+    // Notify others in the session about the new participant
+    socket.to(`video-${sessionId}`).emit('user-joined', {
+      userId,
+      peerId
+    });
+
+    // Handle disconnection
+    socket.on('disconnect', () => {
+      console.log(`User ${userId} left video chat`);
+      io.to(`video-${sessionId}`).emit('user-left', {
+        userId,
+        peerId
+      });
+    });
+  });
 });
 
 // PeerJS server events
@@ -165,7 +198,7 @@ peerServer.on('error', (error) => {
 // Start the server
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Express server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
   console.log(`PeerJS server running on port 9000`);
 });
 
@@ -182,4 +215,9 @@ process.on('SIGINT', () => {
   });
   
   process.exit(0);
+});
+
+// Add this near the top of your server.js
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 }); 
