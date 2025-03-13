@@ -7,9 +7,6 @@ const OutputPanel = memo(({
   height, 
   isCollapsed, 
   onDragStart,
-  onTouchStart,
-  onTouchMove,
-  onTouchEnd,
   onCollapse 
 }) => (
   <div 
@@ -19,9 +16,6 @@ const OutputPanel = memo(({
     <div 
       className="output-drag-handle" 
       onMouseDown={onDragStart}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
       onClick={onCollapse}
     >
       <div className="drag-handle-content">
@@ -36,7 +30,11 @@ const OutputPanel = memo(({
         <h3>Output</h3>
       </div>
       <div className={`output-scroll ${error ? 'error' : ''}`}>
-        {output && <pre>{output}</pre>}
+        {output ? (
+          <pre>{output}</pre>
+        ) : (
+          <div className="no-output">Run your code to see output</div>
+        )}
       </div>
     </div>
   </div>
@@ -48,9 +46,6 @@ OutputPanel.propTypes = {
   height: PropTypes.number.isRequired,
   isCollapsed: PropTypes.bool.isRequired,
   onDragStart: PropTypes.func.isRequired,
-  onTouchStart: PropTypes.func,
-  onTouchMove: PropTypes.func,
-  onTouchEnd: PropTypes.func,
   onCollapse: PropTypes.func.isRequired
 };
 

@@ -15,17 +15,12 @@ const SoloEditor = () => {
     }
   };
 
-  const handleCheckAnswer = async (code) => {
-    // Implement answer checking logic
-  };
-
   return (
     <BaseEditor
       language={language}
       onLanguageChange={setLanguage}
       onRunCode={handleRunCode}
       showCheckAnswer={true}
-      onCheckAnswer={handleCheckAnswer}
     />
   );
 };

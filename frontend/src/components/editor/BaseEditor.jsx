@@ -1,8 +1,9 @@
-import { useState, useRef, Suspense, lazy, useCallback } from 'react';
+import { useState, useRef, Suspense, lazy, useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import EditorToolbar from './EditorToolbar';
 import OutputPanel from './OutputPanel';
 import { FaExpandAlt, FaCompressAlt } from 'react-icons/fa';
+import { getBoilerplate } from '../../services/codeExecution';
 
 // Lazy load Monaco editor
 const MonacoEditor = lazy(() => import("@monaco-editor/react"));
@@ -10,7 +11,7 @@ const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 const BaseEditor = ({ 
   onEditorMount,
   onEditorChange,
-  language = 'javascript',
+  language,
   onLanguageChange,
   onRunCode,
   initialValue = "// Start coding here"
@@ -22,13 +23,12 @@ const BaseEditor = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const editorRef = useRef(null);
-  
-  // Drag handling refs
-  const dragStartY = useRef(null);
-  const dragStartHeight = useRef(null);
-
   const [fontSize, setFontSize] = useState(14);
+  
+  const editorRef = useRef(null);
+  const dragStartY = useRef(0);
+  const initialHeight = useRef(0);
+
   const [editorOptions, setEditorOptions] = useState({
     minimap: { enabled: false },
     fontSize: 14,
@@ -36,107 +36,53 @@ const BaseEditor = ({
     lineNumbers: 'on',
     roundedSelection: false,
     scrollBeyondLastLine: false,
-    readOnly: false,
-    cursorStyle: 'line',
     tabSize: 2,
-    wordWrap: 'on',
-    formatOnPaste: true,
-    formatOnType: true
+    wordWrap: 'on'
   });
-
-  const handleEditorDidMount = (editor, monaco) => {
-    editorRef.current = editor;
-    
-    // Add keyboard shortcuts
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, handleRunCode);
-    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, handleFormat);
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Equal, handleZoomIn);
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Minus, handleZoomOut);
-
-    if (onEditorMount) {
-      onEditorMount(editor);
-    }
-  };
 
   const handleRunCode = async () => {
     if (!editorRef.current) return;
     
     setIsLoading(true);
     setOutput("Running code...");
+    setError(null);
 
     try {
-      const result = await onRunCode(editorRef.current.getValue(), language);
+      const code = editorRef.current.getValue();
+      console.log('Running code:', code); // Debug log
+      const result = await onRunCode(code, language);
+      console.log('Code result:', result); // Debug log
       setOutput(result);
     } catch (error) {
       console.error('Execution error:', error);
+      setError(error.message);
       setOutput(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Drag handlers
-  const handleDragStart = (event) => {
-    if (event instanceof TouchEvent) {
-      dragStartY.current = event.touches[0].clientY;
-    } else {
-      dragStartY.current = event.clientY;
-    }
-    dragStartHeight.current = outputHeight;
-    setIsDragging(true);
-  };
-
-  const handleDragMove = (event) => {
-    if (!isDragging) return;
-    
-    const clientY = event instanceof TouchEvent ? 
-      event.touches[0].clientY : 
-      event.clientY;
-    
-    const deltaY = clientY - dragStartY.current;
-    const newHeight = dragStartHeight.current - deltaY;
-    
-    setOutputHeight(Math.max(100, Math.min(800, newHeight)));
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
-
-  const handleLanguageChange = (e) => {
-    const newLanguage = e.target.value;
-    onLanguageChange(newLanguage);
-  };
-
-  const handleFormat = useCallback(() => {
+  const handleFormat = () => {
     if (editorRef.current) {
       editorRef.current.getAction('editor.action.formatDocument').run();
     }
-  }, []);
+  };
 
-  const handleZoomIn = useCallback(() => {
+  const handleZoomIn = () => {
     setFontSize(prev => Math.min(prev + 2, 24));
     setEditorOptions(prev => ({
       ...prev,
       fontSize: Math.min(prev.fontSize + 2, 24)
     }));
-  }, []);
+  };
 
-  const handleZoomOut = useCallback(() => {
+  const handleZoomOut = () => {
     setFontSize(prev => Math.max(prev - 2, 12));
     setEditorOptions(prev => ({
       ...prev,
       fontSize: Math.max(prev.fontSize - 2, 12)
     }));
-  }, []);
-
-  const handleUndo = useCallback(() => {
-    editorRef.current?.trigger('keyboard', 'undo', null);
-  }, []);
-
-  const handleRedo = useCallback(() => {
-    editorRef.current?.trigger('keyboard', 'redo', null);
-  }, []);
+  };
 
   const handleCopy = useCallback(() => {
     const code = editorRef.current?.getValue();
@@ -174,6 +120,56 @@ const BaseEditor = ({
     }
   }, []);
 
+  const handleUndo = useCallback(() => {
+    editorRef.current?.trigger('keyboard', 'undo', null);
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    editorRef.current?.trigger('keyboard', 'redo', null);
+  }, []);
+
+  // Add drag handlers
+  const handleDragStart = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartY.current = e.clientY;
+    initialHeight.current = outputHeight;
+
+    // Add event listeners for dragging
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+  };
+
+  const handleDragMove = useCallback((e) => {
+    if (!isDragging) return;
+    
+    const deltaY = dragStartY.current - e.clientY;
+    const newHeight = Math.max(100, Math.min(800, initialHeight.current + deltaY));
+    setOutputHeight(newHeight);
+  }, [isDragging]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleDragMove);
+    document.removeEventListener('mouseup', handleDragEnd);
+  }, [handleDragMove]);
+
+  // Cleanup event listeners
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleDragMove);
+      document.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, [handleDragMove, handleDragEnd]);
+
+  // When language changes, you might want to update the editor content
+  useEffect(() => {
+    if (!initialValue && editorRef.current) {
+      const boilerplate = getBoilerplate(language);
+      editorRef.current.setValue(boilerplate);
+    }
+  }, [language, initialValue]);
+
   return (
     <div className={`editor-container ${isFullScreen ? 'fullscreen' : ''}`}>
       <EditorToolbar 
@@ -188,14 +184,7 @@ const BaseEditor = ({
         onUpload={handleUpload}
         isLoading={isLoading}
         language={language}
-        onLanguageChange={handleLanguageChange}
-        languages={[
-          { id: "javascript", name: "JavaScript" },
-          { id: "python", name: "Python" },
-          { id: "java", name: "Java" },
-          { id: "cpp", name: "C++" },
-          { id: "csharp", name: "C#" }
-        ]}
+        onLanguageChange={onLanguageChange}
         fontSize={fontSize}
         onFontSizeChange={setFontSize}
       />
@@ -209,7 +198,10 @@ const BaseEditor = ({
               theme="vs-dark"
               value={initialValue}
               onChange={onEditorChange}
-              onMount={handleEditorDidMount}
+              onMount={(editor) => {
+                editorRef.current = editor;
+                onEditorMount?.(editor);
+              }}
               options={editorOptions}
             />
           </Suspense>
@@ -228,9 +220,6 @@ const BaseEditor = ({
           height={outputHeight}
           isCollapsed={isCollapsed}
           onDragStart={handleDragStart}
-          onTouchStart={handleDragStart}
-          onTouchMove={handleDragMove}
-          onTouchEnd={handleDragEnd}
           onCollapse={() => setIsCollapsed(!isCollapsed)}
         />
       </div>
