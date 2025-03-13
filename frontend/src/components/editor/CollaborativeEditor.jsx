@@ -22,19 +22,15 @@ const CollaborativeEditor = ({ sessionId, userId }) => {
   const [language, setLanguage] = useState('javascript');
   const socketRef = useRef(null);
   const editorRef = useRef(null);
-  const lastUpdateRef = useRef('');
 
   // Debounced code change handler
   const debouncedCodeChange = useCallback(
     debounce((value) => {
-      if (value !== lastUpdateRef.current) {
-        socketRef.current?.emit('code-change', {
-          sessionId,
-          content: value,
-          senderId: userId
-        });
-        lastUpdateRef.current = value;
-      }
+      socketRef.current?.emit('code-change', {
+        sessionId,
+        content: value,
+        senderId: userId
+      });
     }, 100), // 100ms debounce
     [sessionId, userId]
   );
@@ -56,7 +52,6 @@ const CollaborativeEditor = ({ sessionId, userId }) => {
     socket.on('code-update', ({ content, senderId }) => {
       if (senderId !== userId && editorRef.current) {
         const position = editorRef.current.getPosition();
-        lastUpdateRef.current = content;
         editorRef.current.setValue(content);
         editorRef.current.setPosition(position);
       }
@@ -112,15 +107,10 @@ const CollaborativeEditor = ({ sessionId, userId }) => {
     }
   };
 
-  const handleCheck = useCallback(() => {
-    console.log('Collaborative check not implemented');
-  }, []);
-
   return (
     <BaseEditor
       onEditorMount={handleEditorMount}
       onEditorChange={handleEditorChange}
-      onCheck={handleCheck}
       language={language}
       onLanguageChange={handleLanguageChange}
       onRunCode={handleRunCode}

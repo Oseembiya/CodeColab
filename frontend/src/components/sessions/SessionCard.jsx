@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen, FaEdit, FaTrash } from 'react-icons/fa';
 import { io } from 'socket.io-client';
 
-const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
+const SessionCard = ({ session, isOwner, onJoin, view }) => {
   const [participantCount, setParticipantCount] = useState(session.participants?.length || 0);
   
   useEffect(() => {
@@ -87,14 +87,12 @@ const SessionCard = ({ session, isOwner, onJoin, onEdit, onDelete, view }) => {
 
       <div className="session-actions">
         {isOwner ? (
-          <>
-            <button onClick={() => onEdit(session)} className="edit-button">
-              <FaEdit /> Edit
-            </button>
-            <button onClick={() => onDelete(session.id)} className="delete-button">
-              <FaTrash /> Delete
-            </button>
-          </>
+          <button 
+            onClick={() => onJoin(session.id)} 
+            className="join-button"
+          >
+            Join Session
+          </button>
         ) : (
           <button 
             onClick={() => onJoin(session.id)} 
@@ -124,8 +122,6 @@ SessionCard.propTypes = {
   }).isRequired,
   isOwner: PropTypes.bool.isRequired,
   onJoin: PropTypes.func.isRequired,
-  onEdit: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
   view: PropTypes.oneOf(['grid', 'list']).isRequired
 };
 

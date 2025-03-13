@@ -25,31 +25,8 @@ const AuthForm = ({ isLogin }) => {
   });
   const [error, setError] = useState({});
   const [firebaseError, setFirebaseError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState('');
-
-  const checkPasswordStrength = (password) => {
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (/\d/.test(password)) strength++;
-    if (/[a-z]/.test(password)) strength++;
-    if (/[A-Z]/.test(password)) strength++;
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
-
-    const strengthMap = {
-      0: 'weak',
-      1: 'weak',
-      2: 'medium',
-      3: 'medium',
-      4: 'strong',
-      5: 'strong'
-    };
-    
-    setPasswordStrength(strengthMap[strength]);
-    return strength >= 3;
-  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -68,10 +45,6 @@ const AuthForm = ({ isLogin }) => {
         ...prevData,
         [name]: cleanedValue
       }));
-
-      if (name === 'password') {
-        checkPasswordStrength(cleanedValue);
-      }
     }
   };
 
@@ -94,8 +67,6 @@ const AuthForm = ({ isLogin }) => {
       newErrors.password = 'Password must be at least 8 characters';
     } else if (formData.password.length > 12) {
       newErrors.password = 'Password cannot exceed 12 characters';
-    } else if (!isLogin && !checkPasswordStrength(formData.password)) {
-      newErrors.password = 'Password is too weak';
     }
 
     if (!isLogin) {
@@ -116,7 +87,6 @@ const AuthForm = ({ isLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFirebaseError('');
-    setSuccessMessage('');
     const newErrors = validateForm();
 
     if (Object.keys(newErrors).length === 0) {
@@ -134,7 +104,6 @@ const AuthForm = ({ isLogin }) => {
             displayName: formData.fullName
           });
         }
-        setSuccessMessage(`${isLogin ? 'Login' : 'Registration'} successful! Redirecting...`);
         setTimeout(() => navigate('/dashboard'), 2000);
       } catch (error) {
         handleAuthError(error);
@@ -174,7 +143,6 @@ const AuthForm = ({ isLogin }) => {
       } else {
         const result = await signInWithPopup(auth, provider);
         if (result.user) {
-          setSuccessMessage('Sign in successful! Redirecting...');
           setTimeout(() => navigate('/dashboard'), 1000);
         }
       }
@@ -201,7 +169,6 @@ const AuthForm = ({ isLogin }) => {
     try {
       const result = await getRedirectResult(auth);
       if (result?.user) {
-        setSuccessMessage('Sign in successful! Redirecting...');
         setTimeout(() => navigate('/dashboard'), 1000);
       }
     } catch (error) {
@@ -280,14 +247,6 @@ const AuthForm = ({ isLogin }) => {
               </button>
             </div>
             {error.password && <span className="error">{error.password}</span>}
-            {!isLogin && formData.password && (
-              <div className={`password-strength ${passwordStrength}`}>
-                Password strength: {passwordStrength.charAt(0).toUpperCase() + passwordStrength.slice(1)}
-                <span className="password-length">
-                  ({formData.password.length}/12)
-                </span>
-              </div>
-            )}
           </div>
 
           {!isLogin && (
@@ -329,7 +288,6 @@ const AuthForm = ({ isLogin }) => {
             </>
           )}
 
-          {successMessage && <div className="success">{successMessage}</div>}
           {firebaseError && <div className="error">{firebaseError}</div>}
           
           <button className="submit-button" type="submit">

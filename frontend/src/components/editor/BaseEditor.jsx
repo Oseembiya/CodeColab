@@ -10,14 +10,10 @@ const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 const BaseEditor = ({ 
   onEditorMount,
   onEditorChange,
-  onCursorMove,
   language = 'javascript',
   onLanguageChange,
   onRunCode,
-  initialValue = "// Start coding here",
-  readOnly = false,
-  showCheckAnswer = false,
-  onCheckAnswer = null
+  initialValue = "// Start coding here"
 }) => {
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -112,11 +108,6 @@ const BaseEditor = ({
     onLanguageChange(newLanguage);
   };
 
-  // Add a dummy check function if you don't need this functionality
-  const handleCheck = () => {
-    console.log('Check functionality not implemented');
-  };
-
   const handleFormat = useCallback(() => {
     if (editorRef.current) {
       editorRef.current.getAction('editor.action.formatDocument').run();
@@ -187,7 +178,6 @@ const BaseEditor = ({
     <div className={`editor-container ${isFullScreen ? 'fullscreen' : ''}`}>
       <EditorToolbar 
         onRun={handleRunCode}
-        onCheck={showCheckAnswer ? onCheckAnswer : undefined}
         onFormat={handleFormat}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
@@ -251,14 +241,10 @@ const BaseEditor = ({
 BaseEditor.propTypes = {
   onEditorMount: PropTypes.func,
   onEditorChange: PropTypes.func,
-  onCursorMove: PropTypes.func,
   language: PropTypes.string.isRequired,
   onLanguageChange: PropTypes.func.isRequired,
   onRunCode: PropTypes.func.isRequired,
-  initialValue: PropTypes.string,
-  readOnly: PropTypes.bool,
-  showCheckAnswer: PropTypes.bool,
-  onCheckAnswer: PropTypes.func
+  initialValue: PropTypes.string
 };
 
 export default BaseEditor; 

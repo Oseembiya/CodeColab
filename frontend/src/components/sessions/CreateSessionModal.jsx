@@ -20,7 +20,6 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
     maxParticipants: 4,
     isPrivate: false,
     startNow: true,
-    scheduledTime: '',
     joinCode: ''
   });
 
@@ -184,21 +183,6 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
                   </label>
                 </div>
               </div>
-
-              {!formData.startNow && (
-                <div className="form-group">
-                  <label htmlFor="scheduledTime">Scheduled Time</label>
-                  <input
-                    type="datetime-local"
-                    id="scheduledTime"
-                    name="scheduledTime"
-                    value={formData.scheduledTime}
-                    onChange={handleChange}
-                    min={new Date().toISOString().slice(0, 16)}
-                    required
-                  />
-                </div>
-              )}
 
               {formData.isPrivate && (
                 <div className="form-group join-code-group">

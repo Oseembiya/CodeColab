@@ -5,7 +5,6 @@ import AlertDialog from '../notifications/AlertDialog';
 
 const SessionInfo = ({ session, onLeave, socket }) => {
   const [participantCount, setParticipantCount] = useState(0);
-  const [maxParticipants, setMaxParticipants] = useState(session?.maxParticipants || 4);
   const [isHidden, setIsHidden] = useState(false);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
 
@@ -70,7 +69,7 @@ const SessionInfo = ({ session, onLeave, socket }) => {
           </div>
           <div className="meta-item">
             <FaUsers />
-            <span>Participants: {participantCount}/{maxParticipants}</span>
+            <span>Participants: {participantCount}/{session.maxParticipants}</span>
           </div>
           <div className="meta-item">
             <FaCode />

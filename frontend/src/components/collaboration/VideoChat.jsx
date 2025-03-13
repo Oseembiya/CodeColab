@@ -20,6 +20,8 @@ const VideoChat = ({ sessionId, userId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
+  const [activeColor, setActiveColor] = useState('#000000');
+  const [brushSize, setBrushSize] = useState(5);
 
   const cleanupPeer = useCallback(() => {
     if (peerRef.current) {

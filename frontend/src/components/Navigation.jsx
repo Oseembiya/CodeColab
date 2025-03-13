@@ -19,8 +19,6 @@ const Navigation = memo(() => {
   const navigate = useNavigate();
   const user = auth.currentUser;
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showMessages, setShowMessages] = useState(false);
   const { activeSession, clearActiveSession } = useSession();
 
   const handleSignOut = async () => {
@@ -122,18 +120,10 @@ const Navigation = memo(() => {
         <div className="navbar-profile">
           <div className="navbar-icons">
             <button 
-              onClick={() => setShowNotifications(true)}
               aria-label="Show notifications"
               data-count="3"
             >
               <FaBell />
-            </button>
-            <button 
-              onClick={() => setShowMessages(true)}
-              aria-label="Show messages"
-              data-count="2"
-            >
-              <FaEnvelope />
             </button>
           </div>
           <button 
@@ -158,15 +148,7 @@ const Navigation = memo(() => {
       )}
 
       <NotificationModal 
-        isOpen={showNotifications}
-        onClose={() => setShowNotifications(false)}
         type="notification"
-      />
-
-      <NotificationModal 
-        isOpen={showMessages}
-        onClose={() => setShowMessages(false)}
-        type="email"
       />
     </>
   );

@@ -12,6 +12,7 @@ const Whiteboard = ({ sessionId, userId }) => {
   const [activeColor, setActiveColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
   const [tool, setTool] = useState('pencil');
+  const [isCorrect, setIsCorrect] = useState(false);
 
   useEffect(() => {
     // Ensure fabric is loaded
@@ -95,16 +96,7 @@ const Whiteboard = ({ sessionId, userId }) => {
   }, [tool, activeColor, brushSize]);
 
   const handleClear = () => {
-    if (!fabricRef.current) return;
-
-    try {
-      fabricRef.current.clear();
-      fabricRef.current.setBackgroundColor('#ffffff', () => 
-        fabricRef.current.renderAll()
-      );
-    } catch (error) {
-      console.error('Error clearing canvas:', error);
-    }
+    // This function isn't connected to any UI element
   };
 
   return (

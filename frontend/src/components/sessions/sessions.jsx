@@ -16,10 +16,8 @@ const Sessions = () => {
     sessions, 
     loading, 
     error, 
-    createSession, 
-    joinSession, 
-    updateSession, 
-    deleteSession,
+    createSession,
+    joinSession,
     refreshSessions 
   } = useSessions();
   const { createSession: sessionContextCreateSession } = useSession();
@@ -188,8 +186,6 @@ const Sessions = () => {
             session={session}
             isOwner={session.ownerId === user.uid}
             onJoin={() => initiateJoinSession(session.id)}
-            onEdit={(updatedData) => updateSession(session.id, updatedData)}
-            onDelete={() => deleteSession(session.id)}
             view={view}
           />
         ))}

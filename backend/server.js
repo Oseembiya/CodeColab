@@ -50,10 +50,6 @@ const peerServer = PeerServer({
 // Track active sessions and users
 const activeSessions = new Map();
 
-// Implement rate limiting for code updates
-const updateRateLimiter = new Map();
-const RATE_LIMIT_WINDOW = 100; // ms
-
 // Add at the top with other declarations
 const videoParticipants = new Map(); // Track video participants per session
 
@@ -95,26 +91,6 @@ io.on('connection', (socket) => {
     });
 
     console.log(`User ${username} joined session ${sessionId}. Total participants: ${sessionUsers.size}`);
-  });
-
-  // Handle code changes
-  socket.on('code-change', ({ sessionId, content, userId }) => {
-    const now = Date.now();
-    const lastUpdate = updateRateLimiter.get(userId) || 0;
-    
-    if (now - lastUpdate >= RATE_LIMIT_WINDOW) {
-      socket.to(sessionId).emit('code-update', { content, userId });
-      updateRateLimiter.set(userId, now);
-    }
-  });
-
-  // Handle cursor movement
-  socket.on('cursor-move', ({ sessionId, cursor, userId }) => {
-    const sessionUsers = activeSessions.get(sessionId);
-    if (sessionUsers?.has(userId)) {
-      sessionUsers.get(userId).cursor = cursor;
-      socket.to(sessionId).emit('cursor-update', { userId, cursor });
-    }
   });
 
   // Handle session observation
