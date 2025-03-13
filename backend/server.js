@@ -230,6 +230,7 @@ io.on('connection', (socket) => {
   });
 });
 
+
 // PeerJS server events
 peerServer.on('connection', (client) => {
   console.log('PeerJS client connected:', client.getId());

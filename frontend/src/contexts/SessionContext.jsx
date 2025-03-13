@@ -79,10 +79,13 @@ export const SessionProvider = ({ children }) => {
       }
 
       const session = { id: sessionId, ...sessionDoc.data() };
-      console.log('Session data:', { isPrivate: session.isPrivate, hasJoinCode: !!joinCode });
+      console.log('Session data:', session);
+      
+      // Check if user is the owner of the session
+      const isOwner = session.owner === auth.currentUser.uid;
       
       // Validate private session access
-      if (session.isPrivate) {
+      if (session.isPrivate && !isOwner) { // Only check join code if not the owner
         // Check if we have a stored join code
         const storedJoinInfo = localStorage.getItem('lastJoinedSession');
         const parsedJoinInfo = storedJoinInfo ? JSON.parse(storedJoinInfo) : null;
