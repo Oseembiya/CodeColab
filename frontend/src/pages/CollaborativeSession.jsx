@@ -6,7 +6,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { io } from 'socket.io-client';
 import SessionInfo from '../components/sessions/SessionInfo';
 import CollaborativeEditor from '../components/editor/CollaborativeEditor';
-import VideoChat from '../components/collaboration/VideoChat';
+import VideoChat from '../components/communications/VideoChat';
 
 const CollaborativeSession = () => {
   const { sessionId } = useParams();

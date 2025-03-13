@@ -53,6 +53,9 @@ const activeSessions = new Map();
 // Add at the top with other declarations
 const videoParticipants = new Map(); // Track video participants per session
 
+// Track session code state
+const sessionStates = new Map();
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -110,6 +113,69 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle request for initial code
+  socket.on('request-code', ({ sessionId }) => {
+    const sessionState = sessionStates.get(sessionId);
+    if (sessionState) {
+      socket.emit('session-code', {
+        content: sessionState.content,
+        language: sessionState.language
+      });
+    }
+  });
+
+  // Optimize code change handling
+  socket.on('code-change', ({ sessionId, content, userId }) => {
+    // Update session state
+    if (sessionStates.has(sessionId)) {
+      const currentState = sessionStates.get(sessionId);
+      if (currentState.content !== content) {
+        sessionStates.set(sessionId, {
+          ...currentState,
+          content,
+          lastEditBy: userId,
+          lastEditAt: Date.now()
+        });
+
+        // Broadcast to others in the session
+        socket.to(sessionId).emit('code-update', {
+          content,
+          senderId: userId
+        });
+      }
+    } else {
+      sessionStates.set(sessionId, {
+        content,
+        lastEditBy: userId,
+        lastEditAt: Date.now()
+      });
+    }
+  });
+
+  // Handle language changes
+  socket.on('language-change', ({ sessionId, newLanguage, userId }) => {
+    // Update session state
+    sessionStates.set(sessionId, {
+      ...sessionStates.get(sessionId),
+      language: newLanguage
+    });
+
+    // Broadcast to all clients in the session
+    socket.to(sessionId).emit('language-change', {
+      newLanguage,
+      userId
+    });
+  });
+
+  // Handle typing indicators
+  socket.on('typing-start', ({ sessionId, userId }) => {
+    socket.to(sessionId).emit('user-typing', { userId });
+  });
+
+  socket.on('typing-end', ({ sessionId, userId }) => {
+    socket.to(sessionId).emit('user-stopped-typing', { userId });
+  });
+
   // Handle disconnection with participant count update
   socket.on('disconnect', () => {
     activeSessions.forEach((users, sessionId) => {
@@ -130,6 +196,13 @@ io.on('connection', (socket) => {
           console.log(`User left session ${sessionId}. Remaining participants: ${users.size}`);
         }
       });
+    });
+
+    // Clean up session state if no participants remain
+    activeSessions.forEach((users, sessionId) => {
+      if (users.size === 0) {
+        sessionStates.delete(sessionId);
+      }
     });
   });
 
