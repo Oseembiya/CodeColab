@@ -32,8 +32,8 @@
 /* Main content area */
 .main-content {
   flex: 1;
-  margin-left: 200px; /* Width of your sidebar */
-  padding-top: 60px; /* Height of your navbar */
+  margin-left: 210px; /* Width of your sidebar */
+  padding-top: 60px ;/* Height of your navbar */
   height: calc(100vh - 0px);
   overflow-y: auto;
   transition: all 0.3s ease;
