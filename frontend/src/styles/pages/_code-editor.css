@@ -1,17 +1,24 @@
 /* CodeEditorPage Styles */
 .code-editor-page {
-  height: 100%;
+  height: calc(100vh - 60px - var(--spacing-lg) * 2); /* Viewport height minus navbar and padding */
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
   position: relative;
+  padding: 0; /* Remove padding since content-area already has padding */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .editor-wrapper {
   flex: 1;
   position: relative;
-  height: calc(100vh - 60px); /* Subtract navbar height */
+  height: 100%;
+  width: 100%;
   overflow: hidden;
+  border: 1px solid var(--line-color);
+  border-radius: var(--radius-lg);
+  box-sizing: border-box;
 }
 
 /* Welcome message or instructions */
@@ -49,4 +56,24 @@
 .editor-loading p {
   color: var(--text-color);
   font-size: 1.1rem;
+}
+
+/* Ensure the editor stays within bounds */
+.monaco-editor-wrapper {
+  height: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .code-editor-page {
+    padding: var(--spacing-md);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .code-editor-page {
+    padding: var(--spacing-sm);
+  }
 } 

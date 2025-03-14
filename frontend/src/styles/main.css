@@ -2,6 +2,7 @@
 
 /* components */
 @import './components/_form.css';
+@import './components/_editor.css';
 
 /* layouts */
 @import './layouts/_main.css';
