@@ -1,8 +1,9 @@
 .collaborative-session {
+  height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
-  height: 100vh;
   background: var(--background-color);
+  position: relative;
 }
 
 /* Session Header */
@@ -11,7 +12,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-md) var(--spacing-lg);
-  background: linear-gradient(to right, var(--background-color), var(--hover-color));
+  background: var(--surface-color);
   border-bottom: 1px solid var(--line-color);
   height: 60px;
 }
@@ -45,11 +46,11 @@
 
 /* Main Content Area */
 .session-content {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 300px;
   gap: var(--spacing-md);
   padding: var(--spacing-md);
-  height: calc(100vh - 60px);
+  height: calc(100vh - 120px); /* Subtract navbar and session header */
   overflow: hidden;
 }
 
@@ -57,12 +58,10 @@
 .editor-section {
   display: flex;
   flex-direction: column;
-  background: var(--hover-color);
+  background: var(--surface-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--line-color);
-  width: 100%;
-  height: 100%;
 }
 
 /* Remove view controls since we don't need whiteboard toggle */
@@ -100,7 +99,7 @@
 
 /* Participants Section */
 .participants-section {
-  background: var(--hover-color);
+  background: var(--surface-color);
   border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   border: 1px solid var(--line-color);
@@ -124,7 +123,7 @@
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--hover-color);
   border-radius: var(--radius-md);
   transition: all 0.2s ease;
 }
@@ -147,6 +146,7 @@
 .participant-name {
   font-size: var(--text-sm);
   font-weight: 500;
+  color: var(--text-color);
 }
 
 .participant-role {
@@ -184,13 +184,14 @@
   .collaboration-panel {
     position: fixed;
     right: 0;
-    top: 60px;
+    top: 120px; /* Account for navbar and session header */
     width: 300px;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 120px);
     background: var(--background-color);
     transform: translateX(100%);
     transition: transform 0.3s ease;
     z-index: 100;
+    padding: var(--spacing-md);
   }
 
   .collaboration-panel.open {
@@ -207,15 +208,20 @@
 }
 
 @media screen and (max-width: 480px) {
-  .session-controls {
+  .session-header {
+    height: auto;
+    flex-direction: column;
     gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
   }
 
-  .view-controls {
-    flex-wrap: wrap;
+  .session-content {
+    height: calc(100vh - 150px); /* Adjust for taller header */
+    padding: var(--spacing-sm);
   }
 
   .collaboration-panel {
     width: 100%;
+    top: 150px;
   }
 } 

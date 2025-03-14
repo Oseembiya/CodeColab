@@ -9,7 +9,11 @@
 @import './layouts/_navbar.css';
 
 /* pages */
-@import './components/_profile.css';
+@import './pages/_profile.css';
+@import './pages/_code-editor.css';
+@import './pages/_collaborative-session.css';
+
+
 
 
 

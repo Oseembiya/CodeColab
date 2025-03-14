@@ -1,14 +1,19 @@
 /* Main Layout */
 .profile-main-content {
   padding: var(--spacing-lg);
+  height: calc(100vh - 60px); /* Subtract navbar height */
+  overflow-y: auto;
+  margin-top: 60px; /* Add margin for navbar */
 }
 
 .profile-container {
-  max-width: 800px;
+  max-width: 850px;
   margin: 0 auto;
+  padding: var(--spacing-lg) 0; /* Fix padding */
+  min-height: 100%;
 }
 
-/* Header */
+/* Header - Ensure full visibility */
 .profile-header {
   display: flex;
   justify-content: space-between;
@@ -16,6 +21,10 @@
   margin-bottom: var(--spacing-xl);
   padding-bottom: var(--spacing-lg);
   border-bottom: 2px solid var(--line-color);
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  background: var(--background-color); /* Add background to ensure visibility */
 }
 
 .profile-header h1 {
@@ -23,15 +32,17 @@
   font-weight: 600;
   color: var(--text-color);
   margin: 0;
+  display: block;
 }
 
-/* Profile Section */
+/* Profile Section - Ensure proper spacing */
 .profile-section {
   background: var(--surface-color);
   border-radius: var(--radius-lg);
   padding: var(--spacing-xl);
   border: 1px solid var(--line-color);
   box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-xl);
 }
 
 /* Avatar */
@@ -189,10 +200,8 @@
   border-radius: var(--radius-md);
   cursor: pointer;
   font-weight: 500;
-  transition: all 0.3s ease;
+  z-index: 2;
   position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
 }
 
 .edit-button:hover {
@@ -205,36 +214,7 @@
   transform: translateY(0);
 }
 
-/* Add shine effect */
-.edit-button::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    45deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 50%,
-    transparent 100%
-  );
-  transform: rotate(45deg);
-  transition: all 0.3s ease;
-}
 
-.edit-button:hover::after {
-  animation: shine 1.5s ease infinite;
-}
-
-@keyframes shine {
-  0% {
-    transform: translateX(-100%) rotate(45deg);
-  }
-  100% {
-    transform: translateX(100%) rotate(45deg);
-  }
-}
 
 /* Submit Button (matching style) */
 .submit-button {
@@ -573,8 +553,8 @@
 
   .profile-header {
     flex-direction: column;
-    gap: var(--spacing-md);
     align-items: flex-start;
+    gap: var(--spacing-md);
   }
 
   .profile-section {
@@ -585,11 +565,9 @@
     grid-template-columns: 1fr;
   }
 
-  .edit-button,
-  .submit-button {
+  .edit-button {
     width: 100%;
     justify-content: center;
-    padding: 0.875rem 1.5rem;
   }
 
   .profile-tabs {

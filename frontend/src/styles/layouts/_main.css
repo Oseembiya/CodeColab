@@ -10,16 +10,8 @@
   position: relative;
 }
 
-.content-area {
-  flex: 1;
-  padding: var(--spacing-md);
-  margin-top: 60px; /* Height of navbar */
-  overflow: auto;
-  color: var(--text-color);
-}
-
 @media screen and (max-width: 768px) {
   .main-content {
     margin-left: 0;
   }
-} 
+}
