@@ -20,7 +20,9 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
     maxParticipants: 4,
     isPrivate: false,
     startNow: true,
-    joinCode: ''
+    joinCode: '',
+    scheduledDate: '',
+    scheduledTime: ''
   });
 
   const languages = [
@@ -183,6 +185,36 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
                   </label>
                 </div>
               </div>
+
+              {!formData.startNow && (
+                <div className="form-group schedule-inputs">
+                  <div className="schedule-row">
+                    <div className="form-group">
+                      <label htmlFor="scheduledDate">Date</label>
+                      <input
+                        type="date"
+                        id="scheduledDate"
+                        name="scheduledDate"
+                        value={formData.scheduledDate}
+                        onChange={handleChange}
+                        min={new Date().toISOString().split('T')[0]}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="scheduledTime">Time</label>
+                      <input
+                        type="time"
+                        id="scheduledTime"
+                        name="scheduledTime"
+                        value={formData.scheduledTime}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {formData.isPrivate && (
                 <div className="form-group join-code-group">
