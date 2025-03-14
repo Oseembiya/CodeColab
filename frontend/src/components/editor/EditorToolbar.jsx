@@ -53,7 +53,12 @@ const EditorToolbar = memo(({
           >
             <FaMagic /> Format
           </button>
-          <button onClick={onUndo} title="Undo (Ctrl+Z)">
+          <button 
+            className="control-button"
+            onClick={onUndo}
+            disabled={isLoading}
+            data-tooltip="Undo (Ctrl+Z)"
+          >
             <FaUndo />
           </button>
           <button onClick={onRedo} title="Redo (Ctrl+Y)">
