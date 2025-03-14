@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Peer from 'peerjs';
 import PropTypes from 'prop-types';
-import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaSync, FaGripVertical } from 'react-icons/fa';
+import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaSync, FaGripVertical, FaTimes } from 'react-icons/fa';
 import io from 'socket.io-client';
 
 const VideoChat = ({ sessionId, userId }) => {
@@ -22,6 +22,8 @@ const VideoChat = ({ sessionId, userId }) => {
   const dragStartRef = useRef({ x: 0, y: 0 });
   const [activeColor, setActiveColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const participantCount = peers?.length || 0;
 
   const cleanupPeer = useCallback(() => {
     if (peerRef.current) {
@@ -279,7 +281,9 @@ const VideoChat = ({ sessionId, userId }) => {
 
   return (
     <div 
-      className={`video-chat-container ${isDragging ? 'dragging' : ''}`}
+      className={`video-chat-container ${isCollapsed ? 'collapsed' : ''}`}
+      data-count={participantCount}
+      onClick={() => isCollapsed && setIsCollapsed(false)}
       ref={dragRef}
       style={{
         left: `${position.x}px`,
@@ -349,6 +353,18 @@ const VideoChat = ({ sessionId, userId }) => {
         <div className="video-error">
           Error: {error}
         </div>
+      )}
+
+      {!isCollapsed && (
+        <button 
+          className="collapse-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCollapsed(true);
+          }}
+        >
+          <FaTimes />
+        </button>
       )}
     </div>
   );

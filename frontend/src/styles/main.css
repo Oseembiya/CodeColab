@@ -5,6 +5,7 @@
 @import './components/_editor.css';
 @import './components/_create-session-modal.css';
 @import './components/_join-session-modal.css';
+@import './components/session-info.css';
 
 /* layouts */
 @import './layouts/_main.css';
@@ -15,10 +16,12 @@
 @import './pages/_profile.css';
 @import './pages/_code-editor.css';
 @import './pages/_sessions.css';
+@import './pages/_live-session.css';
 
 
 /*alert*/
 @import './components/_alert.css';
+@import './components/_video-chat.css';
 
 
 
