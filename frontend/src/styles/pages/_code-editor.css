@@ -1,24 +1,231 @@
 /* CodeEditorPage Styles */
 .code-editor-page {
-  height: calc(100vh - 60px - var(--spacing-lg) * 2); /* Viewport height minus navbar and padding */
+  height: 100%;
   display: flex;
   flex-direction: column;
   background-color: var(--background-color);
   position: relative;
-  padding: 0; /* Remove padding since content-area already has padding */
-  width: 100%;
-  box-sizing: border-box;
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
 }
 
-.editor-wrapper {
+/* Editor Container Enhancements */
+.editor-container {
   flex: 1;
-  position: relative;
-  height: 100%;
-  width: 100%;
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   border: 1px solid var(--line-color);
-  border-radius: var(--radius-lg);
-  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.editor-container:hover {
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+  border-color: var(--secondary-color);
+}
+
+/* Editor Header Improvements */
+.editor-header {
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--line-color);
+  padding: var(--spacing-md) var(--spacing-lg);
+  height: auto;
+  min-height: 60px;
+}
+
+/* Language Selector Enhancement */
+.language-select-container {
+  position: relative;
+  min-width: 200px;
+}
+
+.languages-select {
+  appearance: none;
+  padding: 8px 32px 8px 16px;
+  background: var(--background-color);
+  border: 1px solid var(--line-color);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.languages-select:hover {
+  border-color: var(--secondary-color);
+  background: var(--hover-color);
+}
+
+/* Button Groups Styling */
+.button-group {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-md);
+  position: relative;
+}
+
+.button-group::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 24px;
+  width: 1px;
+  background: var(--line-color);
+}
+
+.button-group:last-child::after {
+  display: none;
+}
+
+/* Monaco Editor Wrapper Enhancement */
+.monaco-editor-wrapper {
+  height: calc(100% - 35px);
+  transition: all 0.3s ease;
+  background: var(--background-color);
+}
+
+/* Responsive Design */
+@media screen and (max-width: 1200px) {
+  .code-editor-page {
+    padding: var(--spacing-md);
+  }
+
+  .editor-header {
+    padding: var(--spacing-md);
+  }
+}
+
+@media screen and (max-width: 992px) {
+  .editor-buttons {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .button-group {
+    padding: var(--spacing-sm);
+  }
+
+  .button-group::after {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .code-editor-page {
+    padding: var(--spacing-sm);
+  }
+
+  .editor-header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .language-select-container {
+    width: 100%;
+  }
+
+  .languages-select {
+    width: 100%;
+  }
+
+  .editor-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .button-group {
+    flex-wrap: nowrap;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .code-editor-page {
+    padding: var(--spacing-xs);
+  }
+
+  .editor-container {
+    border-radius: var(--radius-md);
+  }
+
+  .button-group {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .control-button,
+  .format-button,
+  .run-button {
+    width: 100%;
+  }
+}
+
+/* Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+  .editor-container {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  }
+
+  .editor-container:hover {
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .languages-select {
+    background: var(--surface-color);
+  }
+}
+
+/* Animation for Editor Load */
+@keyframes editorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.editor-container {
+  animation: editorFadeIn 0.3s ease-out;
+}
+
+/* Smooth Scrolling */
+.code-editor-page {
+  scroll-behavior: smooth;
+}
+
+/* Focus States */
+.languages-select:focus,
+.control-button:focus,
+.format-button:focus,
+.run-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--secondary-color);
+}
+
+/* Loading State */
+.editor-container.loading {
+  position: relative;
+}
+
+.editor-container.loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--background-color);
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Welcome message or instructions */
