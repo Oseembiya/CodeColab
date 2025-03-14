@@ -196,16 +196,19 @@
   justify-content: center;
   user-select: none;
   padding: 0 var(--spacing-md);
+  position: relative;
 }
 
 .drag-handle-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
 }
 
 .output-title {
+  position: absolute;
+  left: var(--spacing-md);
   color: var(--text-color);
   font-size: var(--text-sm);
   font-weight: 500;
@@ -216,6 +219,7 @@
   flex-direction: column;
   gap: 3px;
   padding: 4px;
+  align-items: center;
 }
 
 .drag-lines span {
