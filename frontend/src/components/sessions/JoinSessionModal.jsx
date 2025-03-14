@@ -65,7 +65,7 @@ const JoinSessionModal = ({ isOpen, onClose, onJoin, error: parentError, session
                 setLocalError('');
                 setCode(e.target.value.toUpperCase());
               }}
-              placeholder="Enter session code"
+              placeholder="Enter 6-digit code"
               maxLength={6}
               disabled={loading}
               required
