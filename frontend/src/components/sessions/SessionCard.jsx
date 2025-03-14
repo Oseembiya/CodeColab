@@ -57,43 +57,38 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
 
   return (
     <div className={`session-card ${view}`}>
-      <div className="session-header">
-        <h3>{session.title}</h3>
-        <span className={getStatusClass(session.status)}>
-          {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-        </span>
-      </div>
+      {view === 'grid' ? (
+        // Grid View Layout
+        <>
+          <span className={`status-badge ${session.status === 'active' ? 'green' : ''}`}>
+            {session.status}
+          </span>
+          
+          <h3>{session.title}</h3>
+          
+          {session.description && (
+            <p className="session-description">{session.description}</p>
+          )}
 
-      <p className="session-description">{session.description}</p>
+          <div className="session-details">
+            <div className="detail-item">
+              <FaClock />
+              <span>{formatDate(session.startTime || session.createdAt)}</span>
+            </div>
+            <div className="detail-item">
+              <FaUsers />
+              <span>{participantCount}/{maxParticipants}</span>
+            </div>
+            <div className="detail-item">
+              <FaCode />
+              <span>{displayLanguage}</span>
+            </div>
+            <div className="detail-item">
+              {isPrivate ? <FaLock /> : <FaLockOpen />}
+              <span>{isPrivate ? 'Private' : 'Public'}</span>
+            </div>
+          </div>
 
-      <div className="session-details">
-        <div className="detail-item">
-          <FaClock />
-          <span>{formatDate(session.startTime || session.createdAt)}</span>
-        </div>
-        <div className="detail-item">
-          <FaUsers />
-          <span>{participantCount}/{maxParticipants}</span>
-        </div>
-        <div className="detail-item">
-          <FaCode />
-          <span>{displayLanguage}</span>
-        </div>
-        <div className="detail-item">
-          {isPrivate ? <FaLock /> : <FaLockOpen />}
-          <span>{isPrivate ? 'Private' : 'Public'}</span>
-        </div>
-      </div>
-
-      <div className="session-actions">
-        {isOwner ? (
-          <button 
-            onClick={() => onJoin(session.id)} 
-            className="join-button"
-          >
-            Join Session
-          </button>
-        ) : (
           <button 
             onClick={() => onJoin(session.id)} 
             className="join-button"
@@ -101,8 +96,53 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
           >
             {participantCount >= maxParticipants ? 'Session Full' : 'Join Session'}
           </button>
-        )}
-      </div>
+        </>
+      ) : (
+        // List View Layout
+        <>
+          <div className="title-area">
+            <h3>
+              {session.title}
+              <span className={`status-badge ${session.status === 'active' ? 'green' : ''}`}>
+                {session.status}
+              </span>
+            </h3>
+            {session.description && (
+              <p className="session-description">{session.description}</p>
+            )}
+          </div>
+
+          <div className="session-details">
+            <div className="detail-item">
+              <FaClock />
+              <span>{formatDate(session.startTime || session.createdAt)}</span>
+            </div>
+            <div className="detail-item">
+              <FaCode />
+              <span>{displayLanguage}</span>
+            </div>
+          </div>
+
+          <div className="session-details">
+            <div className="detail-item">
+              <FaUsers />
+              <span>{participantCount}/{maxParticipants}</span>
+            </div>
+            <div className="detail-item">
+              {isPrivate ? <FaLock /> : <FaLockOpen />}
+              <span>{isPrivate ? 'Private' : 'Public'}</span>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => onJoin(session.id)} 
+            className="join-button"
+            disabled={participantCount >= maxParticipants}
+          >
+            {participantCount >= maxParticipants ? 'Full' : 'Join'}
+          </button>
+        </>
+      )}
     </div>
   );
 };

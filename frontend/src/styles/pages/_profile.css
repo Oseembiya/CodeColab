@@ -1,16 +1,14 @@
 /* Main Layout */
 .profile-main-content {
   padding: var(--spacing-lg);
+  height: 100%;
   overflow-y: visible;
-  height: auto;
-  margin-top: 60px; /* Add margin for navbar */
 }
 
 .profile-container {
   max-width: 850px;
   margin: 0 auto;
-  padding: var(--spacing-lg) 0; /* Fix padding */
-  overflow: visible;
+  padding: var(--spacing-lg) 0;
 }
 
 /* Header - Ensure full visibility */

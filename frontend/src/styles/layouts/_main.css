@@ -21,7 +21,7 @@
   margin-top: 60px; /* Height of navbar */
   min-height: calc(100vh - 60px); /* Full viewport height minus navbar */
   background-color: var(--background-color);
-  overflow-y: auto;
+  overflow-y: auto; /* Keep this to handle the main scrolling */
   position: relative;
 }
 

@@ -10,9 +10,9 @@ const ProtectedRoute = lazy(() => import("./pages/protectedRoute"));
 const Login = lazy(() => import("./pages/login"));
 const Dashboard = lazy(() => import("./pages/dashboard"));
 const Profile = lazy(() => import("./pages/profile"));
-const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage"));
+const SoloEditor = lazy(() => import("./pages/CodeEditorPage"));
+const Sessions = lazy(() => import("./pages/sessions.jsx"));
 const LiveSession = lazy(() => import("./pages/liveSession.jsx"));
-const Sessions = lazy(() => import("./components/sessions/sessions.jsx"));
 const Whiteboard = lazy(() => import("./pages/Whiteboard"));
 
 // Improve loading component
@@ -42,9 +42,9 @@ const App = () => {
               >
                 <Route index element={<Dashboard />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="editor" element={<CodeEditorPage />} />
+                <Route path="SoloEditor" element={<SoloEditor />} />
                 <Route path="sessions" element={<Sessions />} />
-                <Route path="sessions/:sessionId" element={<LiveSession />} />
+                <Route path="sessions/:sessionId" element={<LiveSession />} />  
                 <Route path="whiteboard" element={<Whiteboard />} />
               </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />

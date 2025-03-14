@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaSearch, FaFilter, FaClock, FaUsers, FaCode, FaCalendar, FaLock, FaLockOpen } from 'react-icons/fa';
-import CreateSessionModal from './CreateSessionModal';
-import JoinSessionModal from './JoinSessionModal';
-import SessionCard from './SessionCard';
-import SessionFilters from './SessionFilters';
-import { useAuth } from '../../hooks/useAuth';
-import { useSessions } from '../../hooks/useSessions';
-import { useSession } from '../../contexts/SessionContext';
+import CreateSessionModal from '../components/sessions/CreateSessionModal';
+import JoinSessionModal from '../components/sessions/JoinSessionModal';
+import SessionCard from '../components/sessions/SessionCard';
+import SessionFilters from '../components/sessions/SessionFilters';
+import { useAuth } from '../hooks/useAuth';
+import { useSessions } from '../hooks/useSessions';
+import { useSession } from '../contexts/SessionContext';
 
 const Sessions = () => {
   const navigate = useNavigate();
@@ -128,71 +128,73 @@ const Sessions = () => {
 
   return (
     <div className="sessions-container">
-      {error && <div className="error-message">{error}</div>}
-      
-      {/* Change class name here */}
-      <div className="sessions-page-header">
-        <div className="header-left">
-          <h1>Coding Sessions</h1>
-          <div className="view-toggle">
+      <div className="sticky-container">
+        {/* Header */}
+        <div className="sessions-page-header">
+          <div className="header-left">
+            <h1>Coding Sessions</h1>
+            <div className="view-toggle">
+              <button 
+                className={view === 'grid' ? 'active' : ''}
+                onClick={() => setView('grid')}
+              >
+                Grid
+              </button>
+              <button 
+                className={view === 'list' ? 'active' : ''}
+                onClick={() => setView('list')}
+              >
+                List
+              </button>
+            </div>
             <button 
-              className={view === 'grid' ? 'active' : ''}
-              onClick={() => setView('grid')}
+              className="refresh-button"
+              onClick={refreshSessions}
+              disabled={loading}
             >
-              Grid
-            </button>
-            <button 
-              className={view === 'list' ? 'active' : ''}
-              onClick={() => setView('list')}
-            >
-              List
+              Refresh
             </button>
           </div>
-          <button 
-            className="refresh-button"
-            onClick={refreshSessions}
-            disabled={loading}
-          >
-            Refresh
-          </button>
+          <div className="header-actions">
+            <button 
+              className="join-session-btn"
+              onClick={() => setShowJoinModal(true)}
+            >
+              <FaUsers /> Join private Session 
+            </button>
+            <button 
+              className="create-session-btn"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <FaPlus /> New Session
+            </button>
+          </div>
         </div>
-        <div className="header-actions">
-          <button 
-            className="join-session-btn"
-            onClick={() => setShowJoinModal(true)}
-          >
-            <FaUsers /> Join private Session 
-          </button>
-          <button 
-            className="create-session-btn"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <FaPlus /> New Session
-          </button>
-        </div>
+
+        {/* Filters */}
+        <SessionFilters 
+          filters={filters}
+          onFilterChange={setFilters}
+        />
       </div>
 
-      {/* Filters Section */}
-      <SessionFilters 
-        filters={filters}
-        onFilterChange={setFilters}
-      />
-
-      {/* Sessions Grid/List */}
-      <div className={`sessions-${view}`}>
-        {filteredSessions.map(session => (
-          <SessionCard
-            key={session.id}
-            session={session}
-            isOwner={session.ownerId === user.uid}
-            onJoin={() => initiateJoinSession(session.id)}
-            view={view}
-          />
-        ))}
+      {/* Sessions Grid Container */}
+      <div className="sessions-grid-container">
+        <div className={`sessions-${view}`}>
+          {filteredSessions.map(session => (
+            <SessionCard
+              key={session.id}
+              session={session}
+              isOwner={session.ownerId === user.uid}
+              onJoin={() => initiateJoinSession(session.id)}
+              view={view}
+            />
+          ))}
+        </div>
       </div>
 
       {showCreateModal && (
-        <CreateSessionModal 
+          <CreateSessionModal 
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateSession}
         />
