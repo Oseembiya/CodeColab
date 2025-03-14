@@ -175,7 +175,7 @@
   right: 0;
   background: var(--background-color);
   border-top: 1px solid var(--line-color);
-  height: 300px;
+  height: 350px;
   transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
@@ -244,11 +244,13 @@
 .output-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-md);
-  font-family: monospace;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-family: 'Fira Code', monospace;
   font-size: var(--text-sm);
   color: var(--text-color);
   background: var(--background-color);
+  height: calc(350px - 35px);
+  line-height: 1.5;
 }
 
 .output-scroll.error {
@@ -268,7 +270,7 @@
 }
 
 .output-panel:not(.collapsed) ~ .monaco-editor-wrapper {
-  height: calc(100% - 300px);
+  height: calc(100% - 350px);
 }
 
 .output-panel.dragging {
@@ -512,10 +514,16 @@
   .output-panel {
     left: 0;
     width: 100vw;
+    height: 300px;
+  }
+
+  .output-scroll {
+    height: calc(300px - 35px);
+    padding: var(--spacing-sm);
   }
 
   .output-panel:not(.collapsed) ~ .monaco-editor-wrapper {
-    height: calc(100% - 250px);
+    height: calc(100% - 300px);
   }
 }
 
@@ -537,11 +545,15 @@
   }
 
   .output-panel {
-    height: 200px;
+    height: 250px;
+  }
+
+  .output-scroll {
+    height: calc(250px - 35px);
   }
 
   .output-panel:not(.collapsed) ~ .monaco-editor-wrapper {
-    height: calc(100% - 200px);
+    height: calc(100% - 250px);
   }
 
   .drag-lines span {
@@ -559,4 +571,11 @@
 .sidebar-closed ~ .main-content .output-panel {
   left: 0;
   width: 100vw;
+}
+
+/* Pre and code formatting in output */
+.output-scroll pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 } 
