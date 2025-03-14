@@ -57,14 +57,25 @@
   bottom: 5px;
   right: 5px;
   background: var(--secondary-color);
-  padding: 10px;
+  padding: 6px;
   border-radius: 50%;
   cursor: pointer;
   color: white;
-  font-size: var(--icon-size);
-  border: none;
+  font-size: 12px;
+  border: 2px solid var(--background-color);
   box-shadow: var(--shadow-md);
   transition: all 0.2s ease;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-icon:hover {
+  transform: scale(1.1);
+  background: var(--secondary-light);
 }
 
 /* Tabs */
@@ -438,7 +449,6 @@
 
 /* Enhanced Skills Section */
 .skills-section {
-  padding: var(--spacing-lg);
   background: var(--surface-color);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

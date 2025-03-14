@@ -1,10 +1,15 @@
 @import './_reset.css';
 
+/* components */
 @import './components/_form.css';
 
+/* layouts */
 @import './layouts/_main.css';
 @import './layouts/_sidebar.css';
 @import './layouts/_navbar.css';
+
+/* pages */
+@import './components/_profile.css';
 
 
 
