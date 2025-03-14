@@ -1,8 +1,8 @@
 /* Main Layout */
 .profile-main-content {
   padding: var(--spacing-lg);
-  height: calc(100vh - 60px); /* Subtract navbar height */
-  overflow-y: auto;
+  overflow-y: visible;
+  height: auto;
   margin-top: 60px; /* Add margin for navbar */
 }
 
@@ -10,7 +10,7 @@
   max-width: 850px;
   margin: 0 auto;
   padding: var(--spacing-lg) 0; /* Fix padding */
-  min-height: 100%;
+  overflow: visible;
 }
 
 /* Header - Ensure full visibility */
@@ -1036,4 +1036,10 @@
   transform: none;
   border-color: var(--line-color);
   box-shadow: none;
+}
+
+/* Let content-area handle the scrolling */
+.content-area {
+  overflow-y: auto;
+  height: calc(100vh - 60px); /* viewport height minus navbar height */
 }

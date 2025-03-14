@@ -10,8 +10,8 @@ const ProtectedRoute = lazy(() => import("./pages/protectedRoute"));
 const Login = lazy(() => import("./pages/login"));
 const Dashboard = lazy(() => import("./pages/dashboard"));
 const Profile = lazy(() => import("./pages/profile"));
-const Sessions = lazy(() => import("./pages/sessions.jsx")); 
-const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage")); // Add this
+const Sessions = lazy(() => import("./pages/sessions"));
+const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage"));
 const CollaborationSession = lazy(() => import("./pages/CollaborativeSession"));
 const Whiteboard = lazy(() => import("./pages/Whiteboard"));
 

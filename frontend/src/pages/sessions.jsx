@@ -130,8 +130,8 @@ const Sessions = () => {
     <div className="sessions-container">
       {error && <div className="error-message">{error}</div>}
       
-      {/* Header Section */}
-      <div className="sessions-header">
+      {/* Change class name here */}
+      <div className="sessions-page-header">
         <div className="header-left">
           <h1>Coding Sessions</h1>
           <div className="view-toggle">
