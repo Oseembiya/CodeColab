@@ -1,0 +1,110 @@
+.navbar {
+  height: 60px;
+  padding: 0 var(--spacing-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--background-color);
+  border-bottom: 1px solid var(--line-color);
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 200px; /* Changed from 250px to match sidebar width */
+  z-index: var(--z-navbar);
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  color: var(--text-color);
+}
+
+.navbar-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  color: var(--text-color);
+}
+
+.navbar-icons {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.user-profile-section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--hover-color);
+  color: var(--text-color);
+}
+
+.user-avatar {
+  width: calc(var(--icon-size) * 1.5);
+  height: calc(var(--icon-size) * 1.5);
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.active-session-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(var(--secondary-rgb), 0.1);
+  border-radius: var(--radius-md);
+}
+
+.session-status {
+  color: var(--text-color);
+  font-size: var(--text-sm);
+}
+
+.session-name {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+/* Add these styles for mobile elements */
+.mobile-only {
+  display: none !important; /* Hide by default on desktop */
+}
+
+/* Hamburger button styles */
+.hamburger-button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  padding: var(--spacing-sm);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger-button svg {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.hamburger-button:hover {
+  background-color: var(--hover-color);
+}
+
+/* Show mobile elements on smaller screens */
+@media (max-width: 768px) {
+  .mobile-only {
+    display: flex !important;
+  }
+
+  .navbar {
+    left: 0; /* Reset navbar position on mobile */
+    padding-left: var(--spacing-sm);
+  }
+} 

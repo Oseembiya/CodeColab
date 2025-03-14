@@ -46,6 +46,9 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-color) var(--background-color);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -61,6 +64,24 @@ a {
 
 input {
   color: var(--text-color);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;  /* Width of the scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-color);  /* Track color matches background */
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-color);  /* Thumb color matches line color */
+  border-radius: 4px;  /* Rounded corners */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-color-secondary);  /* Slightly lighter on hover */
 }
 
 

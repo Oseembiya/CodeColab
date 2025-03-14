@@ -1,13 +1,11 @@
 @import './_reset.css';
+
 @import './components/_form.css';
-@import './components/_main-dashboard.css';
-@import './components/_navigation.css';
-@import './layouts/_dashboard.css';
-@import './layouts/_profile.css';
-@import './components/_sessions.css';
-@import './components/_collaborative-session.css';
-@import './video-chat.css';
-@import './editor.css';
-@import './session-info.css';
-@import './whiteboard.css';
-@import './components/_alert.css';
+
+@import './layouts/_main.css';
+@import './layouts/_sidebar.css';
+@import './layouts/_navbar.css';
+
+
+
+

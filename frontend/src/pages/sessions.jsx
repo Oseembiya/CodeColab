@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaSearch, FaFilter, FaClock, FaUsers, FaCode, FaCalendar, FaLock, FaLockOpen } from 'react-icons/fa';
-import CreateSessionModal from './CreateSessionModal';
-import JoinSessionModal from './JoinSessionModal';
-import SessionCard from './SessionCard';
-import SessionFilters from './SessionFilters';
-import { useAuth } from '../../hooks/useAuth';
-import { useSessions } from '../../hooks/useSessions';
-import { useSession } from '../../contexts/SessionContext';
+import CreateSessionModal from '../components/sessions/CreateSessionModal';
+import JoinSessionModal from '../components/sessions/JoinSessionModal';
+import SessionCard from '../components/sessions/SessionCard';
+import SessionFilters from '../components/sessions/SessionFilters';
+import { useAuth } from '../hooks/useAuth';
+import { useSessions } from '../hooks/useSessions';
+import { useSession } from '../contexts/SessionContext';
 
 const Sessions = () => {
   const navigate = useNavigate();

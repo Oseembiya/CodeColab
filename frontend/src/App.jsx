@@ -3,16 +3,14 @@ import { lazy, Suspense } from 'react';
 import { AuthProvider } from './hooks/useAuth.jsx';
 import { SessionProvider } from './contexts/SessionContext';
 import ErrorBoundary from "./error/ErrorBoundary.jsx";
-import DashboardLayout from './components/layouts/DashboardLayout';
+import MainContent from './components/layouts/mainContent';
 
-// Add SignUp import
 const SignUp = lazy(() => import("./pages/signUp"));
-// Update lazy imports with correct file paths
 const ProtectedRoute = lazy(() => import("./pages/protectedRoute"));
 const Login = lazy(() => import("./pages/login"));
 const Dashboard = lazy(() => import("./pages/dashboard"));
 const Profile = lazy(() => import("./pages/profile"));
-const Sessions = lazy(() => import("./components/sessions/sessions")); 
+const Sessions = lazy(() => import("./pages/sessions.jsx")); 
 const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage")); // Add this
 const CollaborationSession = lazy(() => import("./pages/CollaborativeSession"));
 const Whiteboard = lazy(() => import("./pages/Whiteboard"));
@@ -38,7 +36,7 @@ const App = () => {
                 path="/dashboard" 
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout />
+                    <MainContent />
                   </ProtectedRoute>
                 }
               >

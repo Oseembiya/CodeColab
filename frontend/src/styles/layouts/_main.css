@@ -1,0 +1,29 @@
+.container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--background-color);
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 200px; /* Changed from 250px to match sidebar width */
+  background-color: var(--background-color);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line-color);
+}
+
+.content-area {
+  flex: 1;
+  padding: var(--spacing-md);
+  margin-top: 60px; /* Height of navbar */
+  overflow: auto;
+  color: var(--text-color);
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+  }
+} 
