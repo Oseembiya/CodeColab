@@ -9,7 +9,6 @@ const VideoChat = ({ sessionId, userId }) => {
   const [stream, setStream] = useState(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [error, setError] = useState(null);
   const peerRef = useRef(null);
   const socketRef = useRef(null);
@@ -20,54 +19,9 @@ const VideoChat = ({ sessionId, userId }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
-  const [activeColor, setActiveColor] = useState('#000000');
-  const [brushSize, setBrushSize] = useState(5);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const participantCount = peers?.length || 0;
 
-  const cleanupPeer = useCallback(() => {
-    if (peerRef.current) {
-      try {
-        // Remove all event listeners first
-        peerRef.current.removeAllListeners();
-        
-        // Close any existing connections
-        peerRef.current.disconnect();
-        
-        // Destroy the peer after a short delay
-        setTimeout(() => {
-          if (peerRef.current && !isUnmountingRef.current) {
-            peerRef.current.destroy();
-            peerRef.current = null;
-          }
-        }, 100);
-      } catch (err) {
-        console.warn('Cleanup warning:', err);
-      }
-    }
-  }, []);
-
-  const cleanupStream = useCallback(() => {
-    if (streamRef.current) {
-      try {
-        const tracks = streamRef.current.getTracks();
-        tracks.forEach(track => {
-          track.stop();
-          streamRef.current.removeTrack(track);
-        });
-        streamRef.current = null;
-      } catch (err) {
-        console.warn('Stream cleanup warning:', err);
-      }
-    }
-  }, []);
-
-  const generatePeerId = useCallback(() => {
-    // Generate a unique peer ID using timestamp and random string
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 15);
-    return `${sessionId}-${userId}-${timestamp}-${random}`;
-  }, [sessionId, userId]);
 
   const initializeVideoChat = useCallback(async () => {
     try {

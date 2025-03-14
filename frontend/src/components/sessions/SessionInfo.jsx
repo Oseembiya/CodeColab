@@ -5,7 +5,7 @@ import AlertDialog from '../notifications/AlertDialog';
 
 const SessionInfo = ({ session, onLeave, socket }) => {
   const [participantCount, setParticipantCount] = useState(0);
-  const [isHidden, setIsHidden] = useState(false);
+  const [isHidden, setIsHidden] = useState(true);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
 
   useEffect(() => {

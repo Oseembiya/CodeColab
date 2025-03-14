@@ -13,8 +13,12 @@
   flex-direction: column;
   overflow: hidden;
   resize: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.1s cubic-bezier(0.4, 0, 0.2, 1),
+              left 0.05s linear, 
+              top 0.05s linear;
   transform-origin: bottom right;
+  will-change: transform, left, top;
 }
 
 /* Collapsed state */
@@ -26,7 +30,10 @@
   transform: scale(1);
   background: var(--secondary-color);
   border: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              left 0.05s linear,
+              top 0.05s linear,
+              transform 0.2s ease;
 }
 
 /* Hover effect for collapsed state */
@@ -144,6 +151,7 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
 }
 
 .control-button:hover {
@@ -173,7 +181,11 @@
 }
 
 .video-chat-container.dragging {
-  transition: none;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: grabbing !important;
 }
 
 /* Add pulsing animation for collapsed state */
@@ -210,14 +222,76 @@
   justify-content: center;
   transition: all 0.2s ease;
   z-index: 10;
+  backdrop-filter: blur(4px);
 }
 
 .collapse-button:hover {
   background: var(--error-color);
   transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.3);
 }
 
 /* Hide collapse button when container is collapsed */
 .video-chat-container.collapsed .collapse-button {
   display: none;
-} 
+}
+
+/* Voice activity animation */
+@keyframes voiceActivity {
+  0% { box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(var(--secondary-rgb), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0); }
+}
+
+/* Add voice activity indicator to video containers */
+.video-container.speaking {
+  border: 2px solid var(--secondary-color);
+  animation: voiceActivity 1.5s infinite;
+}
+
+/* Voice activity indicator for mic button */
+.control-button[title*="Audio"]:not(.disabled)::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--secondary-color);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.control-button[title*="Audio"]:not(.disabled).speaking::after {
+  opacity: 1;
+  animation: voiceActivity 1.5s infinite;
+}
+
+/* Drag handle improvements */
+.video-drag-handle {
+  cursor: grab;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  transition: background-color 0.2s ease;
+}
+
+.video-drag-handle:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.video-chat-container.dragging .video-drag-handle {
+  cursor: grabbing;
+  background: rgba(var(--secondary-rgb), 0.2);
+}
+
+/* Hardware acceleration for smoother animations */
+.video-chat-container {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  perspective: 1000px;
+}
