@@ -26,39 +26,35 @@ const LoadingFallback = () => (
 const App = () => {
   return (
     <ErrorBoundary>
-      <Suspense fallback={<LoadingFallback />}>
-        <AuthProvider>
-          <ErrorBoundary>
-            <SessionProvider>
-              <ErrorBoundary>
-                <SocketProvider>
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" />} />
-                    <Route path="/signup" element={<SignUp />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route 
-                      path="/dashboard" 
-                      element={
-                        <ProtectedRoute>
-                          <MainContent />
-                        </ProtectedRoute>
-                      }
-                    >
-                      <Route index element={<Dashboard />} />
-                      <Route path="profile" element={<Profile />} />
-                      <Route path="editor" element={<CodeEditor />} />
-                      <Route path="sessions" element={<Sessions />} />
-                      <Route path="sessions/:sessionId" element={<LiveSession />} />  
-                      <Route path="whiteboard" element={<Whiteboard />} />
-                    </Route>
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                  </Routes>
-                </SocketProvider>
-              </ErrorBoundary>
-            </SessionProvider>
-          </ErrorBoundary>
-        </AuthProvider>
-      </Suspense>
+      <AuthProvider>
+        <SocketProvider>
+          <SessionProvider>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/login" element={<Login />} />
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <MainContent />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="editor" element={<CodeEditor />} />
+                  <Route path="sessions" element={<Sessions />} />
+                  <Route path="sessions/:sessionId" element={<LiveSession />} />  
+                  <Route path="whiteboard" element={<Whiteboard />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </Suspense>
+          </SessionProvider>
+        </SocketProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 };

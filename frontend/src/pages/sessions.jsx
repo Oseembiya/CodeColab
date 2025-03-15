@@ -113,10 +113,13 @@ const Sessions = () => {
       }
       
       const result = await joinSession(sessionId, joinCode);
+      
+      // Clear UI states after successful join
       setShowJoinModal(false);
       setSelectedSessionId(null);
       setJoinError('');
       
+      // Navigate to session
       navigate(`/dashboard/sessions/${sessionId}`);
     } catch (error) {
       console.error('Failed to join session:', error);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSession } from '../contexts/SessionContext';
+import { useAuth } from '../hooks/useAuth';
 import { db, auth } from '../firebaseConfig';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { io } from 'socket.io-client';
@@ -11,7 +12,8 @@ import VideoChat from '../components/communications/VideoChat';
 const CollaborativeSession = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { activeSession, joinSession, clearActiveSession } = useSession();
+  const { currentSession, joinSession, leaveSession } = useSession();
+  const { user } = useAuth();
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,7 +21,11 @@ const CollaborativeSession = () => {
   const userId = auth.currentUser?.uid;
 
   useEffect(() => {
-    if (!sessionId || !userId) return;
+    // Redirect if not authenticated
+    if (!user) {
+      navigate('/login');
+      return;
+    }
 
     // Initialize socket connection
     socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
@@ -39,25 +45,34 @@ const CollaborativeSession = () => {
         socketRef.current.disconnect();
       }
     };
-  }, [sessionId, userId]);
+  }, [sessionId, user]);
+
+  const initSession = async () => {
+    try {
+      // Try to get stored join info
+      const storedJoinInfo = localStorage.getItem('lastJoinedSession');
+      let joinCode = null;
+
+      if (storedJoinInfo) {
+        const { id, joinCode: storedCode } = JSON.parse(storedJoinInfo);
+        if (id === sessionId) {
+          joinCode = storedCode;
+        }
+      }
+
+      await joinSession(sessionId, joinCode);
+    } catch (error) {
+      console.error('Error joining session:', error);
+      setError(error.message);
+      navigate('/dashboard/sessions');
+    }
+  };
 
   useEffect(() => {
-    const initSession = async () => {
-      if (!sessionId || !userId) {
-        navigate('/dashboard');
-        return;
-      }
-
-      try {
-        await joinSession(sessionId);
-      } catch (error) {
-        console.error('Error joining session:', error);
-        setError(error.message);
-      }
-    };
-
-    initSession();
-  }, [sessionId, userId, joinSession, navigate]);
+    if (!currentSession || currentSession.id !== sessionId) {
+      initSession();
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     setLoading(true);
@@ -65,9 +80,9 @@ const CollaborativeSession = () => {
 
     const initializeSession = async () => {
       try {
-        // First, try to use activeSession if it matches current sessionId
-        if (activeSession && activeSession.id === sessionId) {
-          setSessionData(activeSession);
+        // First, try to use currentSession if it matches current sessionId
+        if (currentSession && currentSession.id === sessionId) {
+          setSessionData(currentSession);
           setLoading(false);
         }
 
@@ -102,11 +117,12 @@ const CollaborativeSession = () => {
       if (unsubscribe) {
         unsubscribe();
       }
+      leaveSession();
     };
-  }, [sessionId, activeSession]);
+  }, [sessionId, currentSession]);
 
   const handleLeave = () => {
-    clearActiveSession();
+    leaveSession();
     navigate('/dashboard/sessions');
   };
 
@@ -121,14 +137,14 @@ const CollaborativeSession = () => {
     );
   }
 
-  if (!activeSession) {
+  if (!currentSession) {
     return <div>Loading session...</div>;
   }
 
   return (
     <div className="collaborative-session">
       <SessionInfo 
-        session={activeSession}
+        session={currentSession}
         onLeave={handleLeave}
         socket={socketRef.current}
       />

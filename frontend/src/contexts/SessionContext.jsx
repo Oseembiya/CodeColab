@@ -8,29 +8,102 @@ import {
   doc, 
   getDoc 
 } from 'firebase/firestore';
+import { useSocket } from '../contexts/SocketContext';
+import { useAuth } from '../hooks/useAuth';
 
 const SessionContext = createContext(null);
 
-export const SessionProvider = ({ children }) => {
-  const [activeSession, setActiveSession] = useState(() => {
-    // Try to load from localStorage on initial render
-    const saved = localStorage.getItem('activeSession');
-    return saved ? JSON.parse(saved) : null;
-  });
+export function SessionProvider({ children }) {
+  const [currentSession, setCurrentSession] = useState(null);
+  const { socket } = useSocket();
+  const { user } = useAuth();
 
-  // Persist activeSession to localStorage whenever it changes
-  useEffect(() => {
-    if (activeSession) {
-      localStorage.setItem('activeSession', JSON.stringify(activeSession));
-    } else {
-      localStorage.removeItem('activeSession');
+  const getSessionData = async (sessionId) => {
+    try {
+      const sessionRef = doc(db, 'sessions', sessionId);
+      const sessionSnap = await getDoc(sessionRef);
+
+      if (!sessionSnap.exists()) {
+        throw new Error('Session not found');
+      }
+
+      return {
+        id: sessionSnap.id,
+        ...sessionSnap.data()
+      };
+    } catch (error) {
+      console.error('Error fetching session data:', error);
+      throw new Error('Failed to fetch session data');
     }
-  }, [activeSession]);
+  };
 
-  const clearActiveSession = useCallback(() => {
-    setActiveSession(null);
-    localStorage.removeItem('activeSession');
-  }, []);
+  const joinSession = async (sessionId, joinCode) => {
+    console.log('Starting join with:', { sessionId, joinCode });
+
+    try {
+      if (!user) {
+        throw new Error('User must be authenticated to join a session');
+      }
+
+      // Check if already in session
+      if (currentSession?.id === sessionId) {
+        console.log('Already in session, returning active session');
+        return currentSession;
+      }
+
+      // Get session data from Firestore
+      const sessionRef = doc(db, 'sessions', sessionId);
+      const sessionSnap = await getDoc(sessionRef);
+
+      if (!sessionSnap.exists()) {
+        throw new Error('Session not found');
+      }
+
+      const sessionData = {
+        id: sessionSnap.id,
+        ...sessionSnap.data()
+      };
+
+      // Validate join code for private sessions
+      if (sessionData.isPrivate && sessionData.joinCode !== joinCode) {
+        throw new Error('Invalid join code');
+      }
+
+      // Validate session status
+      if (sessionData.status !== 'active') {
+        throw new Error('Session is not active');
+      }
+
+      // Check if session is full
+      if (sessionData.participants && 
+          sessionData.participants.length >= sessionData.maxParticipants) {
+        throw new Error('Session is full');
+      }
+
+      // Join socket room
+      if (socket) {
+        socket.emit('join-session', {
+          sessionId,
+          userId: user.uid,
+          username: user.displayName || 'Anonymous',
+          photoURL: user.photoURL
+        });
+      }
+
+      // Update current session
+      const updatedSession = {
+        ...sessionData,
+        joinCode
+      };
+      
+      setCurrentSession(updatedSession);
+      return updatedSession;
+
+    } catch (error) {
+      console.error('Join session error:', error);
+      throw error;
+    }
+  };
 
   const createSession = async (sessionData) => {
     try {
@@ -38,8 +111,8 @@ export const SessionProvider = ({ children }) => {
         ...sessionData,
         createdAt: new Date().toISOString(),
         status: 'active',
-        participants: [auth.currentUser.uid],
-        owner: auth.currentUser.uid,
+        participants: [user.uid],
+        owner: user.uid,
       };
 
       const docRef = await addDoc(collection(db, 'sessions'), sessionToCreate);
@@ -51,7 +124,7 @@ export const SessionProvider = ({ children }) => {
       };
 
       // Update active session immediately
-      setActiveSession(createdSession);
+      setCurrentSession(createdSession);
       localStorage.setItem('activeSession', JSON.stringify(createdSession));
 
       return docRef.id;
@@ -61,66 +134,28 @@ export const SessionProvider = ({ children }) => {
     }
   };
   
-  const joinSession = async (sessionId, joinCode = null) => {
-    try {
-      console.log('Joining session with:', { sessionId, joinCode, hasActiveSession: !!activeSession });
-      
-      // If we already have an active session with this ID, return it
-      if (activeSession && activeSession.id === sessionId) {
-        console.log('Already in session, returning active session');
-        return activeSession;
-      }
+  const clearActiveSession = useCallback(() => {
+    setCurrentSession(null);
+    localStorage.removeItem('activeSession');
+  }, []);
 
-      const sessionRef = doc(db, 'sessions', sessionId);
-      const sessionDoc = await getDoc(sessionRef);
-      
-      if (!sessionDoc.exists()) {
-        throw new Error('Session not found');
-      }
-
-      const session = { id: sessionId, ...sessionDoc.data() };
-      console.log('Session data:', session);
-      
-      // Check if user is the owner of the session
-      const isOwner = session.owner === auth.currentUser.uid;
-      
-      // Validate private session access
-      if (session.isPrivate && !isOwner) { // Only check join code if not the owner
-        // Check if we have a stored join code
-        const storedJoinInfo = localStorage.getItem('lastJoinedSession');
-        const parsedJoinInfo = storedJoinInfo ? JSON.parse(storedJoinInfo) : null;
-        const finalJoinCode = joinCode || (parsedJoinInfo?.id === sessionId ? parsedJoinInfo.joinCode : null);
-
-        if (!finalJoinCode) {
-          throw new Error('Join code required for private session');
-        }
-
-        if (session.joinCode !== finalJoinCode?.toUpperCase()) {
-          throw new Error('Invalid join code');
-        }
-      }
-
-      // Update participants array
-      const updatedSession = {
-        ...session,
-        participants: session.participants || []
-      };
-
-      // Set as active session
-      setActiveSession(updatedSession);
-      
-      return updatedSession;
-    } catch (error) {
-      console.error('Error joining session:', error);
-      throw error;
+  const leaveSession = () => {
+    if (currentSession && socket) {
+      socket.emit('leave-session', { 
+        sessionId: currentSession.id,
+        userId: user?.uid 
+      });
+      setCurrentSession(null);
     }
   };
 
   const value = {
-    activeSession,
+    currentSession,
     createSession,
     joinSession,
-    clearActiveSession
+    clearActiveSession,
+    leaveSession,
+    getSessionData
   };
 
   return (
@@ -128,7 +163,7 @@ export const SessionProvider = ({ children }) => {
       {children}
     </SessionContext.Provider>
   );
-};
+}
 
 export const useSession = () => {
   const context = useContext(SessionContext);
@@ -136,4 +171,6 @@ export const useSession = () => {
     throw new Error('useSession must be used within a SessionProvider');
   }
   return context;
-}; 
+};
+
+export default SessionContext; 
