@@ -56,10 +56,44 @@ const videoParticipants = new Map(); // Track video participants per session
 // Track session code state
 const sessionStates = new Map();
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+const connectedSessions = new Map();
 
-  // Join session room
+// Add at the top with other declarations
+const connectedClients = new Map();
+
+// Add at the top with other declarations
+const sessionObservers = new Map();
+
+io.on('connection', (socket) => {
+  const clientId = socket.handshake.auth.clientId;
+  
+  if (clientId) {
+    // Check if this client was already connected
+    const existingSocket = connectedClients.get(clientId);
+    if (existingSocket) {
+      // Remove the old socket connection
+      existingSocket.disconnect();
+      console.log(`Disconnected previous session for client: ${clientId}`);
+    }
+
+    // Store the new socket connection
+    connectedClients.set(clientId, socket);
+    console.log(`Client connected/reconnected: ${clientId}`);
+
+    // Update the socket's data
+    socket.clientId = clientId;
+  }
+
+  socket.on('disconnect', () => {
+    if (socket.clientId) {
+      // Only remove the client if this is the current socket for that client
+      if (connectedClients.get(socket.clientId) === socket) {
+        connectedClients.delete(socket.clientId);
+        console.log(`Client disconnected: ${socket.clientId}`);
+      }
+    }
+  });
+
   socket.on('join-session', ({ sessionId, userId, username, photoURL }) => {
     socket.join(sessionId);
     
@@ -68,8 +102,9 @@ io.on('connection', (socket) => {
     }
     
     const sessionUsers = activeSessions.get(sessionId);
-    sessionUsers.set(userId, {
+    sessionUsers.set(socket.clientId, {
       socketId: socket.id,
+      clientId: socket.clientId,
       username: username || 'Anonymous',
       photoURL: photoURL || '/default-avatar.png',
       joinedAt: new Date().toISOString()
@@ -81,14 +116,9 @@ io.on('connection', (socket) => {
       ...user
     }));
 
-    // Emit to all clients in the session, including the sender
-    io.in(sessionId).emit('participants-update', {
-      participants: participantsList,
-      count: sessionUsers.size
-    });
-
-    // Emit updates to both participants and observers
+    // Emit to both participants and observers with session ID
     io.to(sessionId).to(`observe:${sessionId}`).emit('participants-update', {
+      sessionId,
       participants: participantsList,
       count: sessionUsers.size
     });
@@ -97,20 +127,54 @@ io.on('connection', (socket) => {
   });
 
   // Handle session observation
-  socket.on('observe-session', ({ sessionId }) => {
+  socket.on('observe-session', ({ sessionId, observerRoom }) => {
+    // Leave any previous observation rooms
+    if (socket.observing) {
+      socket.leave(`observe:${socket.observing}`);
+      
+      const observers = sessionObservers.get(socket.observing) || new Set();
+      observers.delete(socket.id);
+      
+      if (observers.size === 0) {
+        sessionObservers.delete(socket.observing);
+      } else {
+        sessionObservers.set(socket.observing, observers);
+      }
+    }
+
+    // Join new observation room
     socket.join(`observe:${sessionId}`);
-    
+    socket.observing = sessionId;
+
+    // Track observer
+    const observers = sessionObservers.get(sessionId) || new Set();
+    observers.add(socket.id);
+    sessionObservers.set(sessionId, observers);
+
     // Send initial participant count
     const sessionUsers = activeSessions.get(sessionId);
-    if (sessionUsers) {
-      socket.emit('participants-update', {
-        count: sessionUsers.size,
-        participants: Array.from(sessionUsers.entries()).map(([id, user]) => ({
-          userId: id,
-          ...user
-        }))
-      });
+    socket.emit('participants-update', {
+      sessionId,
+      count: sessionUsers ? sessionUsers.size : 0
+    });
+
+    console.log(`Observer ${socket.id} watching session ${sessionId}`);
+  });
+
+  // Handle observer leaving
+  socket.on('leave-observer', ({ sessionId, observerRoom }) => {
+    socket.leave(`observe:${sessionId}`);
+    
+    const observers = sessionObservers.get(sessionId);
+    if (observers) {
+      observers.delete(socket.id);
+      if (observers.size === 0) {
+        sessionObservers.delete(sessionId);
+      }
     }
+
+    socket.observing = null;
+    console.log(`Observer ${socket.id} stopped watching session ${sessionId}`);
   });
 
   // Handle request for initial code
@@ -176,8 +240,22 @@ io.on('connection', (socket) => {
     socket.to(sessionId).emit('user-stopped-typing', { userId });
   });
 
-  // Handle disconnection with participant count update
+  // Handle disconnection
   socket.on('disconnect', () => {
+    // Clean up observer tracking
+    if (socket.observing) {
+      const observers = sessionObservers.get(socket.observing);
+      if (observers) {
+        observers.delete(socket.id);
+        if (observers.size === 0) {
+          sessionObservers.delete(socket.observing);
+        }
+      }
+    }
+
+    console.log('User disconnected:', socket.id);
+    connectedSessions.delete(socket.id);
+
     activeSessions.forEach((users, sessionId) => {
       users.forEach((user, userId) => {
         if (user.socketId === socket.id) {

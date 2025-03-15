@@ -4,6 +4,7 @@ import { AuthProvider } from './hooks/useAuth.jsx';
 import { SessionProvider } from './contexts/SessionContext';
 import ErrorBoundary from "./error/ErrorBoundary.jsx";
 import MainContent from './components/layouts/mainContent';
+import { SocketProvider } from './contexts/SocketContext';
 
 const SignUp = lazy(() => import("./pages/signUp"));
 const ProtectedRoute = lazy(() => import("./pages/protectedRoute"));
@@ -25,33 +26,39 @@ const LoadingFallback = () => (
 const App = () => {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <SessionProvider>
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/login" element={<Login />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <MainContent />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Dashboard />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="editor" element={<CodeEditor />} />
-                <Route path="sessions" element={<Sessions />} />
-                <Route path="sessions/:sessionId" element={<LiveSession />} />  
-                <Route path="whiteboard" element={<Whiteboard />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </Suspense>
-        </SessionProvider>
-      </AuthProvider>
+      <Suspense fallback={<LoadingFallback />}>
+        <AuthProvider>
+          <ErrorBoundary>
+            <SessionProvider>
+              <ErrorBoundary>
+                <SocketProvider>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/dashboard" />} />
+                    <Route path="/signup" element={<SignUp />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route 
+                      path="/dashboard" 
+                      element={
+                        <ProtectedRoute>
+                          <MainContent />
+                        </ProtectedRoute>
+                      }
+                    >
+                      <Route index element={<Dashboard />} />
+                      <Route path="profile" element={<Profile />} />
+                      <Route path="editor" element={<CodeEditor />} />
+                      <Route path="sessions" element={<Sessions />} />
+                      <Route path="sessions/:sessionId" element={<LiveSession />} />  
+                      <Route path="whiteboard" element={<Whiteboard />} />
+                    </Route>
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  </Routes>
+                </SocketProvider>
+              </ErrorBoundary>
+            </SessionProvider>
+          </ErrorBoundary>
+        </AuthProvider>
+      </Suspense>
     </ErrorBoundary>
   );
 };

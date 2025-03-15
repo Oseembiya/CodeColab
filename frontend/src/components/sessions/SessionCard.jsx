@@ -1,31 +1,47 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen, FaEdit, FaTrash } from 'react-icons/fa';
-import { io } from 'socket.io-client';
+import { useSocket } from '../../contexts/SocketContext';
 
 const SessionCard = ({ session, isOwner, onJoin, view }) => {
   const [participantCount, setParticipantCount] = useState(session.participants?.length || 0);
+  const { socket, isConnected } = useSocket();
   
   useEffect(() => {
-    // Only connect to socket if session is active
-    if (session.status !== 'active') return;
+    // Only proceed if socket is connected and session is active
+    if (!socket || !isConnected || session.status !== 'active') return;
 
-    const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      transports: ['websocket']
-    });
+    try {
+      // Create a unique room identifier for observation
+      const observerRoom = `observe:${session.id}`;
+      
+      // Join the observer room instead of the main session
+      socket.emit('observe-session', { 
+        sessionId: session.id,
+        observerRoom 
+      });
 
-    // Join the session room as an observer
-    socket.emit('observe-session', { sessionId: session.id });
+      // Listen for participant updates only for this session
+      const updateHandler = ({ sessionId, count }) => {
+        if (sessionId === session.id) {
+          setParticipantCount(count);
+        }
+      };
 
-    // Listen for participant updates
-    socket.on('participants-update', ({ count }) => {
-      setParticipantCount(count);
-    });
+      socket.on('participants-update', updateHandler);
 
-    return () => {
-      socket.disconnect();
-    };
-  }, [session.id, session.status]);
+      // Cleanup function
+      return () => {
+        socket.off('participants-update', updateHandler);
+        socket.emit('leave-observer', { 
+          sessionId: session.id,
+          observerRoom 
+        });
+      };
+    } catch (error) {
+      console.error('Socket operation error:', error);
+    }
+  }, [socket, isConnected, session.id, session.status]);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Date not available';
