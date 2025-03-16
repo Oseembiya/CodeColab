@@ -213,9 +213,11 @@ const AuthForm = ({ isLogin }) => {
 
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({
-        prompt: "select_account",
+        // Remove prompt parameter to use cached credentials
+        // prompt: "select_account", // Remove this line
       });
 
+      // Try to get existing credential first
       const result = await signInWithPopup(auth, provider);
       if (result.user) {
         await saveUserToFirestore(result.user);
@@ -224,6 +226,7 @@ const AuthForm = ({ isLogin }) => {
     } catch (error) {
       console.error("Google Auth Error:", error);
 
+      // Handle specific error cases
       const errorMessages = {
         "auth/popup-blocked": "Pop-up was blocked. Please enable pop-ups.",
         "auth/popup-closed-by-user": "Sign-in cancelled.",
