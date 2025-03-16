@@ -278,7 +278,7 @@ const AuthForm = ({ isLogin }) => {
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                placeholder="John Doe"
+                placeholder="Enter your full name"
               />
               <FaUser className="input-icon" />
               {error.fullName && (
@@ -351,7 +351,7 @@ const AuthForm = ({ isLogin }) => {
               </div>
 
               <div className="form-group">
-                <label>
+                <label className="checkbox-label">
                   <input
                     type="checkbox"
                     name="acceptTerms"
