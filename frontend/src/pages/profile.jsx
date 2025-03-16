@@ -1,18 +1,38 @@
 import { useState, useEffect } from "react";
 import { auth, storage } from "../firebaseConfig";
-import { updateProfile, updatePassword } from "firebase/auth";
+import {
+  updateProfile,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+} from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { 
-  FaUser, FaEdit, FaKey, FaUserCircle, 
-  FaCode, FaHistory, FaStar, FaCog,
-  FaGithub, FaLinkedin, FaTwitter, FaGlobe,
-  FaUsers, FaCheck, FaTimes, FaExclamationCircle, FaCheckCircle,
-  FaCamera
+import {
+  FaUser,
+  FaEdit,
+  FaKey,
+  FaUserCircle,
+  FaCode,
+  FaHistory,
+  FaStar,
+  FaCog,
+  FaGithub,
+  FaLinkedin,
+  FaTwitter,
+  FaGlobe,
+  FaUsers,
+  FaCheck,
+  FaTimes,
+  FaExclamationCircle,
+  FaCheckCircle,
+  FaCamera,
 } from "react-icons/fa";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 
 const Profile = () => {
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = useState("personal");
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -23,23 +43,23 @@ const Profile = () => {
     location: "",
     occupation: "",
     website: "",
-    
+
     // Social Links
     github: "",
     linkedin: "",
     twitter: "",
-    
+
     // Preferences
     theme: "light",
     emailNotifications: true,
     codeEditor: "vscode",
     language: "javascript",
-    
+
     // Security
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
-    timestamp: null
+    timestamp: null,
   });
 
   // Mock data for statistics and activity
@@ -47,20 +67,35 @@ const Profile = () => {
     totalSessions: 25,
     hoursSpent: 48,
     linesOfCode: 3240,
-    collaborations: 12
+    collaborations: 12,
   };
 
   const recentActivity = [
-    { id: 1, type: 'session', title: 'JavaScript Debugging Session', date: '2024-03-08' },
-    { id: 2, type: 'achievement', title: 'Completed 10 Sessions', date: '2024-03-07' },
-    { id: 3, type: 'collaboration', title: 'Python Project Collab', date: '2024-03-06' }
+    {
+      id: 1,
+      type: "session",
+      title: "JavaScript Debugging Session",
+      date: "2024-03-08",
+    },
+    {
+      id: 2,
+      type: "achievement",
+      title: "Completed 10 Sessions",
+      date: "2024-03-07",
+    },
+    {
+      id: 3,
+      type: "collaboration",
+      title: "Python Project Collab",
+      date: "2024-03-06",
+    },
   ];
 
   const skills = [
-    { name: 'JavaScript', level: 90 },
-    { name: 'Python', level: 75 },
-    { name: 'React', level: 85 },
-    { name: 'Node.js', level: 80 }
+    { name: "JavaScript", level: 90 },
+    { name: "Python", level: 75 },
+    { name: "React", level: 85 },
+    { name: "Node.js", level: 80 },
   ];
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -68,37 +103,77 @@ const Profile = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setFormData((prev) => ({
+              ...prev,
+              displayName: userData.displayName || user.displayName || "",
+              bio: userData.bio || "",
+              occupation: userData.occupation || "",
+              // ... keep other existing formData fields
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        setError("Failed to load user data");
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const handleProfileUpdate = async () => {
     try {
       setError("");
       setSuccess("");
-      
+
       const user = auth.currentUser;
       if (user) {
+        // Update Auth Profile
         await updateProfile(user, {
           displayName: formData.displayName,
         });
+
+        // Update Firestore
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, {
+          displayName: formData.displayName,
+          bio: formData.bio,
+          occupation: formData.occupation,
+          updatedAt: new Date().toISOString(),
+        });
+
         setSuccess("Profile updated successfully!");
         setIsEditing(false);
-        
+
         // Add fade-out animation before removing
         setTimeout(() => {
-          const messageContainer = document.querySelector('.status-message-container');
+          const messageContainer = document.querySelector(
+            ".status-message-container"
+          );
           if (messageContainer) {
-            messageContainer.classList.add('fade-out');
+            messageContainer.classList.add("fade-out");
             setTimeout(() => {
               setSuccess("");
-            }, 300); // Match the animation duration
+            }, 300);
           }
-        }, 2700); // Start fade-out before the message is removed
+        }, 2700);
       }
     } catch (err) {
+      console.error("Update error:", err);
       setError("Failed to update profile: " + err.message);
     }
   };
@@ -108,24 +183,93 @@ const Profile = () => {
       setError("");
       setSuccess("");
 
+      // Validate password fields
+      if (!formData.currentPassword) {
+        setError("Current password is required");
+        return;
+      }
+
+      if (!formData.newPassword) {
+        setError("New password is required");
+        return;
+      }
+
       if (formData.newPassword !== formData.confirmPassword) {
-        setError("Passwords do not match");
+        setError("New passwords do not match");
+        return;
+      }
+
+      if (formData.newPassword.length < 8 || formData.newPassword.length > 12) {
+        setError("Password must be between 8 and 12 characters");
         return;
       }
 
       const user = auth.currentUser;
-      if (user) {
-        await updatePassword(user, formData.newPassword);
-        setSuccess("Password updated successfully!");
-        setFormData(prev => ({
-          ...prev,
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: ""
-        }));
+      if (!user) {
+        setError("No user is currently signed in");
+        return;
       }
+
+      // Create credentials with current password
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        formData.currentPassword
+      );
+
+      // Reauthenticate user before password change
+      await reauthenticateWithCredential(user, credential);
+
+      // Update password
+      await updatePassword(user, formData.newPassword);
+
+      // Update Firestore with password change timestamp
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        lastPasswordChange: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Clear password fields
+      setFormData((prev) => ({
+        ...prev,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      }));
+
+      setSuccess("Password updated successfully!");
+
+      // Add fade-out animation
+      setTimeout(() => {
+        const messageContainer = document.querySelector(
+          ".status-message-container"
+        );
+        if (messageContainer) {
+          messageContainer.classList.add("fade-out");
+          setTimeout(() => {
+            setSuccess("");
+          }, 300);
+        }
+      }, 2700);
     } catch (err) {
-      setError("Failed to update password: " + err.message);
+      console.error("Password update error:", err);
+
+      // Handle specific error cases
+      switch (err.code) {
+        case "auth/wrong-password":
+          setError("Current password is incorrect");
+          break;
+        case "auth/requires-recent-login":
+          setError("Please sign in again before changing your password");
+          break;
+        case "auth/weak-password":
+          setError(
+            "New password is too weak. It must be at least 8 characters"
+          );
+          break;
+        default:
+          setError("Failed to update password. Please try again");
+      }
     }
   };
 
@@ -134,14 +278,14 @@ const Profile = () => {
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setPhotoError('Please select an image file');
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please select an image file");
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setPhotoError('Image must be less than 5MB');
+      setPhotoError("Image must be less than 5MB");
       return;
     }
 
@@ -151,29 +295,28 @@ const Profile = () => {
       setError("");
 
       // Create unique filename
-      const fileExtension = file.name.split('.').pop();
+      const fileExtension = file.name.split(".").pop();
       const fileName = `${auth.currentUser.uid}-${uuidv4()}.${fileExtension}`;
-      
+
       // Create storage reference
       const storageRef = ref(storage, `profile-photos/${fileName}`);
-      
+
       // Upload file
       await uploadBytes(storageRef, file);
-      
+
       // Get download URL
       const photoURL = await getDownloadURL(storageRef);
-      
+
       // Update user profile
       await updateProfile(auth.currentUser, { photoURL });
-      
-      setSuccess("Profile photo updated successfully!");
-      
-      // Force a re-render of the profile image
-      setFormData(prev => ({ ...prev, timestamp: Date.now() }));
 
+      setSuccess("Profile photo updated successfully!");
+
+      // Force a re-render of the profile image
+      setFormData((prev) => ({ ...prev, timestamp: Date.now() }));
     } catch (error) {
-      console.error('Error uploading photo:', error);
-      setPhotoError('Failed to upload photo. Please try again.');
+      console.error("Error uploading photo:", error);
+      setPhotoError("Failed to upload photo. Please try again.");
     } finally {
       setUploadingPhoto(false);
     }
@@ -182,8 +325,8 @@ const Profile = () => {
   const renderProfileAvatar = () => (
     <div className="profile-avatar">
       {auth.currentUser?.photoURL ? (
-        <img 
-          src={`${auth.currentUser.photoURL}?t=${formData.timestamp || ''}`}
+        <img
+          src={`${auth.currentUser.photoURL}?t=${formData.timestamp || ""}`}
           alt="Profile"
           className="avatar-large"
           onError={(e) => {
@@ -194,7 +337,7 @@ const Profile = () => {
       ) : (
         <FaUserCircle className="avatar-icon" />
       )}
-      
+
       {isEditing && (
         <label className="avatar-icon" htmlFor="photo-upload">
           <input
@@ -216,7 +359,7 @@ const Profile = () => {
       <div className="profile-container">
         <div className="profile-header">
           <h1>Profile Settings</h1>
-          <button 
+          <button
             className="edit-button"
             onClick={() => setIsEditing(!isEditing)}
           >
@@ -225,17 +368,23 @@ const Profile = () => {
         </div>
 
         {(error || success) && (
-          <div className={`status-message-container ${error ? 'error' : 'success'}`}>
+          <div
+            className={`status-message-container ${
+              error ? "error" : "success"
+            }`}
+          >
             <div className="status-message-content">
               <div className="status-icon">
                 {error ? <FaExclamationCircle /> : <FaCheckCircle />}
               </div>
               <p>{error || success}</p>
-              <button 
-                className="close-message" 
+              <button
+                className="close-message"
                 onClick={() => {
-                  const messageContainer = document.querySelector('.status-message-container');
-                  messageContainer.classList.add('fade-out');
+                  const messageContainer = document.querySelector(
+                    ".status-message-container"
+                  );
+                  messageContainer.classList.add("fade-out");
                   setTimeout(() => {
                     error ? setError("") : setSuccess("");
                   }, 300);
@@ -254,7 +403,9 @@ const Profile = () => {
               {Object.entries(statistics).map(([key, value]) => (
                 <div key={key} className="stat-item">
                   <span className="stat-value">{value}</span>
-                  <span className="stat-label">{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
+                  <span className="stat-label">
+                    {key.replace(/([A-Z])/g, " $1").toLowerCase()}
+                  </span>
                 </div>
               ))}
             </div>
@@ -262,37 +413,46 @@ const Profile = () => {
 
           <div className="profile-tabs">
             <button
-              className={`tab-button ${activeTab === 'personal' ? 'active' : ''}`}
-              onClick={() => setActiveTab('personal')}
+              className={`tab-button ${
+                activeTab === "personal" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("personal")}
             >
               <FaUserCircle /> Personal Info
             </button>
             <button
-              className={`tab-button ${activeTab === 'activity' ? 'active' : ''}`}
-              onClick={() => setActiveTab('activity')}
+              className={`tab-button ${
+                activeTab === "activity" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("activity")}
             >
               <FaHistory /> Activity
             </button>
             <button
-              className={`tab-button ${activeTab === 'skills' ? 'active' : ''}`}
-              onClick={() => setActiveTab('skills')}
+              className={`tab-button ${activeTab === "skills" ? "active" : ""}`}
+              onClick={() => setActiveTab("skills")}
             >
               <FaCode /> Skills
             </button>
             <button
-              className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('settings')}
+              className={`tab-button ${
+                activeTab === "settings" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("settings")}
             >
               <FaCog /> Settings
             </button>
           </div>
 
           <div className="profile-content">
-            {activeTab === 'personal' && (
-              <form className="profile-form" onSubmit={(e) => {
-                e.preventDefault();
-                handleProfileUpdate();
-              }}>
+            {activeTab === "personal" && (
+              <form
+                className="profile-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleProfileUpdate();
+                }}
+              >
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="displayName">Display Name</label>
@@ -370,7 +530,7 @@ const Profile = () => {
                   </div>
                   <div className="links-grid">
                     {formData.github ? (
-                      <a 
+                      <a
                         href={formData.github}
                         className="link-item"
                         data-type="github"
@@ -398,7 +558,7 @@ const Profile = () => {
                     )}
 
                     {formData.linkedin ? (
-                      <a 
+                      <a
                         href={formData.linkedin}
                         className="link-item"
                         data-type="linkedin"
@@ -426,7 +586,7 @@ const Profile = () => {
                     )}
 
                     {formData.twitter ? (
-                      <a 
+                      <a
                         href={formData.twitter}
                         className="link-item"
                         data-type="twitter"
@@ -454,7 +614,7 @@ const Profile = () => {
                     )}
 
                     {formData.website ? (
-                      <a 
+                      <a
                         href={formData.website}
                         className="link-item"
                         data-type="portfolio"
@@ -493,16 +653,16 @@ const Profile = () => {
               </form>
             )}
 
-            {activeTab === 'activity' && (
+            {activeTab === "activity" && (
               <div className="activity-section">
                 <h3>Recent Activity</h3>
                 <div className="activity-list">
-                  {recentActivity.map(activity => (
+                  {recentActivity.map((activity) => (
                     <div key={activity.id} className="activity-item">
                       <div className="activity-icon">
-                        {activity.type === 'session' && <FaCode />}
-                        {activity.type === 'achievement' && <FaStar />}
-                        {activity.type === 'collaboration' && <FaUsers />}
+                        {activity.type === "session" && <FaCode />}
+                        {activity.type === "achievement" && <FaStar />}
+                        {activity.type === "collaboration" && <FaUsers />}
                       </div>
                       <div className="activity-details">
                         <span className="activity-title">{activity.title}</span>
@@ -514,19 +674,19 @@ const Profile = () => {
               </div>
             )}
 
-            {activeTab === 'skills' && (
+            {activeTab === "skills" && (
               <div className="skills-section">
                 <h3>Programming Skills</h3>
                 <div className="skills-list">
-                  {skills.map(skill => (
+                  {skills.map((skill) => (
                     <div key={skill.name} className="skill-item">
                       <div className="skill-header">
                         <span className="skill-name">{skill.name}</span>
                         <span className="skill-level">{skill.level}%</span>
                       </div>
                       <div className="skill-bar">
-                        <div 
-                          className="skill-progress" 
+                        <div
+                          className="skill-progress"
                           style={{ width: `${skill.level}%` }}
                         />
                       </div>
@@ -536,13 +696,16 @@ const Profile = () => {
               </div>
             )}
 
-            {activeTab === 'settings' && (
+            {activeTab === "settings" && (
               <div className="settings-section">
                 <h3>Preferences</h3>
-                <form className="profile-form" onSubmit={(e) => {
-                  e.preventDefault();
-                  handleProfileUpdate();
-                }}>
+                <form
+                  className="profile-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleProfileUpdate();
+                  }}
+                >
                   <div className="form-row">
                     <div className="form-group">
                       <label htmlFor="theme">Theme</label>
@@ -596,6 +759,64 @@ const Profile = () => {
                     </button>
                   )}
                 </form>
+
+                {/* Separate form for password update */}
+                <div className="security-settings">
+                  <h3>Security</h3>
+                  <form
+                    className="profile-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handlePasswordUpdate();
+                    }}
+                  >
+                    <div className="form-group">
+                      <label htmlFor="currentPassword">Current Password</label>
+                      <input
+                        type="password"
+                        id="currentPassword"
+                        name="currentPassword"
+                        value={formData.currentPassword}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="newPassword">New Password</label>
+                      <input
+                        type="password"
+                        id="newPassword"
+                        name="newPassword"
+                        value={formData.newPassword}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="confirmPassword">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    {isEditing && (
+                      <div className="form-actions">
+                        <button type="submit" className="submit-button">
+                          Update Password
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                </div>
               </div>
             )}
           </div>
@@ -604,4 +825,4 @@ const Profile = () => {
     </div>
   );
 };
-export default Profile; 
+export default Profile;

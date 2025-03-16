@@ -1,5 +1,22 @@
-import AuthForm from '../components/auth/AuthForm';
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../firebaseConfig";
+import AuthForm from "../components/auth/AuthForm";
 
-const Login = () => <AuthForm isLogin={true} />;
+const Login = () => {
+  const navigate = useNavigate();
 
-export default Login; 
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        navigate("/dashboard");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
+  return <AuthForm isLogin={true} />;
+};
+
+export default Login;
