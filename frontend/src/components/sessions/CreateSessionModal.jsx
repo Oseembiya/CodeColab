@@ -1,81 +1,123 @@
-import { useState, useCallback, useRef } from 'react';
-import PropTypes from 'prop-types';
-import { FaTimes } from 'react-icons/fa';
+import { useState, useCallback, useRef, useEffect } from "react";
+import PropTypes from "prop-types";
+import { FaTimes } from "react-icons/fa";
 
 const generateJoinCode = () => {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  return Array.from(
-    { length: 6 },
-    () => characters.charAt(Math.floor(Math.random() * characters.length))
-  ).join('');
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  return Array.from({ length: 6 }, () =>
+    characters.charAt(Math.floor(Math.random() * characters.length))
+  ).join("");
 };
 
 const CreateSessionModal = ({ onClose, onSubmit }) => {
-  const joinCodeRef = useRef('');
+  const joinCodeRef = useRef("");
 
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    language: 'javascript',
-    maxParticipants: 4,
+    title: "",
+    description: "",
+    language: "javascript",
+    maxParticipants: 10,
     isPrivate: false,
     startNow: true,
-    joinCode: '',
-    scheduledDate: '',
-    scheduledTime: ''
+    joinCode: "",
+    scheduledDate: "",
+    scheduledTime: "",
   });
 
   const languages = [
-    { id: 'javascript', name: 'JavaScript' },
-    { id: 'python', name: 'Python' },
-    { id: 'java', name: 'Java' },
-    { id: 'cpp', name: 'C++' },
-    { id: 'csharp', name: 'C#' }
+    { id: "javascript", name: "JavaScript" },
+    { id: "python", name: "Python" },
+    { id: "java", name: "Java" },
+    { id: "cpp", name: "C++" },
+    { id: "csharp", name: "C#" },
   ];
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    
-    setFormData(prev => {
-      if (name === 'isPrivate') {
-        const newIsPrivate = type === 'checkbox' ? checked : value;
-        
+
+    setFormData((prev) => {
+      if (name === "isPrivate") {
+        const newIsPrivate = type === "checkbox" ? checked : value;
+
         if (newIsPrivate) {
           if (!joinCodeRef.current) {
             joinCodeRef.current = generateJoinCode();
-            console.log('Generated Join Code:', joinCodeRef.current);
+            console.log("Generated Join Code:", joinCodeRef.current);
           }
           return {
             ...prev,
             isPrivate: true,
-            joinCode: joinCodeRef.current
+            joinCode: joinCodeRef.current,
           };
         } else {
-          joinCodeRef.current = '';
+          joinCodeRef.current = "";
           return {
             ...prev,
             isPrivate: false,
-            joinCode: ''
+            joinCode: "",
           };
         }
       }
-      
+
       return {
         ...prev,
-        [name]: type === 'checkbox' ? checked : value
+        [name]: type === "checkbox" ? checked : value,
       };
     });
   }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    // Create a copy of the form data to modify
+    const sessionToCreate = { ...formData };
+
+    // Set the correct status and time based on scheduling choice
+    if (!sessionToCreate.startNow) {
+      // Format the scheduled date and time properly
+      if (sessionToCreate.scheduledDate && sessionToCreate.scheduledTime) {
+        const scheduledDateTime = `${sessionToCreate.scheduledDate}T${sessionToCreate.scheduledTime}`;
+        sessionToCreate.startTime = new Date(scheduledDateTime).toISOString();
+        sessionToCreate.status = "scheduled";
+        console.log(
+          "Creating scheduled session for:",
+          sessionToCreate.startTime
+        );
+      } else {
+        // If missing date/time, default to active now
+        sessionToCreate.startTime = new Date().toISOString();
+        sessionToCreate.status = "active";
+      }
+    } else {
+      // Starting now
+      sessionToCreate.startTime = new Date().toISOString();
+      sessionToCreate.status = "active";
+    }
+
+    onSubmit(sessionToCreate);
   };
 
   const handleClose = () => {
-    joinCodeRef.current = '';
+    joinCodeRef.current = "";
     onClose();
   };
+
+  useEffect(() => {
+    if (
+      !formData.startNow &&
+      formData.scheduledDate &&
+      formData.scheduledTime
+    ) {
+      const dateTimeStr = `${formData.scheduledDate}T${formData.scheduledTime}`;
+      const scheduledDateTime = new Date(dateTimeStr);
+      const now = new Date();
+
+      console.log("Scheduled for:", scheduledDateTime);
+      console.log("Current time:", now);
+      console.log("Is in future:", scheduledDateTime > now);
+      console.log("Time difference (ms):", scheduledDateTime - now);
+    }
+  }, [formData.startNow, formData.scheduledDate, formData.scheduledTime]);
 
   return (
     <div className="create-session-modal">
@@ -86,7 +128,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
             <FaTimes />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="create-session-form">
           <div className="form-columns">
             <div className="form-column">
@@ -126,7 +168,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
                     value={formData.language}
                     onChange={handleChange}
                   >
-                    {languages.map(lang => (
+                    {languages.map((lang) => (
                       <option key={lang.id} value={lang.id}>
                         {lang.name}
                       </option>
@@ -170,7 +212,9 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
                       type="radio"
                       name="startNow"
                       checked={formData.startNow}
-                      onChange={() => setFormData(prev => ({ ...prev, startNow: true }))}
+                      onChange={() =>
+                        setFormData((prev) => ({ ...prev, startNow: true }))
+                      }
                     />
                     <span>Start Now</span>
                   </label>
@@ -179,7 +223,9 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
                       type="radio"
                       name="startNow"
                       checked={!formData.startNow}
-                      onChange={() => setFormData(prev => ({ ...prev, startNow: false }))}
+                      onChange={() =>
+                        setFormData((prev) => ({ ...prev, startNow: false }))
+                      }
                     />
                     <span>Schedule Later</span>
                   </label>
@@ -197,7 +243,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
                         name="scheduledDate"
                         value={formData.scheduledDate}
                         onChange={handleChange}
-                        min={new Date().toISOString().split('T')[0]}
+                        min={new Date().toISOString().split("T")[0]}
                         required
                       />
                     </div>
@@ -226,14 +272,20 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
                     readOnly
                     className="join-code"
                   />
-                  <small>Share this code with participants to join the session</small>
+                  <small>
+                    Share this code with participants to join the session
+                  </small>
                 </div>
               )}
             </div>
           </div>
 
           <div className="create-session-footer">
-            <button type="button" className="cancel-button" onClick={handleClose}>
+            <button
+              type="button"
+              className="cancel-button"
+              onClick={handleClose}
+            >
               Cancel
             </button>
             <button type="submit" className="submit-button">
@@ -248,7 +300,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
 
 CreateSessionModal.propTypes = {
   onClose: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired
+  onSubmit: PropTypes.func.isRequired,
 };
 
-export default CreateSessionModal; 
+export default CreateSessionModal;

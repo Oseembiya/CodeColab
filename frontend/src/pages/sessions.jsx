@@ -109,19 +109,30 @@ const Sessions = () => {
     }
   };
 
-  const handleJoinSession = async (joinCodeOrSessionId) => {
+  const handleJoinSessionDirect = async (sessionId) => {
+    try {
+      console.log("Directly joining session:", sessionId);
+
+      // No join code needed for public sessions
+      const result = await joinSession(sessionId);
+
+      // Navigate to session
+      navigate(`/dashboard/sessions/${sessionId}`);
+    } catch (error) {
+      console.error("Failed to join session:", error);
+      setJoinError(error.message);
+    }
+  };
+
+  const handleJoinSession = async (joinCode) => {
     try {
       let targetSessionId = null;
-      let joinCode = null;
 
-      // Determine if we're joining by code or by session ID
+      // If we have a selected session ID, use it
       if (selectedSessionId) {
-        // If a session is already selected, the parameter is just the join code
         targetSessionId = selectedSessionId;
-        joinCode = joinCodeOrSessionId;
       } else {
-        // If no session is selected, we need to find it by join code
-        joinCode = joinCodeOrSessionId;
+        // Otherwise, find session by join code
         const matchingSession = sessions.find(
           (s) =>
             s.isPrivate &&
@@ -136,20 +147,32 @@ const Sessions = () => {
         }
       }
 
-      // Now that we have a session ID, store join info
-      if (joinCode && targetSessionId) {
-        localStorage.setItem(
-          "lastJoinedSession",
-          JSON.stringify({
-            id: targetSessionId,
-            joinCode: joinCode.toUpperCase(),
-          })
-        );
+      // Check if session is scheduled for future
+      const sessionToJoin = sessions.find((s) => s.id === targetSessionId);
+      if (sessionToJoin && sessionToJoin.status === "scheduled") {
+        const scheduledTime = new Date(sessionToJoin.startTime);
+        const now = new Date();
+
+        if (scheduledTime > now) {
+          const formattedDate = scheduledTime.toLocaleString();
+          throw new Error(
+            `This session is scheduled for ${formattedDate}. Please join at the scheduled time.`
+          );
+        }
       }
+
+      // Store join info
+      localStorage.setItem(
+        "lastJoinedSession",
+        JSON.stringify({
+          id: targetSessionId,
+          joinCode: joinCode.toUpperCase(),
+        })
+      );
 
       const result = await joinSession(targetSessionId, joinCode);
 
-      // Clear UI states after successful join
+      // Clear UI states
       setShowJoinModal(false);
       setSelectedSessionId(null);
       setJoinError("");
@@ -159,7 +182,6 @@ const Sessions = () => {
     } catch (error) {
       console.error("Failed to join session:", error);
       setJoinError(error.message);
-      // Clean up stored join info on error
       localStorage.removeItem("lastJoinedSession");
     }
   };
@@ -177,10 +199,26 @@ const Sessions = () => {
       return;
     }
 
+    // Check if session is scheduled for the future
+    if (session.status === "scheduled") {
+      const scheduledTime = new Date(session.startTime);
+      const now = new Date();
+
+      if (scheduledTime > now) {
+        const formattedDate = scheduledTime.toLocaleString();
+        setJoinError(
+          `This session is scheduled for ${formattedDate}. Please join at the scheduled time.`
+        );
+        return;
+      }
+    }
+
     if (session.isPrivate) {
+      // For private sessions, open the modal to enter join code
       openJoinModal(sessionId);
     } else {
-      handleJoinSession(sessionId);
+      // For public sessions, directly join with the session ID
+      handleJoinSessionDirect(sessionId);
     }
   };
 

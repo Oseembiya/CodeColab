@@ -11,6 +11,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { auth } from "../firebaseConfig";
 
 export const useSessions = () => {
   const [sessions, setSessions] = useState([]);
@@ -53,15 +54,31 @@ export const useSessions = () => {
 
   const createSession = async (sessionData) => {
     try {
+      // Determine if we should add the creator to participants based on status
+      const isScheduled =
+        sessionData.status === "scheduled" ||
+        (!sessionData.startNow && sessionData.scheduledDate);
+
+      const participants = isScheduled ? [] : [auth.currentUser?.uid];
+
       const sessionToCreate = {
         ...sessionData,
         maxParticipants: Number(sessionData.maxParticipants),
         createdAt: new Date().toISOString(),
-        startTime: sessionData.startNow
-          ? new Date().toISOString()
-          : sessionData.scheduledTime,
-        status: "active",
+        startTime:
+          sessionData.startTime ||
+          (sessionData.startNow
+            ? new Date().toISOString()
+            : combineDateTime(
+                sessionData.scheduledDate,
+                sessionData.scheduledTime
+              )),
+        status: sessionData.status || (isScheduled ? "scheduled" : "active"),
+        participants: participants,
+        owner: auth.currentUser?.uid,
       };
+
+      console.log("Creating session with data:", sessionToCreate);
 
       const docRef = await addDoc(collection(db, "sessions"), sessionToCreate);
 
@@ -79,6 +96,12 @@ export const useSessions = () => {
       console.error("Error creating session:", err);
       throw err;
     }
+  };
+
+  // Helper function to combine date and time
+  const combineDateTime = (date, time) => {
+    if (!date || !time) return new Date().toISOString();
+    return new Date(`${date}T${time}`).toISOString();
   };
 
   const updateSession = async (sessionId, updateData) => {
@@ -113,13 +136,6 @@ export const useSessions = () => {
 
   const joinSession = async (sessionId, code = null) => {
     try {
-      // If we only have a code and no ID, try to find the session
-      if (!sessionId && code) {
-        // This scenario is now handled in sessions.jsx
-        // But we should handle it here too as a fallback
-        throw new Error("Please provide a valid session ID or join code");
-      }
-
       // Validate sessionId
       if (!sessionId || typeof sessionId !== "string") {
         throw new Error("Invalid session ID");
@@ -134,7 +150,20 @@ export const useSessions = () => {
 
       const session = { id: sessionId, ...sessionDoc.data() };
 
-      // Validate private session access
+      // Check if this is a scheduled session in the future
+      if (session.status === "scheduled") {
+        const scheduledTime = new Date(session.startTime);
+        const now = new Date();
+
+        if (scheduledTime > now) {
+          const formattedDate = scheduledTime.toLocaleString();
+          throw new Error(
+            `This session is scheduled for ${formattedDate}. Please join at the scheduled time.`
+          );
+        }
+      }
+
+      // Validate private session access - ONLY if the session is private
       if (session.isPrivate) {
         if (!code) {
           throw new Error("Join code required for private session");
@@ -143,6 +172,7 @@ export const useSessions = () => {
           throw new Error("Invalid join code");
         }
       }
+      // For public sessions, no join code validation is needed
 
       // Return the joined session
       return session;

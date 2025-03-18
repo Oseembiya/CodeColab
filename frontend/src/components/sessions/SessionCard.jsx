@@ -40,18 +40,20 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
 
       socket.on("participants-update", updateHandler);
 
-      // Listen for user left events
-      socket.on("user-left-session", ({ sessionId }) => {
+      // Enhanced user-left-session handler
+      const userLeftHandler = ({ sessionId }) => {
         if (sessionId === session.id) {
-          // Update participant count
-          setParticipantCount((prev) => Math.max(0, prev - 1));
+          // Request a fresh participant count rather than decrementing
+          socket.emit("request-participant-count", { sessionId: session.id });
         }
-      });
+      };
+
+      socket.on("user-left-session", userLeftHandler);
 
       // Cleanup function
       return () => {
         socket.off("participants-update", updateHandler);
-        socket.off("user-left-session");
+        socket.off("user-left-session", userLeftHandler);
         socket.emit("leave-observer", {
           sessionId: session.id,
           observerRoom,
@@ -94,6 +96,38 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
   // Add default language handling
   const displayLanguage = session.language || "javascript";
 
+  const displayParticipantCount = () => {
+    if (session.status === "scheduled") {
+      // For scheduled sessions, show "0/X" or special message
+      return `0/${maxParticipants}`;
+    } else {
+      // For active sessions, show actual count
+      return `${participantCount}/${maxParticipants}`;
+    }
+  };
+
+  // Determine join button text and disabled state based on session status
+  const getJoinButtonProps = () => {
+    if (session.status === "scheduled") {
+      const scheduledTime = new Date(session.startTime);
+      const now = new Date();
+      const isInFuture = scheduledTime > now;
+
+      return {
+        text: isInFuture ? "Scheduled" : "Join Session",
+        disabled: isInFuture,
+      };
+    } else {
+      return {
+        text:
+          participantCount >= maxParticipants ? "Session Full" : "Join Session",
+        disabled: participantCount >= maxParticipants,
+      };
+    }
+  };
+
+  const joinButtonProps = getJoinButtonProps();
+
   return (
     <div className={`session-card ${view}`}>
       {view === "grid" ? (
@@ -120,9 +154,7 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
             </div>
             <div className="detail-item">
               <FaUsers />
-              <span>
-                {participantCount}/{maxParticipants}
-              </span>
+              <span>{displayParticipantCount()}</span>
             </div>
             <div className="detail-item">
               <FaCode />
@@ -137,11 +169,9 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
           <button
             onClick={() => onJoin(session.id)}
             className="join-button"
-            disabled={participantCount >= maxParticipants}
+            disabled={joinButtonProps.disabled}
           >
-            {participantCount >= maxParticipants
-              ? "Session Full"
-              : "Join Session"}
+            {joinButtonProps.text}
           </button>
         </>
       ) : (
@@ -177,9 +207,7 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
           <div className="session-details">
             <div className="detail-item">
               <FaUsers />
-              <span>
-                {participantCount}/{maxParticipants}
-              </span>
+              <span>{displayParticipantCount()}</span>
             </div>
             <div className="detail-item">
               {isPrivate ? <FaLock /> : <FaLockOpen />}
@@ -190,9 +218,9 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
           <button
             onClick={() => onJoin(session.id)}
             className="join-button"
-            disabled={participantCount >= maxParticipants}
+            disabled={joinButtonProps.disabled}
           >
-            {participantCount >= maxParticipants ? "Full" : "Join"}
+            {joinButtonProps.text}
           </button>
         </>
       )}

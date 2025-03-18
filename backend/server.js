@@ -295,6 +295,47 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("leave-session", ({ sessionId, userId }) => {
+    console.log(`User ${userId} leaving session ${sessionId}`);
+
+    if (!sessionId) return;
+
+    const sessionUsers = activeSessions.get(sessionId);
+    if (sessionUsers) {
+      // Remove the user from the session
+      let userRemoved = false;
+
+      sessionUsers.forEach((user, clientId) => {
+        if (user.clientId === socket.clientId) {
+          sessionUsers.delete(clientId);
+          userRemoved = true;
+        }
+      });
+
+      if (userRemoved) {
+        // Emit updated participants list to all clients including observers
+        const participantsList = Array.from(sessionUsers.entries()).map(
+          ([id, user]) => ({
+            userId: id,
+            ...user,
+          })
+        );
+
+        io.to(sessionId)
+          .to(`observe:${sessionId}`)
+          .emit("participants-update", {
+            sessionId,
+            participants: participantsList,
+            count: sessionUsers.size,
+          });
+
+        console.log(
+          `User left session ${sessionId}. Remaining participants: ${sessionUsers.size}`
+        );
+      }
+    }
+  });
+
   socket.on("disconnect", () => {
     // Clean up observer tracking
     if (socket.observing) {
@@ -381,6 +422,26 @@ io.on("connection", (socket) => {
         peerId,
       });
     });
+  });
+
+  // Add this new handler
+  socket.on("request-participant-count", ({ sessionId }) => {
+    const sessionUsers = activeSessions.get(sessionId);
+    if (sessionUsers) {
+      const participantsList = Array.from(sessionUsers.entries()).map(
+        ([id, user]) => ({
+          userId: id,
+          ...user,
+        })
+      );
+
+      // Send directly to the requesting socket
+      socket.emit("participants-update", {
+        sessionId,
+        participants: participantsList,
+        count: sessionUsers.size,
+      });
+    }
   });
 });
 

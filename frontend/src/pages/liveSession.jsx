@@ -69,6 +69,15 @@ const CollaborativeSession = () => {
     if (!currentSession || currentSession.id !== sessionId) {
       initSession();
     }
+
+    return () => {
+      if (socket && sessionId) {
+        // Make sure to notify both regular session and observers
+        socket.emit("leave-session", { sessionId, userId });
+        socket.emit("user-left-session", { sessionId, userId });
+      }
+      leaveSession();
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -122,40 +131,101 @@ const CollaborativeSession = () => {
   }, [sessionId, currentSession]);
 
   const handleLeave = () => {
-    leaveSession();
+    if (socket && currentSession) {
+      // First leave the session via socket
+      socket.emit("leave-session", {
+        sessionId,
+        userId,
+      });
+
+      // Also notify observers
+      socket.emit("user-left-session", {
+        sessionId,
+        userId,
+      });
+
+      // Then clean up via context
+      leaveSession();
+    }
+
+    // Navigate after leaving
     navigate("/dashboard/sessions");
   };
 
-  if (error) {
-    return (
-      <div className="error-container">
-        <p>Error: {error}</p>
-        <button onClick={() => navigate("/dashboard/sessions")}>
-          Return to Sessions
-        </button>
-      </div>
-    );
-  }
+  const CheckScheduledSession = () => {
+    useEffect(() => {
+      const verifySessionStatus = async () => {
+        try {
+          const sessionRef = doc(db, "sessions", sessionId);
+          const sessionSnap = await getDoc(sessionRef);
 
-  if (!currentSession) {
-    return <div>Loading session...</div>;
-  }
+          if (!sessionSnap.exists()) {
+            setError("Session not found");
+            return;
+          }
+
+          const data = sessionSnap.data();
+          console.log("Session data:", data);
+
+          if (data.status === "scheduled") {
+            // IMPORTANT: Parse dates and compare properly
+            const scheduledTime = new Date(data.startTime);
+            const now = new Date();
+
+            console.log("Scheduled time:", scheduledTime);
+            console.log("Current time:", now);
+            console.log("Is scheduled for future:", scheduledTime > now);
+
+            if (scheduledTime > now) {
+              const formattedDate = scheduledTime.toLocaleString();
+              setError(
+                `This session is scheduled for ${formattedDate}. Please join at the scheduled time.`
+              );
+              setLoading(false);
+            }
+          }
+        } catch (err) {
+          console.error("Error checking session:", err);
+          setError(err.message || "Failed to verify session status");
+        }
+      };
+
+      verifySessionStatus();
+    }, [sessionId]);
+
+    return null;
+  };
 
   return (
-    <div className="collaborative-session">
-      <SessionInfo
-        session={currentSession}
-        onLeave={handleLeave}
-        socket={socket}
-      />
+    <>
+      <CheckScheduledSession />
 
-      <div className="session-content">
-        <div className="editor-section">
-          <CollaborativeEditor sessionId={sessionId} userId={userId} />
-          <VideoChat sessionId={sessionId} userId={userId} />
+      {error ? (
+        <div className="error-container">
+          <p>Error: {error}</p>
+          <button onClick={() => navigate("/dashboard/sessions")}>
+            Return to Sessions
+          </button>
         </div>
-      </div>
-    </div>
+      ) : loading ? (
+        <div>Loading session...</div>
+      ) : (
+        <div className="collaborative-session">
+          <SessionInfo
+            session={currentSession}
+            onLeave={handleLeave}
+            socket={socket}
+          />
+
+          <div className="session-content">
+            <div className="editor-section">
+              <CollaborativeEditor sessionId={sessionId} userId={userId} />
+              <VideoChat sessionId={sessionId} userId={userId} />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
