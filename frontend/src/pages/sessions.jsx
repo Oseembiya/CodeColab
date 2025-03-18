@@ -109,6 +109,67 @@ const Sessions = () => {
     }
   };
 
+  const handleJoinSession = async (joinCodeOrSessionId) => {
+    try {
+      let targetSessionId = null;
+      let joinCode = null;
+
+      // Determine if we're joining by code or by session ID
+      if (selectedSessionId) {
+        // If a session is already selected, the parameter is just the join code
+        targetSessionId = selectedSessionId;
+        joinCode = joinCodeOrSessionId;
+      } else {
+        // If no session is selected, we need to find it by join code
+        joinCode = joinCodeOrSessionId;
+        const matchingSession = sessions.find(
+          (s) =>
+            s.isPrivate &&
+            s.joinCode &&
+            s.joinCode.toUpperCase() === joinCode.toUpperCase()
+        );
+
+        if (matchingSession) {
+          targetSessionId = matchingSession.id;
+        } else {
+          throw new Error("No session found with this join code");
+        }
+      }
+
+      // Now that we have a session ID, store join info
+      if (joinCode && targetSessionId) {
+        localStorage.setItem(
+          "lastJoinedSession",
+          JSON.stringify({
+            id: targetSessionId,
+            joinCode: joinCode.toUpperCase(),
+          })
+        );
+      }
+
+      const result = await joinSession(targetSessionId, joinCode);
+
+      // Clear UI states after successful join
+      setShowJoinModal(false);
+      setSelectedSessionId(null);
+      setJoinError("");
+
+      // Navigate to session
+      navigate(`/dashboard/sessions/${targetSessionId}`);
+    } catch (error) {
+      console.error("Failed to join session:", error);
+      setJoinError(error.message);
+      // Clean up stored join info on error
+      localStorage.removeItem("lastJoinedSession");
+    }
+  };
+
+  const openJoinModal = (sessionId = null) => {
+    setSelectedSessionId(sessionId);
+    setShowJoinModal(true);
+    setJoinError("");
+  };
+
   const initiateJoinSession = (sessionId) => {
     const session = sessions.find((s) => s.id === sessionId);
     if (!session) {
@@ -117,43 +178,9 @@ const Sessions = () => {
     }
 
     if (session.isPrivate) {
-      setSelectedSessionId(sessionId);
-      setShowJoinModal(true);
-      setJoinError("");
+      openJoinModal(sessionId);
     } else {
       handleJoinSession(sessionId);
-    }
-  };
-
-  const handleJoinSession = async (sessionId, joinCode = null) => {
-    try {
-      console.log("Starting join process:", { sessionId, joinCode });
-
-      // Store the join info before attempting to join
-      if (joinCode) {
-        localStorage.setItem(
-          "lastJoinedSession",
-          JSON.stringify({
-            id: sessionId,
-            joinCode: joinCode.toUpperCase(),
-          })
-        );
-      }
-
-      const result = await joinSession(sessionId, joinCode);
-
-      // Clear UI states after successful join
-      setShowJoinModal(false);
-      setSelectedSessionId(null);
-      setJoinError("");
-
-      // Navigate to session
-      navigate(`/dashboard/sessions/${sessionId}`);
-    } catch (error) {
-      console.error("Failed to join session:", error);
-      setJoinError(error.message);
-      // Clean up stored join info on error
-      localStorage.removeItem("lastJoinedSession");
     }
   };
 
@@ -189,7 +216,7 @@ const Sessions = () => {
           <div className="header-actions">
             <button
               className="join-session-btn"
-              onClick={() => setShowJoinModal(true)}
+              onClick={() => openJoinModal()}
             >
               <FaUsers /> Join private Session
             </button>
@@ -235,7 +262,7 @@ const Sessions = () => {
           setSelectedSessionId(null);
           setJoinError("");
         }}
-        onJoin={(code) => handleJoinSession(selectedSessionId, code)}
+        onJoin={handleJoinSession}
         error={joinError}
         sessionId={selectedSessionId}
       />
