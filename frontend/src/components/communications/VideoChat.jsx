@@ -1,75 +1,82 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import Peer from 'peerjs';
-import PropTypes from 'prop-types';
-import { FaVideo, FaVideoSlash, FaMicrophone, FaMicrophoneSlash, FaSync, FaGripVertical, FaTimes } from 'react-icons/fa';
-import io from 'socket.io-client';
+import { useEffect, useRef, useState, useCallback } from "react";
+import Peer from "peerjs";
+import PropTypes from "prop-types";
+import {
+  FaVideo,
+  FaVideoSlash,
+  FaMicrophone,
+  FaMicrophoneSlash,
+  FaSync,
+  FaGripVertical,
+  FaTimes,
+} from "react-icons/fa";
+import { useSocket } from "../../contexts/SocketContext";
 
 const VideoChat = ({ sessionId, userId }) => {
+  const { socket } = useSocket();
   const [peers, setPeers] = useState(new Map());
   const [stream, setStream] = useState(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [error, setError] = useState(null);
   const peerRef = useRef(null);
-  const socketRef = useRef(null);
   const streamRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const isUnmountingRef = useRef(false);
-  const [position, setPosition] = useState({ x: window.innerWidth - 320, y: window.innerHeight - 400 });
+  const [position, setPosition] = useState({
+    x: window.innerWidth - 320,
+    y: window.innerHeight - 400,
+  });
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const [isCollapsed, setIsCollapsed] = useState(true);
   const participantCount = peers?.length || 0;
 
-
   const initializeVideoChat = useCallback(async () => {
     try {
-      // 1. Initialize Socket.IO connection
-      socketRef.current = io(import.meta.env.VITE_SOCKET_URL, {
-        transports: ['websocket', 'polling']
-      });
-
-      // 2. Get user media stream
+      // 1. Get user media stream
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: true,
-        audio: true
+        audio: true,
       });
       streamRef.current = mediaStream;
       setStream(mediaStream);
 
-      // 3. Initialize PeerJS
+      // 2. Initialize PeerJS
       const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
-        host: import.meta.env.VITE_PEER_HOST || 'localhost',
+        host: import.meta.env.VITE_PEER_HOST || "localhost",
         port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
-        path: '/myapp'
+        path: "/myapp",
       });
 
       peerRef.current = peer;
 
-      // 4. Handle peer open event
-      peer.on('open', (peerId) => {
-        console.log('My peer ID is:', peerId);
-        socketRef.current.emit('join-video', {
-          sessionId,
-          userId,
-          peerId
-        });
+      // 3. Handle peer open event
+      peer.on("open", (peerId) => {
+        console.log("My peer ID is:", peerId);
+        if (socket) {
+          socket.emit("join-video", {
+            sessionId,
+            userId,
+            peerId,
+          });
+        }
       });
 
-      // 5. Handle incoming calls
-      peer.on('call', (call) => {
-        console.log('Receiving call from:', call.peer);
+      // 4. Handle incoming calls
+      peer.on("call", (call) => {
+        console.log("Receiving call from:", call.peer);
         call.answer(streamRef.current);
-        
-        call.on('stream', (remoteStream) => {
-          console.log('Received remote stream from:', call.peer);
-          setPeers(prev => new Map(prev).set(call.peer, remoteStream));
+
+        call.on("stream", (remoteStream) => {
+          console.log("Received remote stream from:", call.peer);
+          setPeers((prev) => new Map(prev).set(call.peer, remoteStream));
         });
 
-        call.on('close', () => {
-          console.log('Call closed with:', call.peer);
-          setPeers(prev => {
+        call.on("close", () => {
+          console.log("Call closed with:", call.peer);
+          setPeers((prev) => {
             const newPeers = new Map(prev);
             newPeers.delete(call.peer);
             return newPeers;
@@ -77,95 +84,61 @@ const VideoChat = ({ sessionId, userId }) => {
         });
       });
 
-      // 6. Handle socket events
-      socketRef.current.on('user-joined', ({ peerId: newPeerId }) => {
-        console.log('New user joined with peer ID:', newPeerId);
-        if (newPeerId !== peer.id && streamRef.current) {
-          const call = peer.call(newPeerId, streamRef.current);
-          
-          call.on('stream', (remoteStream) => {
-            console.log('Received stream from new user:', newPeerId);
-            setPeers(prev => new Map(prev).set(newPeerId, remoteStream));
-          });
-        }
-      });
+      // 5. Handle socket events for peer connections
+      if (socket) {
+        socket.on("user-joined", ({ peerId: newPeerId }) => {
+          console.log("New user joined with peer ID:", newPeerId);
+          if (newPeerId !== peer.id && streamRef.current) {
+            const call = peer.call(newPeerId, streamRef.current);
 
-      socketRef.current.on('user-left', ({ peerId }) => {
-        console.log('User left:', peerId);
-        setPeers(prev => {
-          const newPeers = new Map(prev);
-          newPeers.delete(peerId);
-          return newPeers;
+            call.on("stream", (remoteStream) => {
+              console.log("Received stream from new user:", newPeerId);
+              setPeers((prev) => new Map(prev).set(newPeerId, remoteStream));
+            });
+          }
         });
-      });
 
+        socket.on("user-left", ({ peerId }) => {
+          console.log("User left:", peerId);
+          setPeers((prev) => {
+            const newPeers = new Map(prev);
+            newPeers.delete(peerId);
+            return newPeers;
+          });
+        });
+      }
     } catch (err) {
-      console.error('Error initializing video chat:', err);
+      console.error("Error initializing video chat:", err);
       setError(err.message);
     }
-  }, [sessionId, userId]);
+  }, [sessionId, userId, socket]);
 
   useEffect(() => {
     isUnmountingRef.current = false;
-    initializeVideoChat();
+
+    if (socket) {
+      initializeVideoChat();
+    }
 
     return () => {
       isUnmountingRef.current = true;
-      
+
       // Clean up media streams
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
       }
-      
+
       // Clean up peer connection
       if (peerRef.current) {
         peerRef.current.destroy();
       }
-      
+
       // Clear any pending reconnection attempts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-      
-      // Clean up socket connection
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
     };
-  }, [initializeVideoChat]);
-
-  useEffect(() => {
-    const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      autoConnect: true,
-      withCredentials: true
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      setError('Connection error. Please try again.');
-    });
-
-    socket.on('connect', () => {
-      console.log('Socket connected successfully');
-      setError(null);
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
-      if (reason === 'io server disconnect') {
-        // Reconnect manually if server disconnected
-        socket.connect();
-      }
-    });
-
-    // Clean up on unmount
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+  }, [initializeVideoChat, socket]);
 
   const toggleVideo = () => {
     if (streamRef.current) {
@@ -188,33 +161,42 @@ const VideoChat = ({ sessionId, userId }) => {
   };
 
   const handleMouseDown = (e) => {
-    if (e.target.closest('.video-controls')) return;
-    
+    if (e.target.closest(".video-controls")) return;
+
     setIsDragging(true);
     dragStartRef.current = {
       x: e.clientX - position.x,
-      y: e.clientY - position.y
+      y: e.clientY - position.y,
     };
   };
 
-  const handleMouseMove = useCallback((e) => {
-    if (!isDragging) return;
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!isDragging) return;
 
-    const newX = e.clientX - dragStartRef.current.x;
-    const newY = e.clientY - dragStartRef.current.y;
+      const newX = e.clientX - dragStartRef.current.x;
+      const newY = e.clientY - dragStartRef.current.y;
 
-    // Get window dimensions and container dimensions
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    const containerWidth = dragRef.current.offsetWidth;
-    const containerHeight = dragRef.current.offsetHeight;
+      // Get window dimensions and container dimensions
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      const containerWidth = dragRef.current.offsetWidth;
+      const containerHeight = dragRef.current.offsetHeight;
 
-    // Keep video within window bounds
-    const boundedX = Math.min(Math.max(0, newX), windowWidth - containerWidth);
-    const boundedY = Math.min(Math.max(0, newY), windowHeight - containerHeight);
+      // Keep video within window bounds
+      const boundedX = Math.min(
+        Math.max(0, newX),
+        windowWidth - containerWidth
+      );
+      const boundedY = Math.min(
+        Math.max(0, newY),
+        windowHeight - containerHeight
+      );
 
-    setPosition({ x: boundedX, y: boundedY });
-  }, [isDragging]);
+      setPosition({ x: boundedX, y: boundedY });
+    },
+    [isDragging]
+  );
 
   const handleMouseUp = () => {
     setIsDragging(false);
@@ -223,26 +205,26 @@ const VideoChat = ({ sessionId, userId }) => {
   // Add event listeners for dragging
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
     }
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging, handleMouseMove]);
 
   return (
-    <div 
-      className={`video-chat-container ${isCollapsed ? 'collapsed' : ''}`}
+    <div
+      className={`video-chat-container ${isCollapsed ? "collapsed" : ""}`}
       data-count={participantCount}
       onClick={() => isCollapsed && setIsCollapsed(false)}
       ref={dragRef}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        cursor: isDragging ? 'grabbing' : 'grab'
+        cursor: isDragging ? "grabbing" : "grab",
       }}
       onMouseDown={handleMouseDown}
       onTouchStart={(e) => {
@@ -254,17 +236,17 @@ const VideoChat = ({ sessionId, userId }) => {
         <FaGripVertical />
       </div>
       <div className="video-controls">
-        <button 
+        <button
           onClick={toggleVideo}
-          className={`control-button ${!videoEnabled ? 'disabled' : ''}`}
-          title={videoEnabled ? 'Disable Video' : 'Enable Video'}
+          className={`control-button ${!videoEnabled ? "disabled" : ""}`}
+          title={videoEnabled ? "Disable Video" : "Enable Video"}
         >
           {videoEnabled ? <FaVideo /> : <FaVideoSlash />}
         </button>
-        <button 
+        <button
           onClick={toggleAudio}
-          className={`control-button ${!audioEnabled ? 'disabled' : ''}`}
-          title={audioEnabled ? 'Disable Audio' : 'Enable Audio'}
+          className={`control-button ${!audioEnabled ? "disabled" : ""}`}
+          title={audioEnabled ? "Disable Audio" : "Enable Audio"}
         >
           {audioEnabled ? <FaMicrophone /> : <FaMicrophoneSlash />}
         </button>
@@ -275,7 +257,7 @@ const VideoChat = ({ sessionId, userId }) => {
         <div className="video-container local">
           {stream && (
             <video
-              ref={video => {
+              ref={(video) => {
                 if (video) {
                   video.srcObject = stream;
                   video.muted = true; // Mute local video to prevent feedback
@@ -292,7 +274,7 @@ const VideoChat = ({ sessionId, userId }) => {
         {Array.from(peers.entries()).map(([peerId, peerStream]) => (
           <div key={peerId} className="video-container">
             <video
-              ref={video => {
+              ref={(video) => {
                 if (video) video.srcObject = peerStream;
               }}
               autoPlay
@@ -303,14 +285,10 @@ const VideoChat = ({ sessionId, userId }) => {
         ))}
       </div>
 
-      {error && (
-        <div className="video-error">
-          Error: {error}
-        </div>
-      )}
+      {error && <div className="video-error">Error: {error}</div>}
 
       {!isCollapsed && (
-        <button 
+        <button
           className="collapse-button"
           onClick={(e) => {
             e.stopPropagation();
@@ -326,7 +304,7 @@ const VideoChat = ({ sessionId, userId }) => {
 
 VideoChat.propTypes = {
   sessionId: PropTypes.string.isRequired,
-  userId: PropTypes.string.isRequired
+  userId: PropTypes.string.isRequired,
 };
 
-export default VideoChat; 
+export default VideoChat;

@@ -1,80 +1,78 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { io } from 'socket.io-client';
-import PropTypes from 'prop-types';
-import BaseEditor from './BaseEditor';
-import { executeCode } from '../../services/codeExecution';
-import { auth } from '../../firebaseConfig';
+import { useState, useEffect, useRef, useCallback } from "react";
+import PropTypes from "prop-types";
+import BaseEditor from "./BaseEditor";
+import { executeCode } from "../../services/codeExecution";
+import { auth } from "../../firebaseConfig";
+import { useSocket } from "../../contexts/SocketContext";
 
 const CollaborativeEditor = ({ sessionId, userId }) => {
-  const [language, setLanguage] = useState('javascript');
-  const socketRef = useRef(null);
+  const { socket } = useSocket();
+  const [language, setLanguage] = useState("javascript");
   const editorRef = useRef(null);
-  const lastSentContent = useRef('');
+  const lastSentContent = useRef("");
   const debounceTimeout = useRef(null);
 
   const handleEditorMount = (editor) => {
     editorRef.current = editor;
-    
+
     // Configure editor for better performance
-    editor.getModel()?.setEOL('\n');
+    editor.getModel()?.setEOL("\n");
     editor.updateOptions({
       quickSuggestions: false,
       suggestOnTriggerCharacters: false,
       acceptSuggestionOnEnter: "off",
-      wordBasedSuggestions: false
+      wordBasedSuggestions: false,
     });
   };
 
-  const sendCodeUpdate = useCallback((content) => {
-    if (socketRef.current && content !== lastSentContent.current) {
-      socketRef.current.emit('code-change', {
-        sessionId,
-        content,
-        userId
-      });
-      lastSentContent.current = content;
-    }
-  }, [sessionId, userId]);
+  const sendCodeUpdate = useCallback(
+    (content) => {
+      if (socket && content !== lastSentContent.current) {
+        socket.emit("code-change", {
+          sessionId,
+          content,
+          userId,
+        });
+        lastSentContent.current = content;
+      }
+    },
+    [sessionId, userId, socket]
+  );
 
-  const handleEditorChange = useCallback((value) => {
-    // Clear any existing timeout
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
+  const handleEditorChange = useCallback(
+    (value) => {
+      // Clear any existing timeout
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
 
-    // Debounce the update
-    debounceTimeout.current = setTimeout(() => {
-      sendCodeUpdate(value);
-    }, 100); // 100ms debounce
-  }, [sendCodeUpdate]);
+      // Debounce the update
+      debounceTimeout.current = setTimeout(() => {
+        sendCodeUpdate(value);
+      }, 100); // 100ms debounce
+    },
+    [sendCodeUpdate]
+  );
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_SOCKET_URL, {
-      transports: ['websocket'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
-    
-    socketRef.current = socket;
-
-    socket.emit('join-session', {
+    socket.emit("join-session", {
       sessionId,
       userId,
-      username: auth.currentUser?.displayName || 'Anonymous',
-      photoURL: auth.currentUser?.photoURL
+      username: auth.currentUser?.displayName || "Anonymous",
+      photoURL: auth.currentUser?.photoURL,
     });
 
-    socket.on('code-update', ({ content, senderId }) => {
+    socket.on("code-update", ({ content, senderId }) => {
       if (senderId !== userId && editorRef.current) {
         const editor = editorRef.current;
         const position = editor.getPosition();
         const selections = editor.getSelections();
-        
+
         // Only update if content is different
         if (editor.getValue() !== content) {
           editor.setValue(content);
           lastSentContent.current = content;
-          
+
           // Restore cursor and selections
           editor.setPosition(position);
           editor.setSelections(selections);
@@ -82,7 +80,7 @@ const CollaborativeEditor = ({ sessionId, userId }) => {
       }
     });
 
-    socket.on('language-change', ({ newLanguage }) => {
+    socket.on("language-change", ({ newLanguage }) => {
       setLanguage(newLanguage);
     });
 
@@ -90,25 +88,27 @@ const CollaborativeEditor = ({ sessionId, userId }) => {
       if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current);
       }
-      socket.disconnect();
     };
-  }, [sessionId, userId]);
+  }, [sessionId, userId, socket]);
 
-  const handleLanguageChange = useCallback((newLanguage) => {
-    setLanguage(newLanguage);
-    socketRef.current?.emit('language-change', {
-      sessionId,
-      newLanguage,
-      userId
-    });
-  }, [sessionId, userId]);
+  const handleLanguageChange = useCallback(
+    (newLanguage) => {
+      setLanguage(newLanguage);
+      socket.emit("language-change", {
+        sessionId,
+        newLanguage,
+        userId,
+      });
+    },
+    [sessionId, userId]
+  );
 
   const handleRunCode = async (code) => {
     try {
       const result = await executeCode(code, language);
       return result;
     } catch (error) {
-      console.error('Code execution error:', error);
+      console.error("Code execution error:", error);
       throw error;
     }
   };
@@ -129,4 +129,4 @@ CollaborativeEditor.propTypes = {
   userId: PropTypes.string.isRequired,
 };
 
-export default CollaborativeEditor; 
+export default CollaborativeEditor;
