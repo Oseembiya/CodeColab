@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react';
-import PropTypes from 'prop-types';
-import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen, FaChevronUp } from 'react-icons/fa';
-import AlertDialog from '../notifications/AlertDialog';
+import { useEffect, useState } from "react";
+import PropTypes from "prop-types";
+import {
+  FaClock,
+  FaUsers,
+  FaCode,
+  FaLock,
+  FaLockOpen,
+  FaChevronUp,
+} from "react-icons/fa";
+import AlertDialog from "../notifications/AlertDialog";
 
 const SessionInfo = ({ session, onLeave, socket }) => {
   const [participantCount, setParticipantCount] = useState(0);
@@ -16,14 +23,14 @@ const SessionInfo = ({ session, onLeave, socket }) => {
 
     // Listen for participant count updates
     const handleParticipantUpdate = ({ participants, count }) => {
-      console.log('Received participant update:', { count, participants });
+      console.log("Received participant update:", { count, participants });
       setParticipantCount(count);
     };
 
-    socket.on('participants-update', handleParticipantUpdate);
+    socket.on("participants-update", handleParticipantUpdate);
 
     return () => {
-      socket.off('participants-update', handleParticipantUpdate);
+      socket.off("participants-update", handleParticipantUpdate);
     };
   }, [socket, session?.id]);
 
@@ -50,18 +57,15 @@ const SessionInfo = ({ session, onLeave, socket }) => {
 
   return (
     <>
-      <div className={`session-info ${isHidden ? 'hidden' : ''}`}>
+      <div className={`session-info ${isHidden ? "hidden" : ""}`}>
         <div className="session-info-header">
           <h2>{session.title}</h2>
           {session.isPrivate ? <FaLock /> : <FaLockOpen />}
-          <button 
-            className="leave-button"
-            onClick={handleLeave}
-          >
+          <button className="leave-button" onClick={handleLeave}>
             Leave
           </button>
         </div>
-        
+
         <div className="session-meta">
           <div className="meta-item">
             <FaClock />
@@ -69,14 +73,16 @@ const SessionInfo = ({ session, onLeave, socket }) => {
           </div>
           <div className="meta-item">
             <FaUsers />
-            <span>Participants: {participantCount}/{session.maxParticipants}</span>
+            <span>
+              Participants: {participantCount}/{session.maxParticipants}
+            </span>
           </div>
           <div className="meta-item">
             <FaCode />
             <span>Language: {session.language}</span>
           </div>
         </div>
-        
+
         {session.description && (
           <p className="session-description">{session.description}</p>
         )}
@@ -87,7 +93,7 @@ const SessionInfo = ({ session, onLeave, socket }) => {
           </div>
         )}
 
-        <button 
+        <button
           className="session-info-toggle"
           onClick={() => setIsHidden(!isHidden)}
         >
@@ -99,6 +105,7 @@ const SessionInfo = ({ session, onLeave, socket }) => {
         isOpen={showLeaveAlert}
         onConfirm={handleConfirmLeave}
         onCancel={handleCancelLeave}
+        sessionId={session?.id}
       />
     </>
   );
@@ -114,14 +121,14 @@ SessionInfo.propTypes = {
     maxParticipants: PropTypes.number,
     participants: PropTypes.array,
     isPrivate: PropTypes.bool,
-    joinCode: PropTypes.string
+    joinCode: PropTypes.string,
   }),
   onLeave: PropTypes.func.isRequired,
-  socket: PropTypes.object.isRequired
+  socket: PropTypes.object.isRequired,
 };
 
 SessionInfo.defaultProps = {
-  session: null
+  session: null,
 };
 
-export default SessionInfo; 
+export default SessionInfo;

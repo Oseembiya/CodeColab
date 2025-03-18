@@ -1,24 +1,34 @@
-import { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen, FaEdit, FaTrash } from 'react-icons/fa';
-import { useSocket } from '../../contexts/SocketContext';
+import { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import {
+  FaClock,
+  FaUsers,
+  FaCode,
+  FaLock,
+  FaLockOpen,
+  FaEdit,
+  FaTrash,
+} from "react-icons/fa";
+import { useSocket } from "../../contexts/SocketContext";
 
 const SessionCard = ({ session, isOwner, onJoin, view }) => {
-  const [participantCount, setParticipantCount] = useState(session.participants?.length || 0);
+  const [participantCount, setParticipantCount] = useState(
+    session.participants?.length || 0
+  );
   const { socket, isConnected } = useSocket();
-  
+
   useEffect(() => {
     // Only proceed if socket is connected and session is active
-    if (!socket || !isConnected || session.status !== 'active') return;
+    if (!socket || !isConnected || session.status !== "active") return;
 
     try {
       // Create a unique room identifier for observation
       const observerRoom = `observe:${session.id}`;
-      
+
       // Join the observer room instead of the main session
-      socket.emit('observe-session', { 
+      socket.emit("observe-session", {
         sessionId: session.id,
-        observerRoom 
+        observerRoom,
       });
 
       // Listen for participant updates only for this session
@@ -28,37 +38,50 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
         }
       };
 
-      socket.on('participants-update', updateHandler);
+      socket.on("participants-update", updateHandler);
+
+      // Listen for user left events
+      socket.on("user-left-session", ({ sessionId }) => {
+        if (sessionId === session.id) {
+          // Update participant count
+          setParticipantCount((prev) => Math.max(0, prev - 1));
+        }
+      });
 
       // Cleanup function
       return () => {
-        socket.off('participants-update', updateHandler);
-        socket.emit('leave-observer', { 
+        socket.off("participants-update", updateHandler);
+        socket.off("user-left-session");
+        socket.emit("leave-observer", {
           sessionId: session.id,
-          observerRoom 
+          observerRoom,
         });
       };
     } catch (error) {
-      console.error('Socket operation error:', error);
+      console.error("Socket operation error:", error);
     }
   }, [socket, isConnected, session.id, session.status]);
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Date not available';
+    if (!dateString) return "Date not available";
     try {
-      const date = typeof dateString === 'object' ? dateString : new Date(dateString);
+      const date =
+        typeof dateString === "object" ? dateString : new Date(dateString);
       return date.toLocaleString();
     } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Invalid date';
+      console.error("Error formatting date:", error);
+      return "Invalid date";
     }
   };
 
   const getStatusClass = (status) => {
     switch (status) {
-      case 'active': return 'status-badge green';
-      case 'scheduled': return 'status-badge blue';
-      default: return 'status-badge gray';
+      case "active":
+        return "status-badge green";
+      case "scheduled":
+        return "status-badge blue";
+      default:
+        return "status-badge gray";
     }
   };
 
@@ -69,19 +92,23 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
   const isPrivate = Boolean(session.isPrivate);
 
   // Add default language handling
-  const displayLanguage = session.language || 'javascript';
+  const displayLanguage = session.language || "javascript";
 
   return (
     <div className={`session-card ${view}`}>
-      {view === 'grid' ? (
+      {view === "grid" ? (
         // Grid View Layout
         <>
-          <span className={`status-badge ${session.status === 'active' ? 'green' : ''}`}>
+          <span
+            className={`status-badge ${
+              session.status === "active" ? "green" : ""
+            }`}
+          >
             {session.status}
           </span>
-          
+
           <h3>{session.title}</h3>
-          
+
           {session.description && (
             <p className="session-description">{session.description}</p>
           )}
@@ -93,7 +120,9 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
             </div>
             <div className="detail-item">
               <FaUsers />
-              <span>{participantCount}/{maxParticipants}</span>
+              <span>
+                {participantCount}/{maxParticipants}
+              </span>
             </div>
             <div className="detail-item">
               <FaCode />
@@ -101,16 +130,18 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
             </div>
             <div className="detail-item">
               {isPrivate ? <FaLock /> : <FaLockOpen />}
-              <span>{isPrivate ? 'Private' : 'Public'}</span>
+              <span>{isPrivate ? "Private" : "Public"}</span>
             </div>
           </div>
 
-          <button 
-            onClick={() => onJoin(session.id)} 
+          <button
+            onClick={() => onJoin(session.id)}
             className="join-button"
             disabled={participantCount >= maxParticipants}
           >
-            {participantCount >= maxParticipants ? 'Session Full' : 'Join Session'}
+            {participantCount >= maxParticipants
+              ? "Session Full"
+              : "Join Session"}
           </button>
         </>
       ) : (
@@ -119,7 +150,11 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
           <div className="title-area">
             <h3>
               {session.title}
-              <span className={`status-badge ${session.status === 'active' ? 'green' : ''}`}>
+              <span
+                className={`status-badge ${
+                  session.status === "active" ? "green" : ""
+                }`}
+              >
                 {session.status}
               </span>
             </h3>
@@ -142,20 +177,22 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
           <div className="session-details">
             <div className="detail-item">
               <FaUsers />
-              <span>{participantCount}/{maxParticipants}</span>
+              <span>
+                {participantCount}/{maxParticipants}
+              </span>
             </div>
             <div className="detail-item">
               {isPrivate ? <FaLock /> : <FaLockOpen />}
-              <span>{isPrivate ? 'Private' : 'Public'}</span>
+              <span>{isPrivate ? "Private" : "Public"}</span>
             </div>
           </div>
 
-          <button 
-            onClick={() => onJoin(session.id)} 
+          <button
+            onClick={() => onJoin(session.id)}
             className="join-button"
             disabled={participantCount >= maxParticipants}
           >
-            {participantCount >= maxParticipants ? 'Full' : 'Join'}
+            {participantCount >= maxParticipants ? "Full" : "Join"}
           </button>
         </>
       )}
@@ -172,13 +209,15 @@ SessionCard.propTypes = {
     startTime: PropTypes.string,
     createdAt: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     language: PropTypes.string,
-    maxParticipants: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+    maxParticipants: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
+      .isRequired,
     participants: PropTypes.array,
-    isPrivate: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]).isRequired // Allow both boolean and string
+    isPrivate: PropTypes.oneOfType([PropTypes.bool, PropTypes.string])
+      .isRequired, // Allow both boolean and string
   }).isRequired,
   isOwner: PropTypes.bool.isRequired,
   onJoin: PropTypes.func.isRequired,
-  view: PropTypes.oneOf(['grid', 'list']).isRequired
+  view: PropTypes.oneOf(["grid", "list"]).isRequired,
 };
 
-export default SessionCard; 
+export default SessionCard;

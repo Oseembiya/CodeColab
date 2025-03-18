@@ -1,7 +1,17 @@
-import PropTypes from 'prop-types';
-import { FaExclamationTriangle } from 'react-icons/fa';
+import PropTypes from "prop-types";
+import { FaExclamationTriangle } from "react-icons/fa";
+import { useSocket } from "../../contexts/SocketContext";
 
-const AlertDialog = ({ isOpen, onConfirm, onCancel }) => {
+const AlertDialog = ({ isOpen, onConfirm, onCancel, sessionId }) => {
+  const { socket } = useSocket();
+
+  const handleConfirm = () => {
+    if (socket && sessionId) {
+      socket.emit("user-left-session", { sessionId });
+    }
+    onConfirm();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -18,7 +28,7 @@ const AlertDialog = ({ isOpen, onConfirm, onCancel }) => {
           <button className="alert-button cancel" onClick={onCancel}>
             Cancel
           </button>
-          <button className="alert-button confirm" onClick={onConfirm}>
+          <button className="alert-button confirm" onClick={handleConfirm}>
             Leave
           </button>
         </div>
@@ -30,7 +40,8 @@ const AlertDialog = ({ isOpen, onConfirm, onCancel }) => {
 AlertDialog.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onConfirm: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired
+  onCancel: PropTypes.func.isRequired,
+  sessionId: PropTypes.string,
 };
 
 export default AlertDialog;

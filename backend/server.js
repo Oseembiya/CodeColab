@@ -257,6 +257,44 @@ io.on("connection", (socket) => {
     socket.to(sessionId).emit("user-stopped-typing", { userId });
   });
 
+  socket.on("user-left-session", ({ sessionId }) => {
+    if (!sessionId) return;
+
+    const sessionUsers = activeSessions.get(sessionId);
+    if (sessionUsers) {
+      // Remove the user from the session
+      let userRemoved = false;
+      sessionUsers.forEach((user, userId) => {
+        if (user.socketId === socket.id) {
+          sessionUsers.delete(userId);
+          userRemoved = true;
+        }
+      });
+
+      if (userRemoved) {
+        // Emit updated participants list to all clients
+        const participantsList = Array.from(sessionUsers.entries()).map(
+          ([id, user]) => ({
+            userId: id,
+            ...user,
+          })
+        );
+
+        io.to(sessionId)
+          .to(`observe:${sessionId}`)
+          .emit("participants-update", {
+            sessionId,
+            participants: participantsList,
+            count: sessionUsers.size,
+          });
+
+        console.log(
+          `User left session ${sessionId}. Remaining participants: ${sessionUsers.size}`
+        );
+      }
+    }
+  });
+
   socket.on("disconnect", () => {
     // Clean up observer tracking
     if (socket.observing) {
