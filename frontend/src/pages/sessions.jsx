@@ -1,39 +1,49 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaSearch, FaFilter, FaClock, FaUsers, FaCode, FaCalendar, FaLock, FaLockOpen } from 'react-icons/fa';
-import CreateSessionModal from '../components/sessions/CreateSessionModal';
-import JoinSessionModal from '../components/sessions/JoinSessionModal';
-import SessionCard from '../components/sessions/SessionCard';
-import SessionFilters from '../components/sessions/SessionFilters';
-import { useAuth } from '../hooks/useAuth';
-import { useSessions } from '../hooks/useSessions';
-import { useSession } from '../contexts/SessionContext';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  FaPlus,
+  FaSearch,
+  FaFilter,
+  FaClock,
+  FaUsers,
+  FaCode,
+  FaCalendar,
+  FaLock,
+  FaLockOpen,
+} from "react-icons/fa";
+import CreateSessionModal from "../components/sessions/CreateSessionModal";
+import JoinSessionModal from "../components/sessions/JoinSessionModal";
+import SessionCard from "../components/sessions/SessionCard";
+import SessionFilters from "../components/sessions/SessionFilters";
+import { useAuth } from "../hooks/useAuth";
+import { useSessions } from "../hooks/useSessions";
+import { useSession } from "../contexts/SessionContext";
 
 const Sessions = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { 
-    sessions, 
-    loading, 
-    error, 
+  const {
+    sessions,
+    loading,
+    error,
     createSession,
     joinSession,
-    refreshSessions 
+    refreshSessions,
   } = useSessions();
   const { createSession: sessionContextCreateSession } = useSession();
-  
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
-  const [joinError, setJoinError] = useState('');
+  const [joinError, setJoinError] = useState("");
   const [filters, setFilters] = useState({
-    search: '',
-    status: 'all',
-    language: 'all',
-    dateRange: 'all',
-    privacy: 'all'
+    search: "",
+    status: "all",
+    language: "all",
+    dateRange: "all",
+    privacy: "all",
   });
-  const [view, setView] = useState('grid');
+  const [view, setView] = useState("grid");
 
   if (loading) {
     return <div>Loading sessions...</div>;
@@ -43,26 +53,31 @@ const Sessions = () => {
     return <div>Error loading sessions: {error.message}</div>;
   }
 
-  const filteredSessions = sessions.filter(session => {
-    const matchesSearch = session.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-                         session.description.toLowerCase().includes(filters.search.toLowerCase());
-    const matchesStatus = filters.status === 'all' || session.status === filters.status;
-    const matchesLanguage = filters.language === 'all' || session.language === filters.language;
-    const matchesPrivacy = filters.privacy === 'all' || session.isPrivate === (filters.privacy === 'private');
-    
+  const filteredSessions = sessions.filter((session) => {
+    const matchesSearch =
+      session.title.toLowerCase().includes(filters.search.toLowerCase()) ||
+      session.description.toLowerCase().includes(filters.search.toLowerCase());
+    const matchesStatus =
+      filters.status === "all" || session.status === filters.status;
+    const matchesLanguage =
+      filters.language === "all" || session.language === filters.language;
+    const matchesPrivacy =
+      filters.privacy === "all" ||
+      session.isPrivate === (filters.privacy === "private");
+
     let matchesDate = true;
-    if (filters.dateRange !== 'all') {
+    if (filters.dateRange !== "all") {
       const sessionDate = new Date(session.startTime);
       const now = new Date();
       switch (filters.dateRange) {
-        case 'today':
+        case "today":
           matchesDate = sessionDate.toDateString() === now.toDateString();
           break;
-        case 'week':
+        case "week":
           const weekAgo = new Date(now.setDate(now.getDate() - 7));
           matchesDate = sessionDate >= weekAgo;
           break;
-        case 'month':
+        case "month":
           const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
           matchesDate = sessionDate >= monthAgo;
           break;
@@ -71,8 +86,18 @@ const Sessions = () => {
       }
     }
 
-    return matchesSearch && matchesStatus && matchesLanguage && matchesPrivacy && matchesDate;
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesLanguage &&
+      matchesPrivacy &&
+      matchesDate
+    );
   });
+
+  const uniqueSessions = Array.from(
+    new Map(filteredSessions.map((session) => [session.id, session])).values()
+  );
 
   const handleCreateSession = async (sessionData) => {
     try {
@@ -80,21 +105,21 @@ const Sessions = () => {
       setShowCreateModal(false);
       navigate(`/dashboard/sessions/${sessionId}`);
     } catch (error) {
-      console.error('Failed to create session:', error);
+      console.error("Failed to create session:", error);
     }
   };
 
   const initiateJoinSession = (sessionId) => {
-    const session = sessions.find(s => s.id === sessionId);
+    const session = sessions.find((s) => s.id === sessionId);
     if (!session) {
-      setJoinError('Session not found');
+      setJoinError("Session not found");
       return;
     }
 
     if (session.isPrivate) {
       setSelectedSessionId(sessionId);
       setShowJoinModal(true);
-      setJoinError('');
+      setJoinError("");
     } else {
       handleJoinSession(sessionId);
     }
@@ -102,30 +127,33 @@ const Sessions = () => {
 
   const handleJoinSession = async (sessionId, joinCode = null) => {
     try {
-      console.log('Starting join process:', { sessionId, joinCode });
-      
+      console.log("Starting join process:", { sessionId, joinCode });
+
       // Store the join info before attempting to join
       if (joinCode) {
-        localStorage.setItem('lastJoinedSession', JSON.stringify({
-          id: sessionId,
-          joinCode: joinCode.toUpperCase()
-        }));
+        localStorage.setItem(
+          "lastJoinedSession",
+          JSON.stringify({
+            id: sessionId,
+            joinCode: joinCode.toUpperCase(),
+          })
+        );
       }
-      
+
       const result = await joinSession(sessionId, joinCode);
-      
+
       // Clear UI states after successful join
       setShowJoinModal(false);
       setSelectedSessionId(null);
-      setJoinError('');
-      
+      setJoinError("");
+
       // Navigate to session
       navigate(`/dashboard/sessions/${sessionId}`);
     } catch (error) {
-      console.error('Failed to join session:', error);
+      console.error("Failed to join session:", error);
       setJoinError(error.message);
       // Clean up stored join info on error
-      localStorage.removeItem('lastJoinedSession');
+      localStorage.removeItem("lastJoinedSession");
     }
   };
 
@@ -137,20 +165,20 @@ const Sessions = () => {
           <div className="header-left">
             <h1>Coding Sessions</h1>
             <div className="view-toggle">
-              <button 
-                className={view === 'grid' ? 'active' : ''}
-                onClick={() => setView('grid')}
+              <button
+                className={view === "grid" ? "active" : ""}
+                onClick={() => setView("grid")}
               >
                 Grid
               </button>
-              <button 
-                className={view === 'list' ? 'active' : ''}
-                onClick={() => setView('list')}
+              <button
+                className={view === "list" ? "active" : ""}
+                onClick={() => setView("list")}
               >
                 List
               </button>
             </div>
-            <button 
+            <button
               className="refresh-button"
               onClick={refreshSessions}
               disabled={loading}
@@ -159,13 +187,13 @@ const Sessions = () => {
             </button>
           </div>
           <div className="header-actions">
-            <button 
+            <button
               className="join-session-btn"
               onClick={() => setShowJoinModal(true)}
             >
-              <FaUsers /> Join private Session 
+              <FaUsers /> Join private Session
             </button>
-            <button 
+            <button
               className="create-session-btn"
               onClick={() => setShowCreateModal(true)}
             >
@@ -175,16 +203,13 @@ const Sessions = () => {
         </div>
 
         {/* Filters */}
-        <SessionFilters 
-          filters={filters}
-          onFilterChange={setFilters}
-        />
+        <SessionFilters filters={filters} onFilterChange={setFilters} />
       </div>
 
       {/* Sessions Grid Container */}
       <div className="sessions-grid-container">
         <div className={`sessions-${view}`}>
-          {filteredSessions.map(session => (
+          {uniqueSessions.map((session) => (
             <SessionCard
               key={session.id}
               session={session}
@@ -197,18 +222,18 @@ const Sessions = () => {
       </div>
 
       {showCreateModal && (
-          <CreateSessionModal 
+        <CreateSessionModal
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateSession}
         />
       )}
 
-      <JoinSessionModal 
+      <JoinSessionModal
         isOpen={showJoinModal}
         onClose={() => {
           setShowJoinModal(false);
           setSelectedSessionId(null);
-          setJoinError('');
+          setJoinError("");
         }}
         onJoin={(code) => handleJoinSession(selectedSessionId, code)}
         error={joinError}
