@@ -11,14 +11,14 @@
 .sticky-container {
   position: sticky;
   top: 0;
-  background-color: var(--background-color);
-  z-index: 100; /* Higher z-index */
+  background-color: transparent;
+  z-index: 100;
   margin-bottom: var(--spacing-lg);
-  /* Add shadow for visual separation */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  /* Remove shadow as the header now has its own */
+  box-shadow: none;
 }
 
-/* Sessions Header */
+/* Sessions Header - Updated to match profile and dashboard style */
 .sessions-page-header {
   display: flex;
   justify-content: space-between;
@@ -26,19 +26,53 @@
   margin-bottom: var(--spacing-lg);
   background-color: var(--background-color);
   position: relative;
+  z-index: 100;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--secondary-rgb), 0.25) 0%,
+    rgba(var(--secondary-rgb), 0.05) 100%
+  );
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  border: 1px solid rgba(var(--secondary-rgb), 0.3);
+  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+  overflow: hidden;
+}
+
+.sessions-page-header::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(var(--secondary-rgb), 0.4) 0%,
+    transparent 70%
+  );
+  opacity: 0.4;
+  z-index: 0;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
+  position: relative;
+  z-index: 2;
 }
 
 .header-left h1 {
-  font-size: var(--text-xl);
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--text-color);
   margin: 0;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* View Toggle and Refresh Button */
@@ -85,6 +119,8 @@
 .header-actions {
   display: flex;
   gap: var(--spacing-md);
+  position: relative;
+  z-index: 2;
 }
 
 .join-session-btn,
@@ -456,7 +492,7 @@
   top: 0;
   background-color: var(--background-color);
   z-index: 10;
- 
+
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -514,7 +550,7 @@
 
 /* Add a background to the sticky elements container */
 .sticky-container::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -20px; /* Extend below the container */
   left: 0;
@@ -527,4 +563,4 @@
 /* Add padding to content area to prevent overlap */
 .content-area {
   padding-top: var(--spacing-md);
-} 
+}

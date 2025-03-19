@@ -11,7 +11,7 @@
   padding: var(--spacing-lg) 0;
 }
 
-/* Header - Ensure full visibility */
+/* Header - Match dashboard-header style */
 .profile-header {
   display: flex;
   justify-content: space-between;
@@ -22,17 +22,49 @@
   width: 100%;
   position: relative;
   z-index: 1;
-  background: var(--background-color); /* Add background to ensure visibility */
+  background: var(--background-color);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--secondary-rgb), 0.25) 0%,
+    rgba(var(--secondary-rgb), 0.05) 100%
+  );
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(var(--secondary-rgb), 0.3);
+  backdrop-filter: blur(5px);
+}
+
+.profile-header::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(var(--secondary-rgb), 0.4) 0%,
+    transparent 70%
+  );
+  opacity: 0.4;
+  z-index: 0;
 }
 
 .profile-header h1 {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--text-color);
   margin: 0;
   display: block;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
-
 /* Profile Section - Ensure proper spacing */
 .profile-section {
   background: var(--surface-color);
@@ -111,7 +143,7 @@
 }
 
 .tab-button::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -2px;
   left: 0;
@@ -149,7 +181,6 @@
   gap: var(--spacing-lg);
 }
 
-
 .form-group label {
   font-weight: 500;
   color: var(--text-color);
@@ -186,13 +217,14 @@
   opacity: 0.7;
 }
 
-/* Edit Button Styles */
+/* Edit Button Styles - Updated to match dashboard */
 .edit-button {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-sm);
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background-color: var(--secondary-color);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -200,24 +232,25 @@
   font-weight: 500;
   z-index: 2;
   position: relative;
+  box-shadow: 0 4px 10px rgba(var(--secondary-rgb), 0.4);
+  transition: all 0.3s ease;
 }
 
 .edit-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
-  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  box-shadow: 0 6px 15px rgba(var(--secondary-rgb), 0.5);
+  background-color: var(--secondary-light);
 }
 
 .edit-button:active {
   transform: translateY(0);
+  box-shadow: 0 3px 8px rgba(var(--secondary-rgb), 0.4);
 }
 
-
-
-/* Submit Button (matching style) */
+/* Submit Button - Updated to match dashboard */
 .submit-button {
   padding: 0.75rem 2rem;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background-color: var(--secondary-color);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -226,13 +259,18 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 4px 10px rgba(var(--secondary-rgb), 0.4);
 }
 
 .submit-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
-  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  box-shadow: 0 6px 15px rgba(var(--secondary-rgb), 0.5);
+  background-color: var(--secondary-light);
+}
+
+.submit-button:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 8px rgba(var(--secondary-rgb), 0.4);
 }
 
 /* Enhanced Status Message Styling */
@@ -261,7 +299,7 @@
 
 /* Add gradient overlay */
 .status-message-content::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -390,13 +428,14 @@
 }
 
 .stat-item::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 4px;
-  background: linear-gradient(90deg, 
+  background: linear-gradient(
+    90deg,
     var(--secondary-color) 0%,
     var(--secondary-light) 100%
   );
@@ -443,13 +482,14 @@
 }
 
 .skills-section h3::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -2px;
   left: 0;
   width: 100px;
   height: 2px;
-  background: linear-gradient(90deg, 
+  background: linear-gradient(
+    90deg,
     var(--secondary-color) 0%,
     var(--secondary-light) 100%
   );
@@ -508,7 +548,8 @@
 
 .skill-progress {
   height: 100%;
-  background: linear-gradient(90deg, 
+  background: linear-gradient(
+    90deg,
     var(--secondary-color) 0%,
     var(--secondary-light) 100%
   );
@@ -518,7 +559,7 @@
 }
 
 .skill-progress::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -541,7 +582,6 @@
     transform: translateX(100%);
   }
 }
-
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
@@ -575,7 +615,7 @@
   .tab-button {
     flex: 1;
     justify-content: center;
-  padding: var(--spacing-sm);
+    padding: var(--spacing-sm);
   }
 
   .profile-stats {
@@ -602,9 +642,9 @@
 
   .profile-header h1 {
     font-size: 1.5rem;
-}
+  }
 
-.profile-section {
+  .profile-section {
     padding: var(--spacing-md);
   }
 
@@ -690,7 +730,7 @@
 }
 
 .social-links h3::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -2px;
   left: 0;
@@ -991,7 +1031,7 @@
   .links-grid {
     grid-template-columns: 1fr;
   }
-} 
+}
 
 @media (max-width: 480px) {
   .link-item {
