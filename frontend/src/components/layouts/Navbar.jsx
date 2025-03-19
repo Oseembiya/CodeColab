@@ -2,12 +2,22 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FaBell, FaBars } from "react-icons/fa";
 import { auth } from "../../firebaseConfig";
 import { useSession } from "../../contexts/SessionContext";
+import { getImageUrl, preloadImage } from "../../utils/imageLoader.jsx";
+import { useEffect } from "react";
+import PropTypes from "prop-types";
 
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = auth.currentUser;
   const { currentSession } = useSession();
+
+  // Preload user avatar to prevent rate limiting
+  useEffect(() => {
+    if (user?.photoURL) {
+      preloadImage(user.photoURL);
+    }
+  }, [user?.photoURL]);
 
   return (
     <nav className="navbar">
@@ -41,14 +51,20 @@ const Navbar = ({ toggleSidebar }) => {
           aria-label="View profile"
         >
           <img
-            src={user?.photoURL || "/default-avatar.png"}
+            src={getImageUrl(user?.photoURL)}
             alt="Profile"
             className="user-avatar"
+            loading="lazy"
+            crossOrigin="anonymous"
           />
         </button>
       </div>
     </nav>
   );
+};
+
+Navbar.propTypes = {
+  toggleSidebar: PropTypes.func.isRequired,
 };
 
 export default Navbar;

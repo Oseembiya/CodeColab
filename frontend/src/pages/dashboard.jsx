@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FaUsers, FaCode, FaChartLine, FaQuestionCircle } from 'react-icons/fa';
+import { useState } from "react";
+import { FaUsers, FaCode, FaQuestionCircle } from "react-icons/fa";
 
 const Dashboard = () => {
   const [greeting] = useState(() => {
@@ -24,28 +24,28 @@ const Dashboard = () => {
       user: "/default-avatar.png",
       task: "Pair programming session",
       type: "Urgent",
-    }
+    },
   ];
 
   const upcomingTasks = [
     {
-      id: 'Select',
-      title: 'Backend development',
-      details: '7 of 10 tasks, Mr. Smith',
-      time: '10:00-11:00'
+      id: "Select",
+      title: "Backend development",
+      details: "7 of 10 tasks, Mr. Smith",
+      time: "10:00-11:00",
     },
     {
-      id: 'Join',
-      title: 'Frontend optimization',
-      details: '5 of 8 tasks, Mr. Brown',
-      time: '14:00-15:30'
+      id: "Join",
+      title: "Frontend optimization",
+      details: "5 of 8 tasks, Mr. Brown",
+      time: "14:00-15:30",
     },
     {
-      id: 'Details',
-      title: 'Code review session',
-      details: '3 of 15 reviews, Dev Team',
-      time: '09:00-09:30'
-    }
+      id: "Details",
+      title: "Code review session",
+      details: "3 of 15 reviews, Dev Team",
+      time: "09:00-09:30",
+    },
   ];
 
   return (
@@ -65,9 +65,9 @@ const Dashboard = () => {
             <p>Current Week Status</p>
           </div>
           <div className="collaborators">
-            <img src="/default-avatar.png" alt="User 1" />
-            <img src="/default-avatar.png" alt="User 2" />
-            <img src="/default-avatar.png" alt="User 3" />
+            <img src="/default-avatar.png" alt="User 1" loading="lazy" />
+            <img src="/default-avatar.png" alt="User 2" loading="lazy" />
+            <img src="/default-avatar.png" alt="User 3" loading="lazy" />
             <span>Collaborative</span>
           </div>
         </div>
@@ -78,8 +78,8 @@ const Dashboard = () => {
             <p>Week 12 Updates</p>
           </div>
           <div className="collaborators">
-            <img src="/default-avatar.png" alt="User 1" />
-            <img src="/default-avatar.png" alt="User 2" />
+            <img src="/default-avatar.png" alt="User 1" loading="lazy" />
+            <img src="/default-avatar.png" alt="User 2" loading="lazy" />
             <span>Creative</span>
           </div>
         </div>
@@ -111,7 +111,13 @@ const Dashboard = () => {
           <div className="tasks-list">
             {tasks.map((task, index) => (
               <div key={index} className="task-item">
-                <img src={task.user} alt="User" className="task-user" />
+                <img
+                  src={task.user}
+                  alt="User"
+                  className="task-user"
+                  loading="lazy"
+                  crossOrigin="anonymous"
+                />
                 <div className="task-info">
                   <span className="task-name">{task.task}</span>
                 </div>

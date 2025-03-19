@@ -8,9 +8,7 @@ import {
 } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
-  FaUser,
   FaEdit,
-  FaKey,
   FaUserCircle,
   FaCode,
   FaHistory,
@@ -21,7 +19,6 @@ import {
   FaTwitter,
   FaGlobe,
   FaUsers,
-  FaCheck,
   FaTimes,
   FaExclamationCircle,
   FaCheckCircle,
@@ -30,6 +27,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { getImageUrl, preloadImage } from "../utils/imageLoader.jsx";
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState("personal");
@@ -99,7 +97,6 @@ const Profile = () => {
   ];
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState(null);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -114,6 +111,11 @@ const Profile = () => {
       try {
         const user = auth.currentUser;
         if (user) {
+          // Preload user avatar to prevent rate limiting
+          if (user.photoURL) {
+            preloadImage(user.photoURL);
+          }
+
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
@@ -279,19 +281,18 @@ const Profile = () => {
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      setPhotoError("Please select an image file");
+      setError("Please select an image file");
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setPhotoError("Image must be less than 5MB");
+      setError("Image must be less than 5MB");
       return;
     }
 
     try {
       setUploadingPhoto(true);
-      setPhotoError(null);
       setError("");
 
       // Create unique filename
@@ -316,7 +317,7 @@ const Profile = () => {
       setFormData((prev) => ({ ...prev, timestamp: Date.now() }));
     } catch (error) {
       console.error("Error uploading photo:", error);
-      setPhotoError("Failed to upload photo. Please try again.");
+      setError("Failed to upload photo. Please try again.");
     } finally {
       setUploadingPhoto(false);
     }
@@ -326,13 +327,15 @@ const Profile = () => {
     <div className="profile-avatar">
       {auth.currentUser?.photoURL ? (
         <img
-          src={`${auth.currentUser.photoURL}?t=${formData.timestamp || ""}`}
+          src={getImageUrl(auth.currentUser.photoURL, formData.timestamp)}
           alt="Profile"
           className="avatar-large"
           onError={(e) => {
             e.target.onerror = null;
             e.target.src = "/default-avatar.png";
           }}
+          loading="lazy"
+          crossOrigin="anonymous"
         />
       ) : (
         <FaUserCircle className="avatar-icon" />
