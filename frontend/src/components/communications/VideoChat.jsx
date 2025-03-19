@@ -115,30 +115,173 @@ const VideoChat = ({ sessionId, userId }) => {
 
   useEffect(() => {
     isUnmountingRef.current = false;
+    let peerInstance = null;
 
-    if (socket) {
-      initializeVideoChat();
-    }
+    const setupPeerAndSocket = async () => {
+      try {
+        // 1. Get user media stream
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        streamRef.current = mediaStream;
+        setStream(mediaStream);
 
-    return () => {
-      isUnmountingRef.current = true;
+        // 2. Initialize PeerJS
+        const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
+          host: import.meta.env.VITE_PEER_HOST || "localhost",
+          port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
+          path: "/myapp",
+        });
 
-      // Clean up media streams
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
+        peerInstance = peer;
+        peerRef.current = peer;
 
-      // Clean up peer connection
-      if (peerRef.current) {
-        peerRef.current.destroy();
-      }
+        // Set up peer event handlers
+        peer.on("open", (peerId) => {
+          console.log("My peer ID is:", peerId);
+          if (socket && !isUnmountingRef.current) {
+            socket.emit("join-video", {
+              sessionId,
+              userId,
+              peerId,
+            });
+          }
+        });
 
-      // Clear any pending reconnection attempts
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+        peer.on("call", (call) => {
+          console.log("Receiving call from:", call.peer);
+          if (streamRef.current) {
+            call.answer(streamRef.current);
+          }
+
+          call.on("stream", (remoteStream) => {
+            if (!isUnmountingRef.current) {
+              console.log("Received remote stream from:", call.peer);
+              setPeers((prev) => new Map(prev).set(call.peer, remoteStream));
+            }
+          });
+
+          call.on("close", () => {
+            if (!isUnmountingRef.current) {
+              console.log("Call closed with:", call.peer);
+              setPeers((prev) => {
+                const newPeers = new Map(prev);
+                newPeers.delete(call.peer);
+                return newPeers;
+              });
+            }
+          });
+        });
+      } catch (err) {
+        console.error("Error initializing video chat:", err);
+        setError(err.message);
       }
     };
-  }, [initializeVideoChat, socket]);
+
+    // Define socket event handlers
+    const handleUserJoined = ({ peerId: newPeerId }) => {
+      console.log("New user joined with peer ID:", newPeerId);
+      if (
+        peerRef.current &&
+        newPeerId !== peerRef.current.id &&
+        streamRef.current &&
+        !isUnmountingRef.current
+      ) {
+        const call = peerRef.current.call(newPeerId, streamRef.current);
+
+        call.on("stream", (remoteStream) => {
+          if (!isUnmountingRef.current) {
+            console.log("Received stream from new user:", newPeerId);
+            setPeers((prev) => new Map(prev).set(newPeerId, remoteStream));
+          }
+        });
+      }
+    };
+
+    const handleUserLeft = ({ peerId }) => {
+      console.log("User left:", peerId);
+      if (!isUnmountingRef.current) {
+        setPeers((prev) => {
+          const newPeers = new Map(prev);
+          newPeers.delete(peerId);
+          return newPeers;
+        });
+      }
+    };
+
+    // Set up everything if socket is available
+    if (socket) {
+      // First register socket event listeners
+      socket.on("user-joined", handleUserJoined);
+      socket.on("user-left", handleUserLeft);
+
+      // Then initialize peer and stream
+      setupPeerAndSocket();
+    }
+
+    // Cleanup function
+    return () => {
+      console.log("VideoChat component unmounting, cleaning up resources");
+      isUnmountingRef.current = true;
+
+      // 1. Remove socket listeners first
+      if (socket) {
+        socket.off("user-joined", handleUserJoined);
+        socket.off("user-left", handleUserLeft);
+
+        // 2. Notify server we're leaving
+        if (peerRef.current) {
+          console.log(
+            "Emitting leave-video event with peerId:",
+            peerRef.current.id
+          );
+          socket.emit("leave-video", {
+            sessionId,
+            userId,
+            peerId: peerRef.current.id,
+          });
+        }
+      }
+
+      // 3. Clean up peer connections
+      setPeers(new Map()); // Clear peers state
+
+      // 4. Stop all tracks in the media stream
+      if (streamRef.current) {
+        console.log("Stopping all media tracks");
+        streamRef.current.getTracks().forEach((track) => {
+          track.stop();
+          console.log(`Stopped ${track.kind} track`);
+        });
+        streamRef.current = null;
+      }
+
+      // 5. Destroy peer after a small delay to ensure events are processed
+      if (peerRef.current) {
+        const peerToDestroy = peerRef.current;
+        console.log("Destroying peer connection:", peerToDestroy.id);
+
+        // Use setTimeout to ensure leave-video event is processed first
+        setTimeout(() => {
+          try {
+            peerToDestroy.destroy();
+            console.log("Peer destroyed successfully");
+          } catch (err) {
+            console.error("Error destroying peer:", err);
+          }
+        }, 100);
+
+        peerRef.current = null;
+      }
+
+      // 6. Clear any pending timeouts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+    };
+  }, [sessionId, userId, socket]);
 
   const toggleVideo = () => {
     if (streamRef.current) {

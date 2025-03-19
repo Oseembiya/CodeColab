@@ -168,12 +168,29 @@ io.on("connection", (socket) => {
     observers.add(socket.id);
     sessionObservers.set(sessionId, observers);
 
-    // Send initial participant count
+    // Send initial participant count with consistent format
     const sessionUsers = activeSessions.get(sessionId);
-    socket.emit("participants-update", {
-      sessionId,
-      count: sessionUsers ? sessionUsers.size : 0,
-    });
+    if (sessionUsers) {
+      const participantsList = Array.from(sessionUsers.entries()).map(
+        ([id, user]) => ({
+          userId: id,
+          ...user,
+        })
+      );
+
+      socket.emit("participants-update", {
+        sessionId,
+        participants: participantsList,
+        count: sessionUsers.size,
+      });
+    } else {
+      // Send empty participants list if no users
+      socket.emit("participants-update", {
+        sessionId,
+        participants: [],
+        count: 0,
+      });
+    }
 
     console.log(`Observer ${socket.id} watching session ${sessionId}`);
   });
@@ -380,6 +397,7 @@ io.on("connection", (socket) => {
         io.to(sessionId)
           .to(`observe:${sessionId}`)
           .emit("participants-update", {
+            sessionId,
             participants: participantsList,
             count: users.size,
           });
@@ -408,19 +426,22 @@ io.on("connection", (socket) => {
     // Join the video room
     socket.join(`video-${sessionId}`);
 
+    // Track the participant
+    if (!videoParticipants.has(sessionId)) {
+      videoParticipants.set(sessionId, new Set());
+    }
+    const participants = videoParticipants.get(sessionId);
+    participants.add(peerId);
+
+    // Store data in socket for later reference
+    socket.videoRoomId = sessionId;
+    socket.videoPeerId = peerId;
+    socket.videoUserId = userId;
+
     // Notify others in the session about the new participant
     socket.to(`video-${sessionId}`).emit("user-joined", {
       userId,
       peerId,
-    });
-
-    // Handle disconnection
-    socket.on("disconnect", () => {
-      console.log(`User ${userId} left video chat`);
-      io.to(`video-${sessionId}`).emit("user-left", {
-        userId,
-        peerId,
-      });
     });
   });
 
@@ -442,6 +463,49 @@ io.on("connection", (socket) => {
         count: sessionUsers.size,
       });
     }
+  });
+
+  // Enhance the leave-video handler
+  socket.on("leave-video", ({ sessionId, userId, peerId }) => {
+    console.log(
+      `User ${userId} left video chat in session ${sessionId}${
+        peerId ? ` with peerId ${peerId}` : ""
+      }`
+    );
+
+    // Leave the video room
+    socket.leave(`video-${sessionId}`);
+
+    // Notify others that user has left
+    io.to(`video-${sessionId}`).emit("user-left", {
+      userId,
+      peerId,
+    });
+
+    // Remove from tracking if peerId is provided
+    if (peerId && videoParticipants.has(sessionId)) {
+      const participants = videoParticipants.get(sessionId);
+      const wasRemoved = participants.delete(peerId);
+      console.log(
+        `Peer ${peerId} ${
+          wasRemoved ? "was removed from" : "not found in"
+        } video participants`
+      );
+
+      if (participants.size === 0) {
+        videoParticipants.delete(sessionId);
+        console.log(
+          `No more video participants in session ${sessionId}, removing tracking`
+        );
+      }
+    } else if (!peerId) {
+      console.log(`No peerId provided for leave-video in session ${sessionId}`);
+    }
+
+    // Clear video data from socket
+    socket.videoRoomId = undefined;
+    socket.videoPeerId = undefined;
+    socket.videoUserId = undefined;
   });
 });
 

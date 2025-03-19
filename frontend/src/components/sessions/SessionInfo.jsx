@@ -22,9 +22,12 @@ const SessionInfo = ({ session, onLeave, socket }) => {
     setParticipantCount(session.participants?.length || 0);
 
     // Listen for participant count updates
-    const handleParticipantUpdate = ({ participants, count }) => {
-      console.log("Received participant update:", { count, participants });
-      setParticipantCount(count);
+    const handleParticipantUpdate = ({ sessionId, participants, count }) => {
+      // Add sessionId check to ensure we only update for the current session
+      if (sessionId === session.id) {
+        console.log("Received participant update:", { count, participants });
+        setParticipantCount(count);
+      }
     };
 
     socket.on("participants-update", handleParticipantUpdate);

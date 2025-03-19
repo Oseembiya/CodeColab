@@ -132,24 +132,38 @@ const CollaborativeSession = () => {
 
   const handleLeave = () => {
     if (socket && currentSession) {
-      // First leave the session via socket
-      socket.emit("leave-session", {
-        sessionId,
-        userId,
+      console.log("Starting leave process for session:", sessionId);
+
+      // Create a promise that will resolve after leave events are sent
+      const leavePromise = new Promise((resolve) => {
+        // First leave the session
+        socket.emit("leave-session", {
+          sessionId,
+          userId,
+        });
+
+        // Then leave video chat
+        socket.emit("leave-video", {
+          sessionId,
+          userId,
+        });
+
+        // Allow a small delay for events to be processed
+        setTimeout(() => {
+          leaveSession(); // Clean up via context
+          resolve();
+        }, 150);
       });
 
-      // Also notify observers
-      socket.emit("user-left-session", {
-        sessionId,
-        userId,
+      // Navigate after the leave promise resolves
+      leavePromise.then(() => {
+        console.log("Leave process completed, navigating away");
+        navigate("/dashboard/sessions");
       });
-
-      // Then clean up via context
-      leaveSession();
+    } else {
+      // If no socket or session, just navigate
+      navigate("/dashboard/sessions");
     }
-
-    // Navigate after leaving
-    navigate("/dashboard/sessions");
   };
 
   const CheckScheduledSession = () => {

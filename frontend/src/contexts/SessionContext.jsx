@@ -177,14 +177,8 @@ export function SessionProvider({ children }) {
 
   const leaveSession = () => {
     if (currentSession && socket) {
-      // Send both the sessionId and userId to properly track who left
+      // Simplify to one clear event
       socket.emit("leave-session", {
-        sessionId: currentSession.id,
-        userId: user?.uid,
-      });
-
-      // Explicitly notify observers about the change
-      socket.emit("user-left-session", {
         sessionId: currentSession.id,
         userId: user?.uid,
       });
