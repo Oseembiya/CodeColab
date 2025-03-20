@@ -2,9 +2,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FaBell, FaBars } from "react-icons/fa";
 import { auth } from "../../firebaseConfig";
 import { useSession } from "../../contexts/SessionContext";
-import { getImageUrl, preloadImage } from "../../utils/imageLoader.jsx";
+import { getImageUrl, preloadImage } from "../../utils/imageUtils.js";
 import { useEffect } from "react";
 import PropTypes from "prop-types";
+import FriendDropdown from "../common/FriendDropdown";
 
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
@@ -41,6 +42,7 @@ const Navbar = ({ toggleSidebar }) => {
 
       <div className="navbar-profile">
         <div className="navbar-icons">
+          <FriendDropdown />
           <button aria-label="Show notifications" data-count="3">
             <FaBell />
           </button>

@@ -1,0 +1,378 @@
+/* Friend Dropdown Styles */
+.friend-dropdown-container {
+  position: relative;
+}
+
+/* Navbar Icon Button with Request Count */
+.navbar-icon-button {
+  position: relative;
+  color: var(--text-color);
+  background: none;
+  border: none;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.navbar-icon-button:hover {
+  background-color: var(--hover-color);
+}
+
+/* Notification Dot for Friend Requests */
+.navbar-icon-button[data-count]::after {
+  content: attr(data-count);
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: var(--error-color);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--background-color);
+}
+
+/* Friend Dropdown Panel */
+.friend-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: var(--surface-color);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line-color);
+  width: 320px;
+  max-height: 480px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dropdown Header and Tabs */
+.friend-dropdown-header {
+  padding: 12px;
+  border-bottom: 1px solid var(--line-color);
+}
+
+.friend-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.friend-tab {
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  flex: 1;
+  opacity: 0.7;
+}
+
+.friend-tab:hover {
+  background-color: var(--hover-color);
+  opacity: 0.9;
+}
+
+.friend-tab.active {
+  background-color: var(--hover-color);
+  color: var(--secondary-color);
+  opacity: 1;
+}
+
+/* Request Count Badge */
+.friend-tab[data-count]::after {
+  content: attr(data-count);
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: var(--error-color);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(25%, -25%);
+}
+
+/* Dropdown Content */
+.friend-dropdown-content {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+/* Friends List */
+.friends-list {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Friend Item */
+.friend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  transition: background-color 0.2s ease;
+}
+
+.friend-item:hover {
+  background-color: var(--hover-color);
+}
+
+.friend-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.friend-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.friend-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.friend-name {
+  font-weight: 500;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Friend Action Buttons */
+.friend-action {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.friend-action:hover {
+  background-color: var(--hover-color);
+  transform: scale(1.1);
+}
+
+.friend-action.remove:hover {
+  color: var(--error-color);
+}
+
+.friend-action.add:hover {
+  color: var(--success-color);
+}
+
+/* Requests List */
+.requests-list {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.friend-request-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  transition: background-color 0.2s ease;
+}
+
+.friend-request-item:hover {
+  background-color: var(--hover-color);
+}
+
+.request-time {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.request-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.request-action {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.request-action.accept {
+  color: var(--success-color);
+}
+
+.request-action.reject {
+  color: var(--error-color);
+}
+
+.request-action:hover {
+  background-color: var(--hover-color);
+  transform: scale(1.1);
+}
+
+/* Add Friend Section */
+.add-friend {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-color);
+  opacity: 0.5;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 36px;
+  border-radius: var(--radius-md);
+  background-color: var(--hover-color);
+  border: 1px solid var(--line-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+}
+
+.clear-search {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.clear-search:hover {
+  opacity: 1;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  transition: background-color 0.2s ease;
+}
+
+.search-result-item:hover {
+  background-color: var(--hover-color);
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.status-badge.friends {
+  background-color: rgba(var(--secondary-rgb), 0.1);
+  color: var(--secondary-color);
+}
+
+.status-badge.pending {
+  background-color: rgba(var(--warning-rgb), 0.1);
+  color: var(--warning);
+}
+
+/* Empty States */
+.empty-state {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+.loading {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-color);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* Define warning color variables if not already defined */
+:root {
+  --warning: #f59e0b;
+  --warning-rgb: 245, 158, 11;
+}

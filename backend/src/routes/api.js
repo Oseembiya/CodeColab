@@ -3,6 +3,7 @@ const router = express.Router();
 
 // Import specific route handlers
 const imageProxyRouter = require("./imageProxy");
+const friendsRouter = require("./friends");
 
 // Health check endpoint
 router.get("/health", (req, res) => {
@@ -11,5 +12,6 @@ router.get("/health", (req, res) => {
 
 // Register route handlers
 router.use("/image-proxy", imageProxyRouter);
+router.use("/friends", friendsRouter);
 
 module.exports = router;

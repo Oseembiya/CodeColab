@@ -27,7 +27,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { getImageUrl, preloadImage } from "../utils/imageLoader.jsx";
+import { getImageUrl, preloadImage } from "../utils/imageUtils.js";
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState("personal");
