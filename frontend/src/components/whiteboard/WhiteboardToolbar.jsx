@@ -1,80 +1,117 @@
-import PropTypes from 'prop-types';
-import { 
-  FaPencilAlt, 
-  FaEraser, 
-  FaTrash, 
-  FaPalette 
-} from 'react-icons/fa';
+import PropTypes from "prop-types";
+import {
+  FaPencilAlt,
+  FaMousePointer,
+  FaEraser,
+  FaTrash,
+  FaDownload,
+  FaCircle,
+  FaSquare,
+  FaFont,
+  FaMinus,
+} from "react-icons/fa";
 
 const WhiteboardToolbar = ({
+  activeTool,
   activeColor,
-  setActiveColor,
-  brushSize,
-  setBrushSize,
-  tool,
-  setTool,
-  onClear
+  brushWidth,
+  onToolChange,
+  onColorChange,
+  onBrushWidthChange,
+  onClear,
+  onExport,
 }) => {
+  // Predefined colors
   const colors = [
-    '#000000', '#FF0000', '#00FF00', '#0000FF',
-    '#FFFF00', '#FF00FF', '#00FFFF', '#FFFFFF'
+    "#000000", // Black
+    "#ffffff", // White
+    "#ff0000", // Red
+    "#00ff00", // Green
+    "#0000ff", // Blue
+    "#ffff00", // Yellow
+    "#ff00ff", // Magenta
+    "#00ffff", // Cyan
+    "#ff8000", // Orange
+    "#8000ff", // Purple
   ];
+
+  // Tool buttons configuration
+  const tools = [
+    { id: "pencil", icon: <FaPencilAlt />, tooltip: "Pencil" },
+    { id: "select", icon: <FaMousePointer />, tooltip: "Select" },
+    { id: "eraser", icon: <FaEraser />, tooltip: "Eraser" },
+    { id: "line", icon: <FaMinus />, tooltip: "Line" },
+    { id: "circle", icon: <FaCircle />, tooltip: "Circle" },
+    { id: "rectangle", icon: <FaSquare />, tooltip: "Rectangle" },
+    { id: "text", icon: <FaFont />, tooltip: "Text" },
+  ];
+
+  // Brush sizes
+  const brushSizes = [2, 5, 10, 15, 20];
 
   return (
     <div className="whiteboard-toolbar">
-      <div className="tool-group">
-        <button
-          className={`tool-button ${tool === 'pencil' ? 'active' : ''}`}
-          onClick={() => setTool('pencil')}
-          title="Pencil"
-        >
-          <FaPencilAlt />
-        </button>
-        <button
-          className={`tool-button ${tool === 'eraser' ? 'active' : ''}`}
-          onClick={() => setTool('eraser')}
-          title="Eraser"
-        >
-          <FaEraser />
-        </button>
-      </div>
-
-      <div className="tool-group">
-        <div className="color-picker">
-          <button className="color-button" title="Color Picker">
-            <FaPalette style={{ color: activeColor }} />
+      <div className="tools-section">
+        {tools.map((tool) => (
+          <button
+            key={tool.id}
+            className={`tool-btn ${activeTool === tool.id ? "active" : ""}`}
+            onClick={() => onToolChange(tool.id)}
+            title={tool.tooltip}
+          >
+            {tool.icon}
           </button>
-          <div className="color-palette">
-            {colors.map(color => (
-              <button
-                key={color}
-                className={`color-option ${activeColor === color ? 'active' : ''}`}
-                style={{ backgroundColor: color }}
-                onClick={() => setActiveColor(color)}
-              />
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="tool-group">
+      <div className="colors-section">
+        {colors.map((color) => (
+          <button
+            key={color}
+            className={`color-btn ${activeColor === color ? "active" : ""}`}
+            style={{ backgroundColor: color }}
+            onClick={() => onColorChange(color)}
+            title={color}
+          />
+        ))}
         <input
-          type="range"
-          min="1"
-          max="50"
-          value={brushSize}
-          onChange={(e) => setBrushSize(Number(e.target.value))}
-          title="Brush Size"
+          type="color"
+          value={activeColor}
+          onChange={(e) => onColorChange(e.target.value)}
+          className="color-picker"
+          title="Custom Color"
         />
       </div>
 
-      <div className="tool-group">
-        <button
-          className="tool-button clear-button"
-          onClick={onClear}
-          title="Clear Canvas"
-        >
+      <div className="brush-size-section">
+        {brushSizes.map((size) => (
+          <button
+            key={size}
+            className={`brush-size-btn ${brushWidth === size ? "active" : ""}`}
+            onClick={() => onBrushWidthChange(size)}
+            title={`${size}px`}
+          >
+            <div
+              className="brush-size-preview"
+              style={{
+                width: size,
+                height: size,
+                maxWidth: "20px",
+                maxHeight: "20px",
+                minWidth: "4px",
+                minHeight: "4px",
+              }}
+            />
+          </button>
+        ))}
+      </div>
+
+      <div className="actions-section">
+        <button className="action-btn" onClick={onClear} title="Clear Canvas">
           <FaTrash />
+        </button>
+        <button className="action-btn" onClick={onExport} title="Export as PNG">
+          <FaDownload />
         </button>
       </div>
     </div>
@@ -82,13 +119,14 @@ const WhiteboardToolbar = ({
 };
 
 WhiteboardToolbar.propTypes = {
+  activeTool: PropTypes.string.isRequired,
   activeColor: PropTypes.string.isRequired,
-  setActiveColor: PropTypes.func.isRequired,
-  brushSize: PropTypes.number.isRequired,
-  setBrushSize: PropTypes.func.isRequired,
-  tool: PropTypes.string.isRequired,
-  setTool: PropTypes.func.isRequired,
-  onClear: PropTypes.func.isRequired
+  brushWidth: PropTypes.number.isRequired,
+  onToolChange: PropTypes.func.isRequired,
+  onColorChange: PropTypes.func.isRequired,
+  onBrushWidthChange: PropTypes.func.isRequired,
+  onClear: PropTypes.func.isRequired,
+  onExport: PropTypes.func.isRequired,
 };
 
-export default WhiteboardToolbar; 
+export default WhiteboardToolbar;

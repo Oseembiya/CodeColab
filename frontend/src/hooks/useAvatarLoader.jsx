@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { preloadImage, getImageUrl } from "../utils/imageLoader.jsx";
 
 /**
@@ -13,19 +13,44 @@ import { preloadImage, getImageUrl } from "../utils/imageLoader.jsx";
 const useAvatarLoader = (photoURL, options = {}) => {
   const { preload = true, timestamp = null } = options;
   const [isLoaded, setIsLoaded] = useState(false);
-  const imageUrl = getImageUrl(photoURL, timestamp);
+  const imageUrlRef = useRef(null);
+
+  // Only recalculate the URL if photoURL or timestamp changes
+  if (
+    !imageUrlRef.current ||
+    imageUrlRef.current.original !== photoURL ||
+    imageUrlRef.current.timestamp !== timestamp
+  ) {
+    // Use direct URL to avoid proxy issues temporarily
+    imageUrlRef.current = {
+      original: photoURL,
+      timestamp,
+      url: photoURL || "/default-avatar.png",
+    };
+  }
 
   useEffect(() => {
+    let isMounted = true;
+
     if (photoURL && preload && !isLoaded) {
       preloadImage(
         photoURL,
-        () => setIsLoaded(true),
-        () => console.warn(`Failed to preload image: ${photoURL}`)
+        () => {
+          if (isMounted) setIsLoaded(true);
+        },
+        (error) => {
+          if (isMounted)
+            console.warn(`Failed to preload image: ${photoURL}`, error);
+        }
       );
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [photoURL, preload, isLoaded]);
 
-  return imageUrl;
+  return imageUrlRef.current.url;
 };
 
 export default useAvatarLoader;

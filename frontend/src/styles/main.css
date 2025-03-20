@@ -6,6 +6,7 @@
 @import "./components/_create-session-modal.css";
 @import "./components/_join-session-modal.css";
 @import "./components/_session-info.css";
+@import "./components/avatar.css";
 
 /* layouts */
 @import "./layouts/_main.css";
@@ -13,11 +14,12 @@
 @import "./layouts/_navbar.css";
 
 /* pages */
-@import "./pages/_profile.css";
+@import "./pages/_live-session.css";
+@import "./pages/_whiteboard.css";
 @import "./pages/_code-editor.css";
 @import "./pages/_sessions.css";
-@import "./pages/_live-session.css";
 @import "./pages/_dashboard.css";
+@import "./pages/_profile.css";
 
 /*alert*/
 @import "./components/_alert.css";

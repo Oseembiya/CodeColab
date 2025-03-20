@@ -1,0 +1,235 @@
+/* Whiteboard Container */
+.whiteboard-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  background-color: #f5f5f5;
+}
+
+/* Canvas Container */
+.canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: crosshair;
+  background-color: #ffffff;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+canvas#whiteboard-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Toolbar */
+.whiteboard-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: var(--background-color);
+  border-bottom: 1px solid var(--line-color);
+  z-index: 100;
+  height: 60px;
+  gap: 20px;
+}
+
+/* Tool Sections */
+.tools-section,
+.colors-section,
+.brush-size-section,
+.actions-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tools-section {
+  flex: 2;
+}
+
+.colors-section {
+  flex: 2;
+}
+
+.brush-size-section,
+.actions-section {
+  flex: 1;
+}
+
+/* Dividers between sections */
+.tools-section::after,
+.colors-section::after,
+.brush-size-section::after {
+  content: "";
+  height: 30px;
+  width: 1px;
+  background-color: var(--line-color);
+  margin: 0 5px;
+}
+
+/* Tool Buttons */
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tool-btn:hover {
+  background-color: var(--hover-color);
+}
+
+.tool-btn.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 5px rgba(var(--primary-rgb), 0.3);
+}
+
+/* Color Buttons */
+.color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--line-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.color-btn:hover {
+  transform: scale(1.1);
+}
+
+.color-btn.active {
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 5px rgba(var(--primary-rgb), 0.5);
+  transform: scale(1.2);
+}
+
+/* Special styling for white color button */
+.color-btn[style*="background-color: #ffffff"] {
+  border: 1px solid #ccc;
+}
+
+/* Color Picker */
+.color-picker {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: transparent;
+  padding: 0;
+  overflow: hidden;
+}
+
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-picker::-webkit-color-swatch {
+  border: 1px solid var(--line-color);
+  border-radius: 4px;
+}
+
+/* Brush Size Buttons */
+.brush-size-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.brush-size-btn:hover {
+  background-color: var(--hover-color);
+}
+
+.brush-size-btn.active {
+  background-color: var(--hover-color);
+  border-color: var(--primary-color);
+}
+
+.brush-size-preview {
+  border-radius: 50%;
+  background-color: var(--text-color);
+}
+
+/* Action Buttons */
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background-color: var(--hover-color);
+  color: var(--primary-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .whiteboard-toolbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .tools-section,
+  .colors-section,
+  .brush-size-section,
+  .actions-section {
+    flex: 1 1 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .tools-section::after,
+  .colors-section::after,
+  .brush-size-section::after {
+    display: none;
+  }
+}
+
+/* Animation for active tools */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.tool-btn.active,
+.color-btn.active {
+  animation: pulse 2s infinite;
+}

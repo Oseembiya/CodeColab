@@ -1,10 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { lazy, Suspense } from 'react';
-import { AuthProvider } from './hooks/useAuth.jsx';
-import { SessionProvider } from './contexts/SessionContext';
+import { lazy, Suspense } from "react";
+import { AuthProvider } from "./hooks/useAuth.jsx";
+import { SessionProvider } from "./contexts/SessionContext";
 import ErrorBoundary from "./error/ErrorBoundary.jsx";
-import MainContent from './components/layouts/mainContent';
-import { SocketProvider } from './contexts/SocketContext';
+import MainContent from "./components/layouts/mainContent";
+import { SocketProvider } from "./contexts/SocketContext";
 
 const SignUp = lazy(() => import("./pages/signUp"));
 const ProtectedRoute = lazy(() => import("./pages/protectedRoute"));
@@ -14,7 +14,7 @@ const Profile = lazy(() => import("./pages/profile"));
 const CodeEditor = lazy(() => import("./pages/CodeEditorPage"));
 const Sessions = lazy(() => import("./pages/sessions.jsx"));
 const LiveSession = lazy(() => import("./pages/liveSession.jsx"));
-const Whiteboard = lazy(() => import("./pages/Whiteboard"));
+const Whiteboard = lazy(() => import("./components/whiteboard/Whiteboard.jsx"));
 
 // Improve loading component
 const LoadingFallback = () => (
@@ -34,8 +34,8 @@ const App = () => {
                 <Route path="/" element={<Navigate to="/dashboard" />} />
                 <Route path="/signup" element={<SignUp />} />
                 <Route path="/login" element={<Login />} />
-                <Route 
-                  path="/dashboard" 
+                <Route
+                  path="/dashboard"
                   element={
                     <ProtectedRoute>
                       <MainContent />
@@ -46,10 +46,16 @@ const App = () => {
                   <Route path="profile" element={<Profile />} />
                   <Route path="editor" element={<CodeEditor />} />
                   <Route path="sessions" element={<Sessions />} />
-                  <Route path="sessions/:sessionId" element={<LiveSession />} />  
-                  <Route path="whiteboard" element={<Whiteboard />} />
+                  <Route path="sessions/:sessionId" element={<LiveSession />} />
+                  <Route
+                    path="sessions/:sessionId/whiteboard"
+                    element={<Whiteboard />}
+                  />
                 </Route>
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route
+                  path="*"
+                  element={<Navigate to="/dashboard" replace />}
+                />
               </Routes>
             </Suspense>
           </SessionProvider>

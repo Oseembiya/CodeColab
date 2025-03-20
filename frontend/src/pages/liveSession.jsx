@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useSession } from "../contexts/SessionContext";
 import { useAuth } from "../hooks/useAuth";
 import { useSocket } from "../contexts/SocketContext";
@@ -230,6 +230,18 @@ const CollaborativeSession = () => {
             onLeave={handleLeave}
             socket={socket}
           />
+
+          <div className="session-tabs">
+            <Link to={`/dashboard/sessions/${sessionId}`} className="tab">
+              Code Editor
+            </Link>
+            <Link
+              to={`/dashboard/sessions/${sessionId}/whiteboard`}
+              className="tab"
+            >
+              Whiteboard
+            </Link>
+          </div>
 
           <div className="session-content">
             <div className="editor-section">
