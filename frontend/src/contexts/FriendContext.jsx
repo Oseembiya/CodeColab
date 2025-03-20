@@ -3,6 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 import PropTypes from "prop-types";
 import * as friendService from "../services/friendService.jsx";
 import Toast from "../components/common/Alert";
+import { useSocket } from "../contexts/SocketContext";
 
 // Create the context
 const FriendContext = createContext();
@@ -14,6 +15,7 @@ export const FriendProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const { socket } = useSocket();
 
   // Fetch friends and friend requests when user changes
   useEffect(() => {
@@ -178,6 +180,27 @@ export const FriendProvider = ({ children }) => {
       return { users: [] };
     }
   };
+
+  useEffect(() => {
+    if (socket && user?.uid) {
+      // Listen for friend status changes
+      socket.on("friend:status", ({ friendId, status }) => {
+        setFriends((prev) =>
+          prev.map((friend) =>
+            friend.friendId === friendId
+              ? { ...friend, isOnline: status === "online" }
+              : friend
+          )
+        );
+      });
+    }
+
+    return () => {
+      if (socket) {
+        socket.off("friend:status");
+      }
+    };
+  }, [socket, user?.uid]);
 
   return (
     <FriendContext.Provider

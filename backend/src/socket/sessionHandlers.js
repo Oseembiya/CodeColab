@@ -228,4 +228,24 @@ module.exports = (io, socket) => {
       }
     });
   };
+
+  // When user connects
+  socket.on("connect", (userId) => {
+    // Update user status to online
+    updateUserStatus(userId, "online");
+
+    // Join a room with this user's ID to receive updates
+    socket.join(`user:${userId}`);
+
+    // Notify friends about online status
+    notifyFriendsAboutStatus(userId, "online");
+  });
+
+  // When user disconnects
+  socket.on("disconnect", () => {
+    if (socket.userId) {
+      updateUserStatus(socket.userId, "offline");
+      notifyFriendsAboutStatus(socket.userId, "offline");
+    }
+  });
 };

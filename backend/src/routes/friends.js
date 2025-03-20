@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { db } = require("../../firebaseConfig");
+
 const {
   collection,
   doc,
@@ -49,9 +50,9 @@ router.get("/", async (req, res) => {
     const friends = [];
 
     // Process friends where user is sender
-    for (const doc of sentResults.docs) {
-      const friendData = doc.data();
-      const friendRef = await getDoc(doc.ref);
+    for (const docSnapshot of sentResults.docs) {
+      const friendData = docSnapshot.data();
+      const friendRef = await getDoc(docSnapshot.ref);
 
       // Get the receiver's user data
       const receiverRef = doc(db, "users", friendData.receiverId);
@@ -60,7 +61,7 @@ router.get("/", async (req, res) => {
       if (receiverDoc.exists()) {
         const receiverData = receiverDoc.data();
         friends.push({
-          id: doc.id,
+          id: docSnapshot.id,
           friendId: friendData.receiverId,
           displayName: receiverData.displayName || "User",
           photoURL: receiverData.photoURL || null,
@@ -71,8 +72,8 @@ router.get("/", async (req, res) => {
     }
 
     // Process friends where user is receiver
-    for (const doc of receivedResults.docs) {
-      const friendData = doc.data();
+    for (const docSnapshot of receivedResults.docs) {
+      const friendData = docSnapshot.data();
 
       // Get the sender's user data
       const senderRef = doc(db, "users", friendData.senderId);
@@ -81,7 +82,7 @@ router.get("/", async (req, res) => {
       if (senderDoc.exists()) {
         const senderData = senderDoc.data();
         friends.push({
-          id: doc.id,
+          id: docSnapshot.id,
           friendId: friendData.senderId,
           displayName: senderData.displayName || "User",
           photoURL: senderData.photoURL || null,
@@ -121,8 +122,8 @@ router.get("/requests", async (req, res) => {
     const requestsSnapshot = await getDocs(requestsQuery);
     const requests = [];
 
-    for (const doc of requestsSnapshot.docs) {
-      const requestData = doc.data();
+    for (const docSnapshot of requestsSnapshot.docs) {
+      const requestData = docSnapshot.data();
 
       // Get the sender's user data
       const senderRef = doc(db, "users", requestData.senderId);
@@ -131,7 +132,7 @@ router.get("/requests", async (req, res) => {
       if (senderDoc.exists()) {
         const senderData = senderDoc.data();
         requests.push({
-          id: doc.id,
+          id: docSnapshot.id,
           senderId: requestData.senderId,
           senderName: senderData.displayName || "User",
           senderPhoto: senderData.photoURL || null,

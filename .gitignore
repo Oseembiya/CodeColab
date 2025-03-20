@@ -8,6 +8,9 @@
 *.cache
 hosting/.cache
 
+#firebase config
+/backend/firebaseConfig.js*
+
 # Firebase Functions
 /functions/node_modules/
 /functions/.env
