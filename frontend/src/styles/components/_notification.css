@@ -108,3 +108,22 @@
   color: var(--text-secondary);
   font-size: 14px;
 }
+
+/* Responsive styles for small devices */
+@media (max-width: 768px) {
+  .notification-dropdown {
+    position: fixed;
+    top: 60px;
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-height: 80vh;
+  }
+
+  .notification-list {
+    max-height: calc(80vh - 50px);
+  }
+}

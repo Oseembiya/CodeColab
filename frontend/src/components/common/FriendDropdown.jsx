@@ -193,15 +193,6 @@ const FriendDropdown = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="search-input"
                   />
-                  {searchQuery && (
-                    <button
-                      className="clear-search"
-                      onClick={() => setSearchQuery("")}
-                      aria-label="Clear search"
-                    >
-                      <FaTimes />
-                    </button>
-                  )}
                 </div>
 
                 <div className="search-results">
