@@ -4,7 +4,7 @@ import {
   getImageUrl,
   isImageLoaded,
   getAvatarUrl,
-} from "../utils/imageUtils";
+} from "../utils/imageUtils.jsx";
 
 /**
  * Hook for handling image loading with advanced features

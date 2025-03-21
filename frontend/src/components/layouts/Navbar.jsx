@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FaBell, FaBars } from "react-icons/fa";
 import { auth } from "../../firebaseConfig";
 import { useSession } from "../../contexts/SessionContext";
-import { getImageUrl, preloadImage } from "../../utils/imageUtils.js";
+import { getImageUrl, preloadImage } from "../../utils/imageUtils.jsx";
 import { useEffect } from "react";
 import PropTypes from "prop-types";
 import FriendDropdown from "../common/FriendDropdown";
