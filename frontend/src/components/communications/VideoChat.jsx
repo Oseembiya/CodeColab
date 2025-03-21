@@ -6,7 +6,6 @@ import {
   FaVideoSlash,
   FaMicrophone,
   FaMicrophoneSlash,
-  FaSync,
   FaGripVertical,
   FaTimes,
 } from "react-icons/fa";
@@ -33,97 +32,32 @@ const VideoChat = ({ sessionId, userId }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const participantCount = peers?.length || 0;
 
-  const initializeVideoChat = useCallback(async () => {
-    try {
-      // 1. Get user media stream
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-      streamRef.current = mediaStream;
-      setStream(mediaStream);
-
-      // 2. Initialize PeerJS
-      const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
-        host: import.meta.env.VITE_PEER_HOST || "localhost",
-        port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
-        path: "/myapp",
-      });
-
-      peerRef.current = peer;
-
-      // 3. Handle peer open event
-      peer.on("open", (peerId) => {
-        console.log("My peer ID is:", peerId);
-        if (socket) {
-          socket.emit("join-video", {
-            sessionId,
-            userId,
-            peerId,
-          });
-        }
-      });
-
-      // 4. Handle incoming calls
-      peer.on("call", (call) => {
-        console.log("Receiving call from:", call.peer);
-        call.answer(streamRef.current);
-
-        call.on("stream", (remoteStream) => {
-          console.log("Received remote stream from:", call.peer);
-          setPeers((prev) => new Map(prev).set(call.peer, remoteStream));
-        });
-
-        call.on("close", () => {
-          console.log("Call closed with:", call.peer);
-          setPeers((prev) => {
-            const newPeers = new Map(prev);
-            newPeers.delete(call.peer);
-            return newPeers;
-          });
-        });
-      });
-
-      // 5. Handle socket events for peer connections
-      if (socket) {
-        socket.on("user-joined", ({ peerId: newPeerId }) => {
-          console.log("New user joined with peer ID:", newPeerId);
-          if (newPeerId !== peer.id && streamRef.current) {
-            const call = peer.call(newPeerId, streamRef.current);
-
-            call.on("stream", (remoteStream) => {
-              console.log("Received stream from new user:", newPeerId);
-              setPeers((prev) => new Map(prev).set(newPeerId, remoteStream));
-            });
-          }
-        });
-
-        socket.on("user-left", ({ peerId }) => {
-          console.log("User left:", peerId);
-          setPeers((prev) => {
-            const newPeers = new Map(prev);
-            newPeers.delete(peerId);
-            return newPeers;
-          });
-        });
-      }
-    } catch (err) {
-      console.error("Error initializing video chat:", err);
-      setError(err.message);
-    }
-  }, [sessionId, userId, socket]);
-
   useEffect(() => {
     isUnmountingRef.current = false;
-    let peerInstance = null;
 
     const setupPeerAndSocket = async () => {
       try {
         // 1. Get user media stream
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+            channelCount: 2,
+          },
         });
+
+        // Debug info for audio tracks
+        const audioTracks = mediaStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          console.log("Local audio track created:", audioTracks[0].label);
+          console.log("Audio settings:", audioTracks[0].getSettings());
+        } else {
+          console.warn("No audio track found in local stream");
+        }
+
         streamRef.current = mediaStream;
         setStream(mediaStream);
 
@@ -132,10 +66,30 @@ const VideoChat = ({ sessionId, userId }) => {
           host: import.meta.env.VITE_PEER_HOST || "localhost",
           port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
           path: "/myapp",
+          config: {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:stun1.l.google.com:19302" },
+              { urls: "stun:stun2.l.google.com:19302" },
+            ],
+          },
         });
 
-        peerInstance = peer;
         peerRef.current = peer;
+
+        // Add connection state debugging
+        peer.on("error", (err) => {
+          console.error("Peer connection error:", err.type, err);
+          setError(`Peer error: ${err.type}`);
+        });
+
+        peer.on("disconnected", () => {
+          console.log("Peer disconnected");
+        });
+
+        peer.on("close", () => {
+          console.log("Peer connection closed");
+        });
 
         // Set up peer event handlers
         peer.on("open", (peerId) => {
@@ -190,9 +144,59 @@ const VideoChat = ({ sessionId, userId }) => {
       ) {
         const call = peerRef.current.call(newPeerId, streamRef.current);
 
+        // Add debug for call events
+        call.on("error", (err) => {
+          console.error("Call error:", err);
+        });
+
+        call.on("iceStateChanged", (state) => {
+          console.log("ICE connection state changed to:", state);
+
+          // Attempt to recover from failed ICE connections
+          if (state === "failed" || state === "disconnected") {
+            console.log("Trying to recover from bad ICE connection state");
+
+            // Option 1: Try closing and reopening the call
+            setTimeout(() => {
+              if (peerRef.current && !isUnmountingRef.current) {
+                console.log("Attempting ICE recovery by re-calling peer");
+                const newCall = peerRef.current.call(
+                  newPeerId,
+                  streamRef.current
+                );
+
+                // Set up new call handlers
+                newCall.on("stream", (recoveredStream) => {
+                  console.log("Recovered stream from peer:", newPeerId);
+                  setPeers((prev) =>
+                    new Map(prev).set(newPeerId, recoveredStream)
+                  );
+                });
+
+                newCall.on("error", (recErr) => {
+                  console.error("Recovery call error:", recErr);
+                });
+              }
+            }, 2000);
+          }
+        });
+
         call.on("stream", (remoteStream) => {
           if (!isUnmountingRef.current) {
             console.log("Received stream from new user:", newPeerId);
+
+            // Check and log audio status immediately
+            const audioTracks = remoteStream.getAudioTracks();
+            console.log(
+              `Remote stream received with ${audioTracks.length} audio tracks`
+            );
+
+            if (audioTracks.length > 0) {
+              console.log("Audio track initial state:", audioTracks[0].enabled);
+              // Ensure the track is enabled
+              audioTracks[0].enabled = true;
+            }
+
             setPeers((prev) => new Map(prev).set(newPeerId, remoteStream));
           }
         });
@@ -418,7 +422,83 @@ const VideoChat = ({ sessionId, userId }) => {
           <div key={peerId} className="video-container">
             <video
               ref={(video) => {
-                if (video) video.srcObject = peerStream;
+                if (video) {
+                  video.srcObject = peerStream;
+                  video.volume = 1.0; // Ensure volume is up
+
+                  // Force audio output device to default (may help in some browsers)
+                  if (
+                    video.setSinkId &&
+                    navigator.mediaDevices.enumerateDevices
+                  ) {
+                    navigator.mediaDevices
+                      .enumerateDevices()
+                      .then((devices) => {
+                        const audioOutputs = devices.filter(
+                          (device) => device.kind === "audiooutput"
+                        );
+                        if (audioOutputs.length > 0) {
+                          // Try the default device first
+                          const defaultDevice = audioOutputs.find(
+                            (device) =>
+                              device.deviceId === "default" ||
+                              device.label.toLowerCase().includes("default")
+                          );
+                          const deviceId = defaultDevice
+                            ? defaultDevice.deviceId
+                            : audioOutputs[0].deviceId;
+                          console.log("Setting audio output to:", deviceId);
+                          return video.setSinkId(deviceId);
+                        }
+                      })
+                      .catch((err) =>
+                        console.error("Error setting audio output device:", err)
+                      );
+                  }
+
+                  // Handle autoplay restrictions
+                  video.oncanplay = () => {
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                      playPromise.catch((error) => {
+                        console.error("Autoplay prevented:", error);
+                        // Create a play button when autoplay fails
+                        const playButton = document.createElement("button");
+                        playButton.textContent = "Play Audio";
+                        playButton.className = "audio-play-button";
+                        playButton.onclick = () => {
+                          video.play();
+                          playButton.remove();
+                        };
+                        video.parentNode.appendChild(playButton);
+                      });
+                    }
+                  };
+
+                  // Ensure audio is unmuted periodically (fixes Chrome issues)
+                  const ensureAudio = setInterval(() => {
+                    if (video && !video.paused) {
+                      // Check if we have audio tracks
+                      const audioTracks = peerStream.getAudioTracks();
+                      if (audioTracks.length > 0 && !audioTracks[0].enabled) {
+                        console.log("Re-enabling audio track");
+                        audioTracks[0].enabled = true;
+                      }
+                    }
+                  }, 2000);
+
+                  // Clean up interval when video is removed
+                  video.onremove = () => clearInterval(ensureAudio);
+
+                  // Log if audio tracks exist
+                  const audioTracks = peerStream.getAudioTracks();
+                  console.log(
+                    `Remote stream has ${audioTracks.length} audio tracks`
+                  );
+                  if (audioTracks.length > 0) {
+                    console.log("Audio track enabled:", audioTracks[0].enabled);
+                  }
+                }
               }}
               autoPlay
               playsInline
