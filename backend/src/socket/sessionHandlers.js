@@ -4,6 +4,11 @@ const sessionStore = require("../utils/store");
  * Session-related socket event handlers
  */
 module.exports = (io, socket) => {
+  // Track sessions this socket is observing
+  if (!socket.observingSessions) {
+    socket.observingSessions = new Set();
+  }
+
   // Handle joining a session
   const handleJoinSession = ({ sessionId, userId, username, photoURL }) => {
     socket.join(sessionId);
@@ -51,6 +56,9 @@ module.exports = (io, socket) => {
     // Track observer
     sessionStore.addSessionObserver(sessionId, socket.id);
 
+    // Add to the set of sessions this socket is observing
+    socket.observingSessions.add(sessionId);
+
     // Send initial participant count with consistent format
     const participants = sessionStore.getSessionUsers(sessionId);
     socket.emit("participants-update", {
@@ -59,7 +67,22 @@ module.exports = (io, socket) => {
       count: participants.length,
     });
 
-    console.log(`Observer ${socket.id} watching session ${sessionId}`);
+    // Log more efficiently
+    const observingCount = socket.observingSessions.size;
+    console.log(
+      `Observer ${socket.id} watching ${observingCount} ${
+        observingCount === 1 ? "session" : "sessions"
+      }`
+    );
+
+    // Only log details in debug mode
+    if (process.env.LOG_LEVEL === "debug") {
+      console.log(
+        `Observer ${socket.id} sessions: ${Array.from(
+          socket.observingSessions
+        ).join(", ")}`
+      );
+    }
   };
 
   // Handle observer leaving
@@ -67,7 +90,17 @@ module.exports = (io, socket) => {
     socket.leave(`observe:${sessionId}`);
     sessionStore.removeSessionObserver(sessionId, socket.id);
     socket.observing = null;
-    console.log(`Observer ${socket.id} stopped watching session ${sessionId}`);
+
+    // Remove from tracking set
+    socket.observingSessions.delete(sessionId);
+
+    // Log more efficiently
+    const observingCount = socket.observingSessions.size;
+    console.log(
+      `Observer ${socket.id} now watching ${observingCount} ${
+        observingCount === 1 ? "session" : "sessions"
+      }`
+    );
   };
 
   // Handle request for initial code
@@ -199,6 +232,15 @@ module.exports = (io, socket) => {
     // Clean up observer tracking
     if (socket.observing) {
       sessionStore.removeSessionObserver(socket.observing, socket.id);
+      socket.observingSessions.delete(socket.observing);
+    }
+
+    // Log disconnection from observed sessions if any
+    if (socket.observingSessions && socket.observingSessions.size > 0) {
+      console.log(
+        `Observer ${socket.id} disconnected from ${socket.observingSessions.size} sessions`
+      );
+      socket.observingSessions.clear();
     }
 
     // Check all active sessions for this user
