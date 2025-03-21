@@ -747,125 +747,60 @@ const Profile = () => {
 
             {activeTab === "settings" && (
               <div className="settings-section">
-                <h3>Preferences</h3>
+                <h3>Security</h3>
                 <form
                   className="profile-form"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    handleProfileUpdate();
+                    handlePasswordUpdate();
                   }}
                 >
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="theme">Theme</label>
-                      <select
-                        id="theme"
-                        name="theme"
-                        value={formData.theme}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                      >
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                        <option value="system">System</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="codeEditor">Preferred Editor</label>
-                      <select
-                        id="codeEditor"
-                        name="codeEditor"
-                        value={formData.codeEditor}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                      >
-                        <option value="vscode">VS Code</option>
-                        <option value="sublime">Sublime Text</option>
-                        <option value="atom">Atom</option>
-                      </select>
-                    </div>
+                  <div className="form-group">
+                    <label htmlFor="currentPassword">Current Password</label>
+                    <input
+                      type="password"
+                      id="currentPassword"
+                      name="currentPassword"
+                      value={formData.currentPassword}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                    />
                   </div>
 
-                  <div className="notification-settings">
-                    <h3>Notification Settings</h3>
-                    <div className="checkbox-group">
-                      <label>
-                        <input
-                          type="checkbox"
-                          name="emailNotifications"
-                          checked={formData.emailNotifications}
-                          onChange={handleChange}
-                          disabled={!isEditing}
-                        />
-                        <span>Email Notifications</span>
-                      </label>
-                    </div>
+                  <div className="form-group">
+                    <label htmlFor="newPassword">New Password</label>
+                    <input
+                      type="password"
+                      id="newPassword"
+                      name="newPassword"
+                      value={formData.newPassword}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="confirmPassword">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                    />
                   </div>
 
                   {isEditing && (
-                    <button type="submit" className="submit-button">
-                      Save Changes
-                    </button>
+                    <div className="form-actions">
+                      <button type="submit" className="submit-button">
+                        Update Password
+                      </button>
+                    </div>
                   )}
                 </form>
-
-                {/* Separate form for password update */}
-                <div className="security-settings">
-                  <h3>Security</h3>
-                  <form
-                    className="profile-form"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handlePasswordUpdate();
-                    }}
-                  >
-                    <div className="form-group">
-                      <label htmlFor="currentPassword">Current Password</label>
-                      <input
-                        type="password"
-                        id="currentPassword"
-                        name="currentPassword"
-                        value={formData.currentPassword}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="newPassword">New Password</label>
-                      <input
-                        type="password"
-                        id="newPassword"
-                        name="newPassword"
-                        value={formData.newPassword}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="confirmPassword">
-                        Confirm New Password
-                      </label>
-                      <input
-                        type="password"
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                      />
-                    </div>
-
-                    {isEditing && (
-                      <div className="form-actions">
-                        <button type="submit" className="submit-button">
-                          Update Password
-                        </button>
-                      </div>
-                    )}
-                  </form>
-                </div>
               </div>
             )}
           </div>
