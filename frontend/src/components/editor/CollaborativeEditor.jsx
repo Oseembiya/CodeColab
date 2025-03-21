@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import PropTypes from "prop-types";
 import BaseEditor from "./BaseEditor";
 import { executeCode } from "../../services/codeExecution";
-import { auth } from "../../firebaseConfig";
 import { useSocket } from "../../contexts/SocketContext";
 
 const CollaborativeEditor = ({ sessionId, userId }) => {
@@ -55,12 +54,13 @@ const CollaborativeEditor = ({ sessionId, userId }) => {
   );
 
   useEffect(() => {
-    socket.emit("join-session", {
-      sessionId,
-      userId,
-      username: auth.currentUser?.displayName || "Anonymous",
-      photoURL: auth.currentUser?.photoURL,
-    });
+    // No need to emit join-session here, it's already done in liveSession.jsx
+    // socket.emit("join-session", {
+    //   sessionId,
+    //   userId,
+    //   username: auth.currentUser?.displayName || "Anonymous",
+    //   photoURL: auth.currentUser?.photoURL,
+    // });
 
     socket.on("code-update", ({ content, senderId }) => {
       if (senderId !== userId && editorRef.current) {

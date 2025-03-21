@@ -62,9 +62,10 @@ const getUserMetrics = async (userId) => {
 /**
  * Increment user session count
  * @param {string} userId - The user's ID
+ * @param {string} sessionId - The session ID
  */
-const incrementUserSession = async (userId) => {
-  if (!userId) return;
+const incrementUserSession = async (userId, sessionId) => {
+  if (!userId || !sessionId) return;
 
   try {
     // First check if user metrics document exists, create if not
@@ -78,32 +79,63 @@ const incrementUserSession = async (userId) => {
       // Create a new document if it doesn't exist
       await setDoc(userMetricsRef, {
         totalSessions: 1,
+        sessionsJoined: [sessionId], // Track unique sessions
         hoursSpent: 0,
         linesOfCode: 0,
         lastSessionStart: sessionStart,
         lastActive: sessionStart,
       });
+      console.log(
+        `Created new metrics for user ${userId} with session ${sessionId}`
+      );
     } else {
-      // Update existing document
-      await updateDoc(userMetricsRef, {
-        totalSessions: increment(1),
-        lastSessionStart: sessionStart,
-        lastActive: sessionStart,
-      });
+      const data = metricsDoc.data();
+      const sessionsJoined = data.sessionsJoined || [];
+
+      // Only increment if this is a new session
+      if (!sessionsJoined.includes(sessionId)) {
+        sessionsJoined.push(sessionId);
+        await updateDoc(userMetricsRef, {
+          totalSessions: increment(1),
+          sessionsJoined: sessionsJoined,
+          lastSessionStart: sessionStart,
+          lastActive: sessionStart,
+        });
+        console.log(
+          `Incremented session count for user ${userId} with new session ${sessionId}`
+        );
+      } else {
+        // Just update timestamps without incrementing
+        await updateDoc(userMetricsRef, {
+          lastSessionStart: sessionStart,
+          lastActive: sessionStart,
+        });
+        console.log(
+          `User ${userId} rejoined existing session ${sessionId} - not incrementing count`
+        );
+      }
     }
 
     // Update cache if exists
     if (metricsCache.has(userId)) {
       const cached = metricsCache.get(userId);
+      const sessionsJoined = cached.sessionsJoined || [];
+      const isNewSession = !sessionsJoined.includes(sessionId);
+
+      if (isNewSession) {
+        sessionsJoined.push(sessionId);
+      }
+
       metricsCache.set(userId, {
         ...cached,
-        totalSessions: (cached.totalSessions || 0) + 1,
+        totalSessions: isNewSession
+          ? (cached.totalSessions || 0) + 1
+          : cached.totalSessions || 0,
+        sessionsJoined: sessionsJoined,
         lastSessionStart: sessionStart,
         lastActive: sessionStart,
       });
     }
-
-    console.log(`Incremented session count for user ${userId}`);
   } catch (error) {
     console.error("Error incrementing user session:", error);
   }

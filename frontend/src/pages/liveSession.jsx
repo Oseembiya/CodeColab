@@ -27,15 +27,15 @@ const CollaborativeSession = () => {
       return;
     }
 
-    // Join the session room using the context socket
-    if (socket) {
-      socket.emit("join-session", {
-        sessionId,
-        userId,
-        username: auth.currentUser?.displayName || "Anonymous",
-        photoURL: auth.currentUser?.photoURL,
-      });
-    }
+    // No need to emit join-session here, it's already handled in joinSession() function
+    // if (socket) {
+    //   socket.emit("join-session", {
+    //     sessionId,
+    //     userId,
+    //     username: auth.currentUser?.displayName || "Anonymous",
+    //     photoURL: auth.currentUser?.photoURL,
+    //   });
+    // }
 
     return () => {
       if (socket) {

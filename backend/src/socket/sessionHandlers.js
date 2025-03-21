@@ -39,7 +39,7 @@ module.exports = (io, socket) => {
 
     // Track user metrics - increment session count
     if (userId) {
-      userMetrics.incrementUserSession(userId);
+      userMetrics.incrementUserSession(userId, sessionId);
     }
 
     console.log(
