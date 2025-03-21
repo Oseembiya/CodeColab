@@ -1,4 +1,5 @@
 const sessionStore = require("../utils/store");
+const userMetrics = require("../utils/userMetrics");
 
 /**
  * Session-related socket event handlers
@@ -35,6 +36,11 @@ module.exports = (io, socket) => {
       participants,
       count: participants.length,
     });
+
+    // Track user metrics - increment session count
+    if (userId) {
+      userMetrics.incrementUserSession(userId);
+    }
 
     console.log(
       `User ${username} joined session ${sessionId}. Total participants: ${participants.length}`
@@ -121,6 +127,16 @@ module.exports = (io, socket) => {
 
     // Only update if content has changed
     if (!currentState || currentState.content !== content) {
+      // Calculate line count changes for metrics
+      let lineCount = 1; // Default to 1 line
+      if (currentState && currentState.content) {
+        const prevLineCount = currentState.content.split("\n").length;
+        const newLineCount = content.split("\n").length;
+        // Calculate the absolute difference in lines
+        lineCount = Math.abs(newLineCount - prevLineCount);
+        lineCount = Math.max(1, lineCount); // At least 1 line
+      }
+
       sessionStore.updateSessionState(sessionId, {
         content,
         lastEditBy: userId,
@@ -131,6 +147,13 @@ module.exports = (io, socket) => {
         content,
         senderId: userId,
       });
+
+      // Track user metrics - increment lines of code
+      if (userId) {
+        userMetrics.incrementLinesOfCode(userId, lineCount);
+        // Update active time
+        userMetrics.updateUserActiveTime(userId);
+      }
     }
   };
 
@@ -150,35 +173,46 @@ module.exports = (io, socket) => {
 
   // Handle typing indicators
   const handleTypingStart = ({ sessionId, userId }) => {
-    socket.to(sessionId).emit("user-typing", { userId });
+    socket.to(sessionId).emit("typing-start", { userId });
+
+    // Update active time
+    if (userId) {
+      userMetrics.updateUserActiveTime(userId);
+    }
   };
 
   const handleTypingEnd = ({ sessionId, userId }) => {
-    socket.to(sessionId).emit("user-stopped-typing", { userId });
+    socket.to(sessionId).emit("typing-end", { userId });
   };
 
-  // Handle user leaving session
+  // Handle leaving a session
   const handleLeaveSession = ({ sessionId, userId }) => {
-    console.log(`User ${userId} leaving session ${sessionId}`);
-
-    if (!sessionId) return;
-
-    // Remove user and get updated participants list
+    socket.leave(sessionId);
     const participants = sessionStore.removeUserFromSession(
       sessionId,
       socket.clientId
     );
 
+    // Check if participants is null or undefined before accessing length
     if (participants) {
-      // Emit updated participants list to all clients including observers
+      // Emit to both participants and observers
       io.to(sessionId).to(`observe:${sessionId}`).emit("participants-update", {
         sessionId,
         participants,
         count: participants.length,
       });
 
+      // Final update of active time when leaving session
+      if (userId) {
+        userMetrics.updateUserActiveTime(userId);
+      }
+
       console.log(
         `User left session ${sessionId}. Remaining participants: ${participants.length}`
+      );
+    } else {
+      console.log(
+        `User left session ${sessionId}. No participants remaining or session not found.`
       );
     }
   };
@@ -228,46 +262,20 @@ module.exports = (io, socket) => {
   });
 
   // Handle cleanup when socket disconnects
-  return () => {
-    // Clean up observer tracking
-    if (socket.observing) {
-      sessionStore.removeSessionObserver(socket.observing, socket.id);
-      socket.observingSessions.delete(socket.observing);
-    }
-
-    // Log disconnection from observed sessions if any
-    if (socket.observingSessions && socket.observingSessions.size > 0) {
-      console.log(
-        `Observer ${socket.id} disconnected from ${socket.observingSessions.size} sessions`
-      );
-      socket.observingSessions.clear();
-    }
-
-    // Check all active sessions for this user
-    const activeSessions = sessionStore.activeSessions;
-    activeSessions.forEach((users, sessionId) => {
-      const userRemoved = sessionStore.removeUserFromSession(
-        sessionId,
-        socket.clientId
-      );
-
-      if (userRemoved) {
-        // Get updated participants list
-        const participants = sessionStore.getSessionUsers(sessionId);
-
-        // Emit update
-        io.to(sessionId)
-          .to(`observe:${sessionId}`)
-          .emit("participants-update", {
-            sessionId,
-            participants,
-            count: participants.length,
-          });
-
-        console.log(
-          `User disconnected from session ${sessionId}. Remaining participants: ${participants.length}`
-        );
+  const cleanup = () => {
+    // Update all session metrics on disconnect
+    if (socket.clientId) {
+      // If the user was in any session update their active time
+      const userId = socket.userId; // Assuming we store userId on socket
+      if (userId) {
+        userMetrics.updateUserActiveTime(userId);
       }
+    }
+
+    // Clean up existing code
+    socket.observingSessions.forEach((observedSessionId) => {
+      socket.leave(`observe:${observedSessionId}`);
+      sessionStore.removeSessionObserver(observedSessionId, socket.id);
     });
   };
 
@@ -290,4 +298,6 @@ module.exports = (io, socket) => {
       notifyFriendsAboutStatus(socket.userId, "offline");
     }
   });
+
+  return cleanup;
 };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FaUsers,
   FaCode,
@@ -10,7 +10,19 @@ import {
   FaChartLine,
   FaUserFriends,
   FaPuzzlePiece,
+  FaFileCode,
+  FaClock,
 } from "react-icons/fa";
+import { db } from "../firebaseConfig";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
+} from "firebase/firestore";
+import { useUserMetrics } from "../contexts/UserMetricsContext";
+import { useSocket } from "../contexts/SocketContext";
 
 const Dashboard = () => {
   const [greeting] = useState(() => {
@@ -20,11 +32,118 @@ const Dashboard = () => {
     return "Good evening";
   });
 
-  // Platform statistics
-  const platformStats = {
-    activeSessions: 42,
-    collaboratingUsers: 127,
-    codeLinesSynced: "18.5K",
+  const { metrics } = useUserMetrics();
+  const { socket } = useSocket();
+
+  // Platform statistics with real-time updates
+  const [platformStats, setPlatformStats] = useState({
+    activeSessions: 0,
+    collaboratingUsers: 0,
+    codeLinesSynced: "0",
+  });
+
+  // Fetch platform statistics
+  useEffect(() => {
+    // Get current active sessions count
+    const fetchActiveSessions = async () => {
+      try {
+        const sessionsRef = collection(db, "sessions");
+        const activeSessionsQuery = query(
+          sessionsRef,
+          where("status", "==", "active")
+        );
+
+        const snapshot = await getDocs(activeSessionsQuery);
+
+        // Set initial count
+        setPlatformStats((prev) => ({
+          ...prev,
+          activeSessions: snapshot.size,
+        }));
+
+        // Set up real-time listener for active sessions
+        const unsubscribe = onSnapshot(activeSessionsQuery, (querySnapshot) => {
+          setPlatformStats((prev) => ({
+            ...prev,
+            activeSessions: querySnapshot.size,
+          }));
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error("Error fetching active sessions:", error);
+      }
+    };
+
+    // Listen for participant updates from socket
+    const handleParticipantUpdates = () => {
+      if (socket) {
+        // Get global users count
+        socket.on("global-stats", ({ activeUsers, totalLinesOfCode }) => {
+          setPlatformStats((prev) => ({
+            ...prev,
+            collaboratingUsers: activeUsers,
+            codeLinesSynced:
+              totalLinesOfCode > 1000
+                ? `${Math.round(totalLinesOfCode / 100) / 10}K`
+                : totalLinesOfCode.toString(),
+          }));
+        });
+
+        // Request global stats when dashboard mounts
+        socket.emit("request-global-stats");
+
+        return () => {
+          socket.off("global-stats");
+        };
+      }
+    };
+
+    const unsubscribeSessions = fetchActiveSessions();
+    const unsubscribeSocket = handleParticipantUpdates();
+
+    return () => {
+      if (unsubscribeSessions instanceof Function) {
+        unsubscribeSessions();
+      }
+      if (unsubscribeSocket instanceof Function) {
+        unsubscribeSocket();
+      }
+    };
+  }, [socket]);
+
+  // User's personal stats section
+  const renderPersonalStats = () => {
+    if (!metrics) return null;
+
+    return (
+      <div className="personal-stats-container">
+        <h2 className="section-title">Your Activity</h2>
+        <div className="stats-container">
+          <div className="stat-item">
+            <div className="stat-icon">
+              <FaUsers />
+            </div>
+            <h3>{metrics.totalSessions}</h3>
+            <p>Your Sessions</p>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon">
+              <FaClock />
+            </div>
+            <h3>{metrics.hoursSpent}</h3>
+            <p>Hours Spent</p>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon">
+              <FaFileCode />
+            </div>
+            <h3>{metrics.linesOfCode}</h3>
+            <p>Lines Written</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Key features
@@ -108,6 +227,9 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* User's Personal Stats Section */}
+      {renderPersonalStats()}
+
       {/* Key Features Section */}
       <h2 className="section-title">Key Features</h2>
       <div className="features-grid">
@@ -124,14 +246,23 @@ const Dashboard = () => {
       <h2 className="section-title">Platform Activity</h2>
       <div className="stats-container">
         <div className="stat-item">
+          <div className="stat-icon">
+            <FaCode />
+          </div>
           <h3>{platformStats.activeSessions}</h3>
           <p>Active Sessions</p>
         </div>
         <div className="stat-item">
+          <div className="stat-icon">
+            <FaUsers />
+          </div>
           <h3>{platformStats.collaboratingUsers}</h3>
           <p>Users Collaborating Now</p>
         </div>
         <div className="stat-item">
+          <div className="stat-icon">
+            <FaFileCode />
+          </div>
           <h3>{platformStats.codeLinesSynced}</h3>
           <p>Code Lines Synced</p>
         </div>

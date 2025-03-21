@@ -163,6 +163,22 @@ class SessionStore {
 
     return Array.from(participants);
   }
+
+  // Add this method to count active users
+  getActiveUsersCount() {
+    const uniqueUsers = new Set();
+
+    // Iterate through active sessions and collect unique users
+    this.activeSessions.forEach((users) => {
+      users.forEach((user) => {
+        if (user.clientId) {
+          uniqueUsers.add(user.clientId);
+        }
+      });
+    });
+
+    return uniqueUsers.size;
+  }
 }
 
 // Export a singleton instance

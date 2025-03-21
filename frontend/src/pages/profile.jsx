@@ -23,17 +23,21 @@ import {
   FaExclamationCircle,
   FaCheckCircle,
   FaCamera,
+  FaClock,
+  FaFileCode,
 } from "react-icons/fa";
 import { v4 as uuidv4 } from "uuid";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { getImageUrl, preloadImage } from "../utils/imageUtils.jsx";
+import { useUserMetrics } from "../contexts/UserMetricsContext";
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState("personal");
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const { metrics, loading: metricsLoading } = useUserMetrics();
   const [formData, setFormData] = useState({
     // Personal Info
     displayName: auth.currentUser?.displayName || "",
@@ -60,12 +64,12 @@ const Profile = () => {
     timestamp: null,
   });
 
-  // Mock data for statistics and activity
+  // Replace the mock statistics with real metrics
   const statistics = {
-    totalSessions: 25,
-    hoursSpent: 48,
-    linesOfCode: 3240,
-    collaborations: 12,
+    totalSessions: metricsLoading ? "..." : metrics.totalSessions,
+    hoursSpent: metricsLoading ? "..." : metrics.hoursSpent,
+    linesOfCode: metricsLoading ? "..." : metrics.linesOfCode,
+    collaborations: 12, // Keep this one until we track it properly
   };
 
   const recentActivity = [
@@ -357,6 +361,57 @@ const Profile = () => {
     </div>
   );
 
+  const renderStatisticsSection = () => (
+    <div className="profile-statistics">
+      <h3>Your CodeColab Stats</h3>
+      <div className="profile-stats">
+        <div className="stat-item">
+          <div className="stat-icon">
+            <FaUsers />
+          </div>
+          <div className="stat-data">
+            <span className="stat-value">{statistics.totalSessions}</span>
+            <span className="stat-label">Total Sessions</span>
+          </div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-icon">
+            <FaClock />
+          </div>
+          <div className="stat-data">
+            <span className="stat-value">{statistics.hoursSpent}</span>
+            <span className="stat-label">Hours Spent</span>
+          </div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-icon">
+            <FaFileCode />
+          </div>
+          <div className="stat-data">
+            <span className="stat-value">{statistics.linesOfCode}</span>
+            <span className="stat-label">Lines of Code</span>
+          </div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-icon">
+            <FaUsers />
+          </div>
+          <div className="stat-data">
+            <span className="stat-value">{statistics.collaborations}</span>
+            <span className="stat-label">Collaborations</span>
+          </div>
+        </div>
+      </div>
+      {metrics.lastActive && (
+        <div className="last-active">
+          <span>
+            Last active: {new Date(metrics.lastActive).toLocaleString()}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="profile-main-content">
       <div className="profile-container">
@@ -402,16 +457,7 @@ const Profile = () => {
         <div className="profile-section">
           <div className="profile-overview">
             {renderProfileAvatar()}
-            <div className="profile-stats">
-              {Object.entries(statistics).map(([key, value]) => (
-                <div key={key} className="stat-item">
-                  <span className="stat-value">{value}</span>
-                  <span className="stat-label">
-                    {key.replace(/([A-Z])/g, " $1").toLowerCase()}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {renderStatisticsSection()}
           </div>
 
           <div className="profile-tabs">

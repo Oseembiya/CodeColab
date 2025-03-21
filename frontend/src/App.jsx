@@ -5,6 +5,7 @@ import { SessionProvider } from "./contexts/SessionContext";
 import { SocketProvider } from "./contexts/SocketContext";
 import { FriendProvider } from "./contexts/FriendContext";
 import { DropdownProvider } from "./contexts/DropdownContext";
+import { UserMetricsProvider } from "./contexts/UserMetricsContext";
 import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
 import { initializeTheme } from "./config/theme";
@@ -88,11 +89,13 @@ const App = () => {
           <SessionProvider>
             <FriendProvider>
               <NotificationProvider>
-                <DropdownProvider>
-                  <Suspense fallback={<LoadingFallback />}>
-                    <Routes>{generateRoutes(routeConfig)}</Routes>
-                  </Suspense>
-                </DropdownProvider>
+                <UserMetricsProvider>
+                  <DropdownProvider>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <Routes>{generateRoutes(routeConfig)}</Routes>
+                    </Suspense>
+                  </DropdownProvider>
+                </UserMetricsProvider>
               </NotificationProvider>
             </FriendProvider>
           </SessionProvider>
