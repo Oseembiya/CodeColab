@@ -12,6 +12,7 @@
   "dependencies": {
     "@firebase/storage": "^0.12.6",
     "@monaco-editor/react": "^4.7.0",
+    "date-fns": "^4.1.0",
     "fabric": "^4.6.0",
     "fabric-pure-browser": "^5.1.0",
     "firebase": "^11.3.1",

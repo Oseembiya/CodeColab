@@ -2,6 +2,7 @@ const sessionStore = require("../utils/store");
 const sessionHandlers = require("./sessionHandlers");
 const videoHandlers = require("./videoHandlers");
 const whiteboardHandlers = require("./whiteboardHandlers");
+const notificationHandlers = require("./notificationHandlers");
 
 /**
  * Initialize socket.io handlers
@@ -32,6 +33,7 @@ const initializeSocketHandlers = (io) => {
       sessionHandlers(io, socket),
       videoHandlers(io, socket),
       whiteboardHandlers(io, socket),
+      notificationHandlers(io, socket),
     ];
 
     // Handle disconnection

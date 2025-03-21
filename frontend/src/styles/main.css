@@ -9,7 +9,7 @@
 @import "./components/avatar.css";
 @import "./components/button.css";
 @import "./components/form-input.css";
-@import "./components/alert.css"; /* Toast notifications */
+@import "./components/_notification.css";
 @import "./components/_alert.css"; /* Modal alerts */
 @import "./components/friend-dropdown.css";
 @import "./components/_video-chat.css";

@@ -6,6 +6,7 @@ import { getImageUrl, preloadImage } from "../../utils/imageUtils.jsx";
 import { useEffect } from "react";
 import PropTypes from "prop-types";
 import FriendDropdown from "../common/FriendDropdown";
+import NotificationMenu from "../notifications/NotificationMenu";
 
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
@@ -43,9 +44,9 @@ const Navbar = ({ toggleSidebar }) => {
       <div className="navbar-profile">
         <div className="navbar-icons">
           <FriendDropdown />
-          <button aria-label="Show notifications" data-count="3">
-            <FaBell />
-          </button>
+        </div>
+        <div className="navbar-right">
+          <NotificationMenu />
         </div>
         <button
           className="user-profile-section"

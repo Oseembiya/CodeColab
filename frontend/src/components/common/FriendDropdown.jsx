@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import {
   FaUserFriends,
   FaUserPlus,
@@ -9,16 +9,18 @@ import {
 } from "react-icons/fa";
 import { useFriends } from "../../contexts/FriendContext";
 import { useAvatar } from "../../hooks/useImage";
+import { useDropdown } from "../../contexts/DropdownContext";
 import PropTypes from "prop-types";
 import "../../styles/components/friend-dropdown.css";
 
 const FriendDropdown = () => {
-  const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("friends");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const dropdownRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+  const { openDropdownMenu, isDropdownOpen } = useDropdown();
+  const dropdownName = "friends";
   const {
     friends,
     friendRequests,
@@ -35,15 +37,18 @@ const FriendDropdown = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+        openDropdownMenu(null);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    if (isDropdownOpen(dropdownName)) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [isDropdownOpen, dropdownName, openDropdownMenu]);
 
   // Search users with debounce
   useEffect(() => {
@@ -69,8 +74,8 @@ const FriendDropdown = () => {
   }, [searchQuery, searchUsers]);
 
   const toggleDropdown = () => {
-    setIsOpen(!isOpen);
-    if (!isOpen) {
+    openDropdownMenu(dropdownName);
+    if (!isDropdownOpen(dropdownName)) {
       setActiveTab("friends");
       setSearchQuery("");
       setSearchResults([]);
@@ -106,7 +111,7 @@ const FriendDropdown = () => {
         <FaUserFriends />
       </button>
 
-      {isOpen && (
+      {isDropdownOpen(dropdownName) && (
         <div className="friend-dropdown">
           <div className="friend-dropdown-header">
             <div className="friend-tabs">

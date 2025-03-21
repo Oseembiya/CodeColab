@@ -7,17 +7,16 @@
 .navbar-icon-button {
   position: relative;
   color: var(--text-color);
-  background: none;
+  background: transparent;
   border: none;
-  width: 40px;
-  height: 40px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .navbar-icon-button:hover {
@@ -33,14 +32,13 @@
   background-color: var(--error-color);
   color: white;
   border-radius: 50%;
-  font-size: 0.7rem;
+  font-size: 12px;
   font-weight: bold;
   min-width: 18px;
   height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--background-color);
 }
 
 /* Friend Dropdown Panel */
@@ -48,14 +46,14 @@
   position: absolute;
   top: 100%;
   right: 0;
-  background-color: var(--surface-color);
-  border-radius: var(--radius-lg);
+  background-color: var(--background-color);
+  border-radius: var(--radius-md);
   border: 1px solid var(--line-color);
   width: 320px;
-  max-height: 480px;
+  max-height: 400px;
   overflow: hidden;
-  box-shadow: var(--shadow-md);
-  z-index: 1000;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
   margin-top: 8px;
   display: flex;
   flex-direction: column;
@@ -63,7 +61,7 @@
 
 /* Dropdown Header and Tabs */
 .friend-dropdown-header {
-  padding: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--line-color);
 }
 
@@ -94,7 +92,7 @@
 
 .friend-tab.active {
   background-color: var(--hover-color);
-  color: var(--secondary-color);
+  color: var(--primary-color);
   opacity: 1;
 }
 
@@ -107,7 +105,7 @@
   background-color: var(--error-color);
   color: white;
   border-radius: 50%;
-  font-size: 0.7rem;
+  font-size: 12px;
   font-weight: bold;
   min-width: 18px;
   height: 18px;
@@ -121,15 +119,13 @@
 .friend-dropdown-content {
   flex: 1;
   overflow-y: auto;
-  max-height: 400px;
+  max-height: 350px;
 }
 
 /* Friends List */
 .friends-list {
-  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 /* Friend Item */
@@ -137,9 +133,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  transition: background-color 0.2s ease;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .friend-item:hover {
@@ -171,6 +168,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 14px;
+  margin: 0;
 }
 
 /* Friend Action Buttons */
@@ -191,7 +190,6 @@
 
 .friend-action:hover {
   background-color: var(--hover-color);
-  transform: scale(1.1);
 }
 
 .friend-action.remove:hover {
@@ -204,19 +202,17 @@
 
 /* Requests List */
 .requests-list {
-  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .friend-request-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  transition: background-color 0.2s ease;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-color);
+  transition: background-color 0.2s;
 }
 
 .friend-request-item:hover {
@@ -224,9 +220,8 @@
 }
 
 .request-time {
-  font-size: 0.8rem;
-  color: var(--text-color);
-  opacity: 0.7;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .request-actions {
@@ -258,117 +253,114 @@
 
 .request-action:hover {
   background-color: var(--hover-color);
-  transform: scale(1.1);
 }
 
 /* Add Friend Section */
 .add-friend {
-  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
 .search-container {
   position: relative;
-  display: flex;
-  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-color);
 }
 
 .search-icon {
   position: absolute;
-  left: 12px;
-  color: var(--text-color);
-  opacity: 0.5;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .search-input {
   width: 100%;
-  padding: 8px 36px;
-  border-radius: var(--radius-md);
-  background-color: var(--hover-color);
+  padding: 8px 32px;
   border: 1px solid var(--line-color);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  background-color: var(--background-color);
   color: var(--text-color);
-  font-size: 0.9rem;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: var(--secondary-color);
+  border-color: var(--primary-color);
 }
 
 .clear-search {
   position: absolute;
-  right: 8px;
-  background: none;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
   border: none;
-  color: var(--text-color);
-  opacity: 0.5;
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px;
-  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .clear-search:hover {
-  opacity: 1;
+  color: var(--text-color);
 }
 
 .search-results {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 300px;
   overflow-y: auto;
+  max-height: 300px;
 }
 
 .search-result-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  transition: background-color 0.2s ease;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .search-result-item:hover {
   background-color: var(--hover-color);
 }
 
-/* Status Badges */
+/* Status badges */
 .status-badge {
-  padding: 4px 8px;
-  border-radius: var(--radius-full);
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
   display: inline-block;
+  text-align: center;
+  margin-top: 4px;
 }
 
 .status-badge.friends {
-  background-color: rgba(var(--secondary-rgb), 0.1);
-  color: var(--secondary-color);
+  background-color: rgba(var(--success-rgb), 0.15);
+  color: var(--success-color);
 }
 
 .status-badge.pending {
-  background-color: rgba(var(--warning-rgb), 0.1);
-  color: var(--warning);
+  background-color: rgba(var(--warning-rgb), 0.15);
+  color: var(--warning-color);
 }
 
-/* Empty States */
+/* Empty states and loading */
 .empty-state {
   padding: 24px 16px;
   text-align: center;
-  color: var(--text-color);
-  opacity: 0.6;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .loading {
-  padding: 16px;
+  padding: 24px 16px;
   text-align: center;
-  color: var(--text-color);
-  font-style: italic;
-  opacity: 0.7;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 /* Define warning color variables if not already defined */
