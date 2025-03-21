@@ -12,7 +12,7 @@
   position: sticky;
   top: 0;
   background-color: transparent;
-  z-index: 100;
+  z-index: 10;
   margin-bottom: var(--spacing-lg);
   /* Remove shadow as the header now has its own */
   box-shadow: none;
@@ -26,7 +26,7 @@
   margin-bottom: var(--spacing-lg);
   background-color: var(--background-color);
   position: relative;
-  z-index: 100;
+  z-index: 10;
   background: linear-gradient(
     135deg,
     rgba(var(--secondary-rgb), 0.25) 0%,
