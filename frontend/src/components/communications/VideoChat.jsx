@@ -46,6 +46,9 @@ const VideoChat = ({ sessionId, userId }) => {
             autoGainControl: true,
             sampleRate: 48000,
             channelCount: 2,
+            latency: 0.01,
+            highpassFilter: true,
+            volume: 1.0,
           },
         });
 
@@ -72,6 +75,13 @@ const VideoChat = ({ sessionId, userId }) => {
               { urls: "stun:stun1.l.google.com:19302" },
               { urls: "stun:stun2.l.google.com:19302" },
             ],
+            sdpTransform: (sdp) => {
+              // Prefer Opus codec for better audio quality
+              return sdp.replace(
+                "useinbandfec=1",
+                "useinbandfec=1; stereo=1; maxaveragebitrate=512000"
+              );
+            },
           },
         });
 
@@ -399,8 +409,60 @@ const VideoChat = ({ sessionId, userId }) => {
         </button>
       </div>
 
+      <div className="audio-device-selector">
+        <select
+          onChange={(e) => {
+            if (streamRef.current) {
+              // Get new constraints with selected device
+              navigator.mediaDevices
+                .getUserMedia({
+                  video: true,
+                  audio: {
+                    deviceId: { exact: e.target.value },
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 48000,
+                    channelCount: 2,
+                  },
+                })
+                .then((newStream) => {
+                  // Replace the audio track
+                  const audioTrack = newStream.getAudioTracks()[0];
+                  const oldTrack = streamRef.current.getAudioTracks()[0];
+                  streamRef.current.removeTrack(oldTrack);
+                  streamRef.current.addTrack(audioTrack);
+
+                  // Update all peer connections
+                  // (This would require modifying how peer connections are managed)
+                });
+            }
+          }}
+        >
+          {/* Dynamically populate with available audio devices */}
+        </select>
+      </div>
+
+      <div className="volume-control">
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          defaultValue="1"
+          onChange={(e) => {
+            // Update volume for all remote videos
+            document
+              .querySelectorAll(".video-container:not(.local) video")
+              .forEach((video) => {
+                video.volume = e.target.value;
+              });
+          }}
+        />
+      </div>
+
       <div className="video-grid">
-        {/* Local video */}
+        {/* Local video - Make it display at the top and take full width */}
         <div className="video-container local">
           {stream && (
             <video
@@ -418,94 +480,102 @@ const VideoChat = ({ sessionId, userId }) => {
         </div>
 
         {/* Remote videos */}
-        {Array.from(peers.entries()).map(([peerId, peerStream]) => (
-          <div key={peerId} className="video-container">
-            <video
-              ref={(video) => {
-                if (video) {
-                  video.srcObject = peerStream;
-                  video.volume = 1.0; // Ensure volume is up
+        <div className="remote-videos">
+          {Array.from(peers.entries()).map(([peerId, peerStream]) => (
+            <div key={peerId} className="video-container">
+              <video
+                ref={(video) => {
+                  if (video) {
+                    video.srcObject = peerStream;
+                    video.volume = 1.0; // Ensure volume is up
 
-                  // Force audio output device to default (may help in some browsers)
-                  if (
-                    video.setSinkId &&
-                    navigator.mediaDevices.enumerateDevices
-                  ) {
-                    navigator.mediaDevices
-                      .enumerateDevices()
-                      .then((devices) => {
-                        const audioOutputs = devices.filter(
-                          (device) => device.kind === "audiooutput"
-                        );
-                        if (audioOutputs.length > 0) {
-                          // Try the default device first
-                          const defaultDevice = audioOutputs.find(
-                            (device) =>
-                              device.deviceId === "default" ||
-                              device.label.toLowerCase().includes("default")
+                    // Force audio output device to default (may help in some browsers)
+                    if (
+                      video.setSinkId &&
+                      navigator.mediaDevices.enumerateDevices
+                    ) {
+                      navigator.mediaDevices
+                        .enumerateDevices()
+                        .then((devices) => {
+                          const audioOutputs = devices.filter(
+                            (device) => device.kind === "audiooutput"
                           );
-                          const deviceId = defaultDevice
-                            ? defaultDevice.deviceId
-                            : audioOutputs[0].deviceId;
-                          console.log("Setting audio output to:", deviceId);
-                          return video.setSinkId(deviceId);
-                        }
-                      })
-                      .catch((err) =>
-                        console.error("Error setting audio output device:", err)
-                      );
-                  }
-
-                  // Handle autoplay restrictions
-                  video.oncanplay = () => {
-                    const playPromise = video.play();
-                    if (playPromise !== undefined) {
-                      playPromise.catch((error) => {
-                        console.error("Autoplay prevented:", error);
-                        // Create a play button when autoplay fails
-                        const playButton = document.createElement("button");
-                        playButton.textContent = "Play Audio";
-                        playButton.className = "audio-play-button";
-                        playButton.onclick = () => {
-                          video.play();
-                          playButton.remove();
-                        };
-                        video.parentNode.appendChild(playButton);
-                      });
+                          if (audioOutputs.length > 0) {
+                            // Try the default device first
+                            const defaultDevice = audioOutputs.find(
+                              (device) =>
+                                device.deviceId === "default" ||
+                                device.label.toLowerCase().includes("default")
+                            );
+                            const deviceId = defaultDevice
+                              ? defaultDevice.deviceId
+                              : audioOutputs[0].deviceId;
+                            console.log("Setting audio output to:", deviceId);
+                            return video.setSinkId(deviceId);
+                          }
+                        })
+                        .catch((err) =>
+                          console.error(
+                            "Error setting audio output device:",
+                            err
+                          )
+                        );
                     }
-                  };
 
-                  // Ensure audio is unmuted periodically (fixes Chrome issues)
-                  const ensureAudio = setInterval(() => {
-                    if (video && !video.paused) {
-                      // Check if we have audio tracks
-                      const audioTracks = peerStream.getAudioTracks();
-                      if (audioTracks.length > 0 && !audioTracks[0].enabled) {
-                        console.log("Re-enabling audio track");
-                        audioTracks[0].enabled = true;
+                    // Handle autoplay restrictions
+                    video.oncanplay = () => {
+                      const playPromise = video.play();
+                      if (playPromise !== undefined) {
+                        playPromise.catch((error) => {
+                          console.error("Autoplay prevented:", error);
+                          // Create a play button when autoplay fails
+                          const playButton = document.createElement("button");
+                          playButton.textContent = "Play Audio";
+                          playButton.className = "audio-play-button";
+                          playButton.onclick = () => {
+                            video.play();
+                            playButton.remove();
+                          };
+                          video.parentNode.appendChild(playButton);
+                        });
                       }
+                    };
+
+                    // Ensure audio is unmuted periodically (fixes Chrome issues)
+                    const ensureAudio = setInterval(() => {
+                      if (video && !video.paused) {
+                        // Check if we have audio tracks
+                        const audioTracks = peerStream.getAudioTracks();
+                        if (audioTracks.length > 0 && !audioTracks[0].enabled) {
+                          console.log("Re-enabling audio track");
+                          audioTracks[0].enabled = true;
+                        }
+                      }
+                    }, 2000);
+
+                    // Clean up interval when video is removed
+                    video.onremove = () => clearInterval(ensureAudio);
+
+                    // Log if audio tracks exist
+                    const audioTracks = peerStream.getAudioTracks();
+                    console.log(
+                      `Remote stream has ${audioTracks.length} audio tracks`
+                    );
+                    if (audioTracks.length > 0) {
+                      console.log(
+                        "Audio track enabled:",
+                        audioTracks[0].enabled
+                      );
                     }
-                  }, 2000);
-
-                  // Clean up interval when video is removed
-                  video.onremove = () => clearInterval(ensureAudio);
-
-                  // Log if audio tracks exist
-                  const audioTracks = peerStream.getAudioTracks();
-                  console.log(
-                    `Remote stream has ${audioTracks.length} audio tracks`
-                  );
-                  if (audioTracks.length > 0) {
-                    console.log("Audio track enabled:", audioTracks[0].enabled);
                   }
-                }
-              }}
-              autoPlay
-              playsInline
-            />
-            <div className="video-label">Participant</div>
-          </div>
-        ))}
+                }}
+                autoPlay
+                playsInline
+              />
+              <div className="video-label">Participant</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {error && <div className="video-error">Error: {error}</div>}

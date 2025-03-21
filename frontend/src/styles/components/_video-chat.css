@@ -2,7 +2,7 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 300px;
+  width: 330px;
   height: 400px;
   background: var(--background-color);
   border-radius: var(--radius-lg);
@@ -13,10 +13,9 @@
   flex-direction: column;
   overflow: hidden;
   resize: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-              transform 0.1s cubic-bezier(0.4, 0, 0.2, 1),
-              left 0.05s linear, 
-              top 0.05s linear;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), left 0.05s linear,
+    top 0.05s linear;
   transform-origin: bottom right;
   will-change: transform, left, top;
 }
@@ -30,10 +29,8 @@
   transform: scale(1);
   background: var(--secondary-color);
   border: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              left 0.05s linear,
-              top 0.05s linear,
-              transform 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.05s linear,
+    top 0.05s linear, transform 0.2s ease;
 }
 
 /* Hover effect for collapsed state */
@@ -63,13 +60,14 @@
 
 /* Add camera icon when collapsed */
 .video-chat-container.collapsed::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M15 8v8H5V8h10m1-2H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4V7c0-.55-.45-1-1-1z'/%3E%3C/svg%3E") no-repeat center center;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M15 8v8H5V8h10m1-2H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4V7c0-.55-.45-1-1-1z'/%3E%3C/svg%3E")
+    no-repeat center center;
   background-size: 24px;
   opacity: 0.9;
 }
@@ -94,14 +92,12 @@
 }
 
 .video-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--spacing-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
   padding: var(--spacing-sm);
-  height: calc(100% - 50px);
+  height: calc(100% - 110px);
   overflow-y: auto;
-  flex: none;
-  transition: opacity 0.2s ease;
 }
 
 .video-container {
@@ -119,6 +115,8 @@
 }
 
 .video-container.local {
+  height: 200px;
+  min-height: 200px;
   border: 2px solid var(--secondary-color);
 }
 
@@ -182,9 +180,9 @@
 
 .video-chat-container.dragging {
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: grabbing !important;
 }
 
@@ -238,9 +236,15 @@
 
 /* Voice activity animation */
 @keyframes voiceActivity {
-  0% { box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(var(--secondary-rgb), 0); }
-  100% { box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(var(--secondary-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0);
+  }
 }
 
 /* Add voice activity indicator to video containers */
@@ -251,7 +255,7 @@
 
 /* Voice activity indicator for mic button */
 .control-button[title*="Audio"]:not(.disabled)::after {
-  content: '';
+  content: "";
   position: absolute;
   top: -2px;
   right: -2px;
@@ -294,4 +298,27 @@
   backface-visibility: hidden;
   transform: translateZ(0);
   perspective: 1000px;
+}
+
+/* Style new controls */
+.audio-device-selector,
+.volume-control {
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line-color);
+}
+
+.audio-device-selector select,
+.volume-control input {
+  width: 100%;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-color);
+}
+
+/* Hide new controls when collapsed */
+.video-chat-container.collapsed .audio-device-selector,
+.video-chat-container.collapsed .volume-control {
+  display: none;
 }
