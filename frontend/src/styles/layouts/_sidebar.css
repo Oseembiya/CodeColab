@@ -43,7 +43,7 @@
 }
 
 .sidebar-brand h2 {
-  font-size: var(--text-base);
+  font-size: var(--text-xl);
   font-weight: 600;
   background: linear-gradient(
     to right,
