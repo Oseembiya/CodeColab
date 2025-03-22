@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaUsers,
   FaCode,
@@ -23,8 +24,15 @@ import {
 } from "firebase/firestore";
 import { useUserMetrics } from "../contexts/UserMetricsContext";
 import { useSocket } from "../contexts/SocketContext";
+import CreateSessionModal from "../components/sessions/CreateSessionModal";
+import { useSession } from "../contexts/SessionContext";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { createSession } = useSession();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isQuickStart, setIsQuickStart] = useState(false);
+
   const [greeting] = useState(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -41,6 +49,31 @@ const Dashboard = () => {
     collaboratingUsers: 0,
     codeLinesSynced: "0",
   });
+
+  // Handle the "Get Started Now" button click
+  const handleGetStarted = () => {
+    setIsQuickStart(true);
+    setShowCreateModal(true);
+  };
+
+  // Handle the "Create Your First Session" button click
+  const handleCreateFirstSession = () => {
+    setIsQuickStart(false);
+    setShowCreateModal(true);
+  };
+
+  // Handle session creation submission
+  const handleCreateSession = async (sessionData) => {
+    try {
+      const sessionId = await createSession(sessionData);
+      setShowCreateModal(false);
+      // Navigate to the newly created session
+      navigate(`/dashboard/sessions/${sessionId}`);
+    } catch (error) {
+      console.error("Failed to create session:", error);
+      // Handle error (you might want to show this to the user)
+    }
+  };
 
   // Fetch platform statistics
   useEffect(() => {
@@ -221,7 +254,7 @@ const Dashboard = () => {
             for external tools and ensuring synchronized, efficient
             collaboration.
           </p>
-          <button className="get-started-btn">
+          <button className="get-started-btn" onClick={handleGetStarted}>
             <FaRocket /> Get Started Now
           </button>
         </div>
@@ -360,10 +393,18 @@ const Dashboard = () => {
       <div className="cta-section">
         <h2>Ready to Collaborate?</h2>
         <p>Join thousands of developers already using CodeColab</p>
-        <button className="cta-button">
+        <button className="cta-button" onClick={handleCreateFirstSession}>
           <FaRocket /> Create Your First Session
         </button>
       </div>
+
+      {showCreateModal && (
+        <CreateSessionModal
+          isQuickStart={isQuickStart}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateSession}
+        />
+      )}
     </div>
   );
 };

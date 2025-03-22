@@ -9,7 +9,7 @@ const generateJoinCode = () => {
   ).join("");
 };
 
-const CreateSessionModal = ({ onClose, onSubmit }) => {
+const CreateSessionModal = ({ onClose, onSubmit, isQuickStart = false }) => {
   const joinCodeRef = useRef("");
 
   const [formData, setFormData] = useState({
@@ -31,6 +31,21 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
     { id: "cpp", name: "C++" },
     { id: "csharp", name: "C#" },
   ];
+
+  // Set quick start defaults if needed
+  useEffect(() => {
+    if (isQuickStart) {
+      setFormData((prev) => ({
+        ...prev,
+        title: "Quick Collaboration Session",
+        description: "A quick session for real-time collaboration",
+        isPrivate: false,
+        startNow: true,
+        // Use a sensible language default
+        language: "javascript",
+      }));
+    }
+  }, [isQuickStart]);
 
   const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -301,6 +316,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
 CreateSessionModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
+  isQuickStart: PropTypes.bool,
 };
 
 export default CreateSessionModal;
