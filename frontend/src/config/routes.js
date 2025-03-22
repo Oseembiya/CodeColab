@@ -2,8 +2,7 @@ import { lazy } from "react";
 import { ROUTES } from "./constants";
 
 // Lazy-load all route components for better code splitting
-const SignUp = lazy(() => import("../pages/signUp"));
-const Login = lazy(() => import("../pages/login"));
+const AuthPage = lazy(() => import("../pages/auth"));
 const Dashboard = lazy(() => import("../pages/dashboard"));
 const Profile = lazy(() => import("../pages/profile"));
 const CodeEditor = lazy(() => import("../pages/CodeEditorPage"));
@@ -19,16 +18,16 @@ const ProtectedRoute = lazy(() => import("../pages/protectedRoute"));
 const routeConfig = [
   {
     path: ROUTES.HOME,
-    element: { type: "redirect", to: ROUTES.DASHBOARD },
+    element: { type: "redirect", to: ROUTES.SIGNUP },
   },
   {
     path: ROUTES.SIGNUP,
-    element: { type: "component", component: SignUp },
+    element: { type: "component", component: AuthPage },
     public: true,
   },
   {
     path: ROUTES.LOGIN,
-    element: { type: "component", component: Login },
+    element: { type: "component", component: AuthPage },
     public: true,
   },
   {

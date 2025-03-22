@@ -109,18 +109,33 @@
 
 .submit-button {
   width: 100%;
-  padding: 0.75rem;
+  padding: 15px;
   background-color: var(--secondary-color);
-  color: var(--text-color);
+  color: white;
   border: none;
-  border-radius: 4px;
-  font-size: 1rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  margin: 1rem 0;
+  margin: 1.5rem 0;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .submit-button:hover {
-  background-color: var(--hover-color);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+.submit-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Remove fancy pulse effect */
+.submit-button::after {
+  display: none;
 }
 
 .login-link {
@@ -143,29 +158,21 @@
   align-items: center;
   justify-content: center;
   color: var(--text-color);
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  margin: 8px 0;
   cursor: pointer;
-  background-color: transparent;
-  border: 1px solid var(--line-color);
-  padding: 0.75rem;
-  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
   transition: all 0.3s ease;
 }
 
-.google-button:hover:not(:disabled) {
-  background-color: var(--hover-color);
-  border-color: var(--secondary-color);
-}
-
-.google-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.google-button svg {
-  font-size: var(--icon-size);
+/* Remove shimmer effect */
+.google-button::before {
+  display: none;
 }
 
 .password-input-container {
@@ -224,4 +231,20 @@
   margin-left: 0.5rem;
   font-size: 0.75rem;
   opacity: 0.8;
+}
+
+.google-auth-section {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-md);
+  background-color: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.google-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: rgba(255, 255, 255, 0.05);
 }

@@ -27,3 +27,4 @@
 @import "./pages/_sessions.css";
 @import "./pages/_dashboard.css";
 @import "./pages/_profile.css";
+@import "./pages/_auth.css"; /* Combined auth page */

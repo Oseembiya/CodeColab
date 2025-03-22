@@ -251,6 +251,15 @@ const AuthForm = ({ isLogin }) => {
 
   const handleGoogleClick = async () => {
     if (isGoogleLoading) return;
+
+    if (!isLogin && !formData.acceptTerms) {
+      setError({
+        ...error,
+        acceptTerms: "You must accept the terms and conditions",
+      });
+      return;
+    }
+
     setIsGoogleLoading(true);
     setFirebaseError("");
     await handleGoogleAuth();
@@ -393,15 +402,19 @@ const AuthForm = ({ isLogin }) => {
             {isLogin ? "Login" : "Get Started"}
           </button>
 
-          <button
-            type="button"
-            className="google-button"
-            onClick={handleGoogleClick}
-            disabled={isGoogleLoading}
-          >
-            <FaGoogle />
-            {isGoogleLoading ? "Signing in..." : "Sign in with Google"}
-          </button>
+          {!isLogin && (
+            <div className="google-auth-section">
+              <button
+                type="button"
+                className="google-button"
+                onClick={handleGoogleClick}
+                disabled={isGoogleLoading || !formData.acceptTerms}
+              >
+                <FaGoogle />
+                {isGoogleLoading ? "Signing in..." : "Sign in with Google"}
+              </button>
+            </div>
+          )}
 
           <p className="login-link">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
