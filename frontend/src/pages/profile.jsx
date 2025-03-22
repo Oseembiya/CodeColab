@@ -369,37 +369,29 @@ const Profile = () => {
           <div className="stat-icon">
             <FaUsers />
           </div>
-          <div className="stat-data">
-            <span className="stat-value">{statistics.totalSessions}</span>
-            <span className="stat-label">Total Sessions</span>
-          </div>
+          <span className="stat-value">{statistics.totalSessions}</span>
+          <span className="stat-label">Total Sessions</span>
         </div>
         <div className="stat-item">
           <div className="stat-icon">
             <FaClock />
           </div>
-          <div className="stat-data">
-            <span className="stat-value">{statistics.hoursSpent}</span>
-            <span className="stat-label">Hours Spent</span>
-          </div>
+          <span className="stat-value">{statistics.hoursSpent}</span>
+          <span className="stat-label">Hours Spent</span>
         </div>
         <div className="stat-item">
           <div className="stat-icon">
             <FaFileCode />
           </div>
-          <div className="stat-data">
-            <span className="stat-value">{statistics.linesOfCode}</span>
-            <span className="stat-label">Lines of Code</span>
-          </div>
+          <span className="stat-value">{statistics.linesOfCode}</span>
+          <span className="stat-label">Lines Of Code</span>
         </div>
         <div className="stat-item">
           <div className="stat-icon">
             <FaUsers />
           </div>
-          <div className="stat-data">
-            <span className="stat-value">{statistics.collaborations}</span>
-            <span className="stat-label">Collaborations</span>
-          </div>
+          <span className="stat-value">{statistics.collaborations}</span>
+          <span className="stat-label">Collaborations</span>
         </div>
       </div>
       {metrics.lastActive && (
