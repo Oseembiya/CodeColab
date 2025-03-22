@@ -13,6 +13,7 @@
 @import "./components/_alert.css"; /* Modal alerts */
 @import "./components/friend-dropdown.css";
 @import "./components/_video-chat.css";
+@import "./components/_terms-modal.css"; /* Terms and conditions modal */
 
 /* layouts */
 @import "./layouts/_main.css";

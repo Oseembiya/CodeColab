@@ -1,17 +1,9 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import {
-  FaClock,
-  FaUsers,
-  FaCode,
-  FaLock,
-  FaLockOpen,
-  FaEdit,
-  FaTrash,
-} from "react-icons/fa";
+import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from "react-icons/fa";
 import { useSocket } from "../../contexts/SocketContext";
 
-const SessionCard = ({ session, isOwner, onJoin, view }) => {
+const SessionCard = ({ session, onJoin, view }) => {
   const [participantCount, setParticipantCount] = useState(
     session.participants?.length || 0
   );
@@ -127,52 +119,59 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
   };
 
   const joinButtonProps = getJoinButtonProps();
+  const statusBadge = (
+    <span className={getStatusClass(session.status)}>{session.status}</span>
+  );
+
+  // Common session details that appear in both views
+  const renderSessionDetails = (isFullDetails = true) => (
+    <div className="session-details">
+      <div className="detail-item">
+        <FaClock />
+        <span>{formatDate(session.startTime || session.createdAt)}</span>
+      </div>
+      {isFullDetails && (
+        <>
+          <div className="detail-item">
+            <FaUsers />
+            <span>{displayParticipantCount()}</span>
+          </div>
+          <div className="detail-item">
+            <FaCode />
+            <span>{displayLanguage}</span>
+          </div>
+          <div className="detail-item">
+            {isPrivate ? <FaLock /> : <FaLockOpen />}
+            <span>{isPrivate ? "Private" : "Public"}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // Join button that appears in both views
+  const renderJoinButton = () => (
+    <button
+      onClick={() => onJoin(session.id)}
+      className="join-button"
+      disabled={joinButtonProps.disabled}
+    >
+      {joinButtonProps.text}
+    </button>
+  );
 
   return (
     <div className={`session-card ${view}`}>
       {view === "grid" ? (
         // Grid View Layout
         <>
-          <span
-            className={`status-badge ${
-              session.status === "active" ? "green" : ""
-            }`}
-          >
-            {session.status}
-          </span>
-
+          {statusBadge}
           <h3>{session.title}</h3>
-
           {session.description && (
             <p className="session-description">{session.description}</p>
           )}
-
-          <div className="session-details">
-            <div className="detail-item">
-              <FaClock />
-              <span>{formatDate(session.startTime || session.createdAt)}</span>
-            </div>
-            <div className="detail-item">
-              <FaUsers />
-              <span>{displayParticipantCount()}</span>
-            </div>
-            <div className="detail-item">
-              <FaCode />
-              <span>{displayLanguage}</span>
-            </div>
-            <div className="detail-item">
-              {isPrivate ? <FaLock /> : <FaLockOpen />}
-              <span>{isPrivate ? "Private" : "Public"}</span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => onJoin(session.id)}
-            className="join-button"
-            disabled={joinButtonProps.disabled}
-          >
-            {joinButtonProps.text}
-          </button>
+          {renderSessionDetails(true)}
+          {renderJoinButton()}
         </>
       ) : (
         // List View Layout
@@ -180,48 +179,28 @@ const SessionCard = ({ session, isOwner, onJoin, view }) => {
           <div className="title-area">
             <h3>
               {session.title}
-              <span
-                className={`status-badge ${
-                  session.status === "active" ? "green" : ""
-                }`}
-              >
-                {session.status}
-              </span>
+              {statusBadge}
             </h3>
             {session.description && (
               <p className="session-description">{session.description}</p>
             )}
           </div>
-
-          <div className="session-details">
-            <div className="detail-item">
-              <FaClock />
-              <span>{formatDate(session.startTime || session.createdAt)}</span>
-            </div>
-            <div className="detail-item">
-              <FaCode />
-              <span>{displayLanguage}</span>
-            </div>
-          </div>
-
+          {renderSessionDetails(false)}
           <div className="session-details">
             <div className="detail-item">
               <FaUsers />
               <span>{displayParticipantCount()}</span>
             </div>
             <div className="detail-item">
+              <FaCode />
+              <span>{displayLanguage}</span>
+            </div>
+            <div className="detail-item">
               {isPrivate ? <FaLock /> : <FaLockOpen />}
               <span>{isPrivate ? "Private" : "Public"}</span>
             </div>
           </div>
-
-          <button
-            onClick={() => onJoin(session.id)}
-            className="join-button"
-            disabled={joinButtonProps.disabled}
-          >
-            {joinButtonProps.text}
-          </button>
+          {renderJoinButton()}
         </>
       )}
     </div>
@@ -243,7 +222,6 @@ SessionCard.propTypes = {
     isPrivate: PropTypes.oneOfType([PropTypes.bool, PropTypes.string])
       .isRequired, // Allow both boolean and string
   }).isRequired,
-  isOwner: PropTypes.bool.isRequired,
   onJoin: PropTypes.func.isRequired,
   view: PropTypes.oneOf(["grid", "list"]).isRequired,
 };

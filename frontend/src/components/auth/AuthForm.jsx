@@ -14,12 +14,13 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
   getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth";
 import { auth, db } from "../../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
+import TermsAndConditions from "./TermsAndConditions";
+import "../../styles/components/_terms-modal.css";
 
 const saveUserToFirestore = async (user) => {
   try {
@@ -54,6 +55,7 @@ const AuthForm = ({ isLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   useEffect(() => {
     const handleRedirectResult = async () => {
@@ -254,6 +256,21 @@ const AuthForm = ({ isLogin }) => {
     await handleGoogleAuth();
   };
 
+  const handleTermsLinkClick = (e) => {
+    e.preventDefault();
+    setShowTermsModal(true);
+  };
+
+  const handleTermsModalClose = (accepted) => {
+    setShowTermsModal(false);
+    if (accepted) {
+      setFormData((prevData) => ({
+        ...prevData,
+        acceptTerms: true,
+      }));
+    }
+  };
+
   if (auth.currentUser) {
     return null;
   }
@@ -358,7 +375,10 @@ const AuthForm = ({ isLogin }) => {
                     checked={formData.acceptTerms}
                     onChange={handleChange}
                   />
-                  I accept the terms and conditions
+                  I accept the{" "}
+                  <a href="#" onClick={handleTermsLinkClick}>
+                    terms and conditions
+                  </a>
                 </label>
                 {error.acceptTerms && (
                   <span className="error">{error.acceptTerms}</span>
@@ -391,6 +411,7 @@ const AuthForm = ({ isLogin }) => {
           </p>
         </form>
       </div>
+      {showTermsModal && <TermsAndConditions onClose={handleTermsModalClose} />}
     </div>
   );
 };

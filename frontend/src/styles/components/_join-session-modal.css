@@ -1,3 +1,5 @@
+@import "./_session-modal-shared.css";
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -131,7 +133,11 @@ form {
 
 .join-button {
   padding: 12px 32px;
-  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
+  background: linear-gradient(
+    135deg,
+    var(--secondary-color),
+    var(--secondary-light)
+  );
   border: none;
   color: white;
   border-radius: var(--radius-md);
@@ -162,7 +168,7 @@ form {
 }
 
 .join-button.loading::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -176,12 +182,18 @@ form {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
@@ -220,4 +232,4 @@ form {
     width: 100%;
     text-align: center;
   }
-} 
+}
