@@ -756,6 +756,7 @@ const Profile = () => {
                       value={formData.currentPassword}
                       onChange={handleChange}
                       disabled={!isEditing}
+                      autoComplete="current-password"
                     />
                   </div>
 
@@ -768,6 +769,7 @@ const Profile = () => {
                       value={formData.newPassword}
                       onChange={handleChange}
                       disabled={!isEditing}
+                      autoComplete="new-password"
                     />
                   </div>
 
@@ -782,6 +784,7 @@ const Profile = () => {
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       disabled={!isEditing}
+                      autoComplete="new-password"
                     />
                   </div>
 

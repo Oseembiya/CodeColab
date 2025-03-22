@@ -255,6 +255,16 @@
   color: var(--success-color);
 }
 
+.status-badge.blue {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6; /* blue color */
+}
+
+.status-badge.gray {
+  background: rgba(156, 163, 175, 0.2);
+  color: #9ca3af; /* gray color */
+}
+
 /* Session Description */
 .session-description {
   color: var(--text-color);

@@ -41,7 +41,7 @@ const CreateSessionModal = ({ onClose, onSubmit, isQuickStart = false }) => {
         description: "A quick session for real-time collaboration",
         isPrivate: false,
         startNow: true,
-        // Use a sensible language default
+        // Use a language default
         language: "javascript",
       }));
     }
@@ -156,7 +156,7 @@ const CreateSessionModal = ({ onClose, onSubmit, isQuickStart = false }) => {
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  maxLength={50}
+                  maxLength={24}
                   placeholder="Enter session title"
                 />
               </div>
@@ -169,7 +169,7 @@ const CreateSessionModal = ({ onClose, onSubmit, isQuickStart = false }) => {
                   value={formData.description}
                   onChange={handleChange}
                   rows={3}
-                  maxLength={200}
+                  maxLength={35}
                   placeholder="Describe your session"
                 />
               </div>

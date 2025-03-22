@@ -214,10 +214,7 @@ const AuthForm = ({ isLogin }) => {
       }
 
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        // Remove prompt parameter to use cached credentials
-        // prompt: "select_account", // Remove this line
-      });
+      provider.setCustomParameters({});
 
       // Try to get existing credential first
       const result = await signInWithPopup(auth, provider);
@@ -226,23 +223,31 @@ const AuthForm = ({ isLogin }) => {
         navigate("/dashboard");
       }
     } catch (error) {
-      console.error("Google Auth Error:", error);
+      // Don't log popup-closed-by-user as an error since it's a normal user action
+      if (error.code !== "auth/popup-closed-by-user") {
+        console.error("Google Auth Error:", error);
+      }
 
       // Handle specific error cases
       const errorMessages = {
         "auth/popup-blocked": "Pop-up was blocked. Please enable pop-ups.",
-        "auth/popup-closed-by-user": "Sign-in cancelled.",
+        "auth/popup-closed-by-user": "", // No error message for closed popup
         "auth/cancelled-popup-request": "",
         "auth/network-request-failed":
           "Network error. Please check your connection.",
       };
 
-      setFirebaseError(
-        errorMessages[error.code] || "An error occurred during sign in."
-      );
+      const errorMessage =
+        errorMessages[error.code] || "An error occurred during sign in.";
 
-      if (error.code !== "auth/cancelled-popup-request") {
-        setTimeout(() => setFirebaseError(""), 5000);
+      // Only set error message if there's something to show
+      if (errorMessage) {
+        setFirebaseError(errorMessage);
+
+        // Clear error message after a delay (except for cancelled-popup-request)
+        if (error.code !== "auth/cancelled-popup-request") {
+          setTimeout(() => setFirebaseError(""), 5000);
+        }
       }
     } finally {
       setIsGoogleLoading(false);
@@ -346,6 +351,7 @@ const AuthForm = ({ isLogin }) => {
                 onChange={handleChange}
                 placeholder="********"
                 maxLength={12}
+                autoComplete={isLogin ? "current-password" : "new-password"}
               />
               <button
                 type="button"
@@ -370,6 +376,7 @@ const AuthForm = ({ isLogin }) => {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="********"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
