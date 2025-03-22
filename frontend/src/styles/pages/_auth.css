@@ -3,7 +3,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #000000;
+  background: var(--background-color);
   padding: var(--spacing-md);
   position: relative;
 }
@@ -52,7 +52,7 @@
 .auth-card {
   width: 100%;
   max-width: 450px;
-  background: #121212;
+  background: var(--background-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);

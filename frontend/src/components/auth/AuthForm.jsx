@@ -298,15 +298,19 @@ const AuthForm = ({ isLogin }) => {
           {!isLogin && (
             <div className="form-group">
               <label htmlFor="fullName">Full Name</label>
-              <input
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Enter your full name"
-              />
-              <FaUser className="input-icon" />
+              <div className="input-wrapper">
+                <input
+                  type="text"
+                  id="fullName"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  placeholder="Enter your full name"
+                />
+                <span className="icon-container">
+                  <FaUser className="input-icon" />
+                </span>
+              </div>
               {error.fullName && (
                 <span className="error">{error.fullName}</span>
               )}
@@ -315,15 +319,19 @@ const AuthForm = ({ isLogin }) => {
 
           <div className="form-group">
             <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="your@email.com"
-            />
-            <FaEnvelope className="input-icon" />
+            <div className="input-wrapper">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="your@email.com"
+              />
+              <span className="icon-container">
+                <FaEnvelope className="input-icon" />
+              </span>
+            </div>
             {error.email && <span className="error">{error.email}</span>}
           </div>
 
