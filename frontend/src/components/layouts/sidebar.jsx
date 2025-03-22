@@ -144,7 +144,7 @@ const Sidebar = memo(({ isOpen, onClose }) => {
             }`}
           >
             <FaCode />
-            <span>Code Editor</span>
+            <span>Solo Editor</span>
           </Link>
 
           <Link
@@ -154,7 +154,7 @@ const Sidebar = memo(({ isOpen, onClose }) => {
             }`}
           >
             <FaUsers />
-            <span>Collaborative Sessions</span>
+            <span>Colab Sessions</span>
           </Link>
 
           <Link

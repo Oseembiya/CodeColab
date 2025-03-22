@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaBell, FaBars } from "react-icons/fa";
+import { FaBars } from "react-icons/fa";
 import { auth } from "../../firebaseConfig";
 import { useSession } from "../../contexts/SessionContext";
 import { getImageUrl, preloadImage } from "../../utils/imageUtils.jsx";
@@ -33,7 +33,7 @@ const Navbar = ({ toggleSidebar }) => {
         </button>
         {currentSession && location.pathname.includes("/sessions/") && (
           <div className="active-session-indicator">
-            <span className="session-status">Live: </span>
+            <span className="session-status">Connected: </span>
             <span className="session-name">
               {currentSession?.title || "Untitled Session"}
             </span>
