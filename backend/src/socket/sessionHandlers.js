@@ -73,20 +73,12 @@ module.exports = (io, socket) => {
       count: participants.length,
     });
 
-    // Log more efficiently
-    const observingCount = socket.observingSessions.size;
-    console.log(
-      `Observer ${socket.id} watching ${observingCount} ${
-        observingCount === 1 ? "session" : "sessions"
-      }`
-    );
-
     // Only log details in debug mode
     if (process.env.LOG_LEVEL === "debug") {
       console.log(
-        `Observer ${socket.id} sessions: ${Array.from(
-          socket.observingSessions
-        ).join(", ")}`
+        `Observer ${socket.id} watching ${
+          socket.observingSessions.size
+        } sessions: ${Array.from(socket.observingSessions).join(", ")}`
       );
     }
   };
@@ -100,13 +92,12 @@ module.exports = (io, socket) => {
     // Remove from tracking set
     socket.observingSessions.delete(sessionId);
 
-    // Log more efficiently
-    const observingCount = socket.observingSessions.size;
-    console.log(
-      `Observer ${socket.id} now watching ${observingCount} ${
-        observingCount === 1 ? "session" : "sessions"
-      }`
-    );
+    // Only log details in debug mode
+    if (process.env.LOG_LEVEL === "debug") {
+      console.log(
+        `Observer ${socket.id} now watching ${socket.observingSessions.size} sessions`
+      );
+    }
   };
 
   // Handle request for initial code

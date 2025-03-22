@@ -1,20 +1,27 @@
-import { useState, useRef, Suspense, lazy, useCallback, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import EditorToolbar from './EditorToolbar';
-import OutputPanel from './OutputPanel';
-import { FaExpandAlt, FaCompressAlt } from 'react-icons/fa';
-import { getBoilerplate } from '../../services/codeExecution';
+import {
+  useState,
+  useRef,
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+} from "react";
+import PropTypes from "prop-types";
+import EditorToolbar from "./EditorToolbar";
+import OutputPanel from "./OutputPanel";
+import { FaExpandAlt, FaCompressAlt } from "react-icons/fa";
+import { getBoilerplate } from "../../services/codeExecution";
 
 // Lazy load Monaco editor
 const MonacoEditor = lazy(() => import("@monaco-editor/react"));
 
-const BaseEditor = ({ 
+const BaseEditor = ({
   onEditorMount,
   onEditorChange,
   language,
   onLanguageChange,
   onRunCode,
-  initialValue = "// Start coding here"
+  initialValue = "// Start coding here",
 }) => {
   const [output, setOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +31,7 @@ const BaseEditor = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [fontSize, setFontSize] = useState(14);
-  
+
   const editorRef = useRef(null);
   const dragStartY = useRef(0);
   const initialHeight = useRef(0);
@@ -33,28 +40,25 @@ const BaseEditor = ({
     minimap: { enabled: false },
     fontSize: 14,
     automaticLayout: true,
-    lineNumbers: 'on',
+    lineNumbers: "on",
     roundedSelection: false,
     scrollBeyondLastLine: false,
     tabSize: 2,
-    wordWrap: 'on'
+    wordWrap: "on",
   });
 
   const handleRunCode = async () => {
     if (!editorRef.current) return;
-    
+
     setIsLoading(true);
     setOutput("Running code...");
     setError(null);
 
     try {
       const code = editorRef.current.getValue();
-      console.log('Running code:', code); // Debug log
       const result = await onRunCode(code, language);
-      console.log('Code result:', result); // Debug log
       setOutput(result);
     } catch (error) {
-      console.error('Execution error:', error);
       setError(error.message);
       setOutput(`Error: ${error.message}`);
     } finally {
@@ -64,23 +68,23 @@ const BaseEditor = ({
 
   const handleFormat = () => {
     if (editorRef.current) {
-      editorRef.current.getAction('editor.action.formatDocument').run();
+      editorRef.current.getAction("editor.action.formatDocument").run();
     }
   };
 
   const handleZoomIn = () => {
-    setFontSize(prev => Math.min(prev + 2, 24));
-    setEditorOptions(prev => ({
+    setFontSize((prev) => Math.min(prev + 2, 24));
+    setEditorOptions((prev) => ({
       ...prev,
-      fontSize: Math.min(prev.fontSize + 2, 24)
+      fontSize: Math.min(prev.fontSize + 2, 24),
     }));
   };
 
   const handleZoomOut = () => {
-    setFontSize(prev => Math.max(prev - 2, 12));
-    setEditorOptions(prev => ({
+    setFontSize((prev) => Math.max(prev - 2, 12));
+    setEditorOptions((prev) => ({
       ...prev,
-      fontSize: Math.max(prev.fontSize - 2, 12)
+      fontSize: Math.max(prev.fontSize - 2, 12),
     }));
   };
 
@@ -94,9 +98,9 @@ const BaseEditor = ({
   const handleDownload = useCallback(() => {
     const code = editorRef.current?.getValue();
     if (code) {
-      const blob = new Blob([code], { type: 'text/plain' });
+      const blob = new Blob([code], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `code.${language}`;
       document.body.appendChild(a);
@@ -121,11 +125,11 @@ const BaseEditor = ({
   }, []);
 
   const handleUndo = useCallback(() => {
-    editorRef.current?.trigger('keyboard', 'undo', null);
+    editorRef.current?.trigger("keyboard", "undo", null);
   }, []);
 
   const handleRedo = useCallback(() => {
-    editorRef.current?.trigger('keyboard', 'redo', null);
+    editorRef.current?.trigger("keyboard", "redo", null);
   }, []);
 
   // Add drag handlers
@@ -136,29 +140,35 @@ const BaseEditor = ({
     initialHeight.current = outputHeight;
 
     // Add event listeners for dragging
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener("mousemove", handleDragMove);
+    document.addEventListener("mouseup", handleDragEnd);
   };
 
-  const handleDragMove = useCallback((e) => {
-    if (!isDragging) return;
-    
-    const deltaY = dragStartY.current - e.clientY;
-    const newHeight = Math.max(100, Math.min(800, initialHeight.current + deltaY));
-    setOutputHeight(newHeight);
-  }, [isDragging]);
+  const handleDragMove = useCallback(
+    (e) => {
+      if (!isDragging) return;
+
+      const deltaY = dragStartY.current - e.clientY;
+      const newHeight = Math.max(
+        100,
+        Math.min(800, initialHeight.current + deltaY)
+      );
+      setOutputHeight(newHeight);
+    },
+    [isDragging]
+  );
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
-    document.removeEventListener('mousemove', handleDragMove);
-    document.removeEventListener('mouseup', handleDragEnd);
+    document.removeEventListener("mousemove", handleDragMove);
+    document.removeEventListener("mouseup", handleDragEnd);
   }, [handleDragMove]);
 
   // Cleanup event listeners
   useEffect(() => {
     return () => {
-      document.removeEventListener('mousemove', handleDragMove);
-      document.removeEventListener('mouseup', handleDragEnd);
+      document.removeEventListener("mousemove", handleDragMove);
+      document.removeEventListener("mouseup", handleDragEnd);
     };
   }, [handleDragMove, handleDragEnd]);
 
@@ -171,8 +181,8 @@ const BaseEditor = ({
   }, [language, initialValue]);
 
   return (
-    <div className={`editor-container ${isFullScreen ? 'fullscreen' : ''}`}>
-      <EditorToolbar 
+    <div className={`editor-container ${isFullScreen ? "fullscreen" : ""}`}>
+      <EditorToolbar
         onRun={handleRunCode}
         onFormat={handleFormat}
         onZoomIn={handleZoomIn}
@@ -206,7 +216,7 @@ const BaseEditor = ({
             />
           </Suspense>
 
-          <button 
+          <button
             className="fullscreen-toggle"
             onClick={() => setIsFullScreen(!isFullScreen)}
           >
@@ -214,7 +224,7 @@ const BaseEditor = ({
           </button>
         </div>
 
-        <OutputPanel 
+        <OutputPanel
           output={output}
           error={error}
           height={outputHeight}
@@ -233,7 +243,7 @@ BaseEditor.propTypes = {
   language: PropTypes.string.isRequired,
   onLanguageChange: PropTypes.func.isRequired,
   onRunCode: PropTypes.func.isRequired,
-  initialValue: PropTypes.string
+  initialValue: PropTypes.string,
 };
 
-export default BaseEditor; 
+export default BaseEditor;

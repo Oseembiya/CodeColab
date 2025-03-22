@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useSession } from "../contexts/SessionContext";
 import { useAuth } from "../hooks/useAuth";
@@ -15,7 +15,6 @@ const CollaborativeSession = () => {
   const { currentSession, joinSession, leaveSession } = useSession();
   const { user } = useAuth();
   const { socket } = useSocket();
-  const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const userId = auth.currentUser?.uid;
@@ -88,7 +87,6 @@ const CollaborativeSession = () => {
       try {
         // First, try to use currentSession if it matches current sessionId
         if (currentSession && currentSession.id === sessionId) {
-          setSessionData(currentSession);
           setLoading(false);
         }
 
@@ -98,8 +96,6 @@ const CollaborativeSession = () => {
           sessionRef,
           (snapshot) => {
             if (snapshot.exists()) {
-              const data = { id: snapshot.id, ...snapshot.data() };
-              setSessionData(data);
               setLoading(false);
             } else {
               setError("Session not found");
@@ -185,10 +181,6 @@ const CollaborativeSession = () => {
             // IMPORTANT: Parse dates and compare properly
             const scheduledTime = new Date(data.startTime);
             const now = new Date();
-
-            console.log("Scheduled time:", scheduledTime);
-            console.log("Current time:", now);
-            console.log("Is scheduled for future:", scheduledTime > now);
 
             if (scheduledTime > now) {
               const formattedDate = scheduledTime.toLocaleString();
