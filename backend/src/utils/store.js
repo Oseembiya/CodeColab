@@ -10,6 +10,7 @@ class SessionStore {
     this.connectedClients = new Map();
     this.sessionObservers = new Map();
     this.whiteboardStates = new Map();
+    this.sessionInfo = new Map(); // For tracking session metadata like line counting status
   }
 
   /**
@@ -178,6 +179,24 @@ class SessionStore {
     });
 
     return uniqueUsers.size;
+  }
+
+  /**
+   * Get session info
+   */
+  getSessionInfo(sessionId) {
+    return this.sessionInfo.get(sessionId);
+  }
+
+  /**
+   * Update session info
+   */
+  updateSessionInfo(sessionId, info) {
+    this.sessionInfo.set(sessionId, {
+      ...(this.sessionInfo.get(sessionId) || {}),
+      ...info,
+    });
+    return this.sessionInfo.get(sessionId);
   }
 }
 

@@ -139,16 +139,66 @@ module.exports = (io, socket) => {
 
     // Only update if content has changed
     if (!currentState || currentState.content !== content) {
-      // Calculate line count changes for metrics
-      let lineCount = 1; // Default to 1 line
+      let lineCount = 0;
+
+      // Get session info for tracking initial content counting
+      const sessionInfo = sessionStore.getSessionInfo(sessionId) || {};
+
       if (currentState && currentState.content) {
-        const prevLineCount = currentState.content.split("\n").length;
-        const newLineCount = content.split("\n").length;
-        // Calculate the absolute difference in lines
-        lineCount = Math.abs(newLineCount - prevLineCount);
-        lineCount = Math.max(1, lineCount); // At least 1 line
+        // CASE 1: We have existing content - calculate only added lines
+
+        // Get actual content lines (ignoring empty lines)
+        const prevLines = currentState.content
+          .split("\n")
+          .filter((line) => line.trim().length > 0);
+        const newLines = content
+          .split("\n")
+          .filter((line) => line.trim().length > 0);
+
+        // Only count net new meaningful lines added, never deleted ones
+        if (newLines.length > prevLines.length) {
+          // We actually only want to count one line at a time to avoid double counting
+          // This prevents counting +2 when only one line was added
+          lineCount = 1;
+          console.log(
+            `[${sessionId}] Adding 1 line (effective change: ${prevLines.length} → ${newLines.length})`
+          );
+        } else {
+          // Don't count line count decreases or in-place edits
+          lineCount = 0;
+          console.log(
+            `[${sessionId}] No new lines added (${prevLines.length} → ${newLines.length})`
+          );
+        }
+      } else if (content && content.trim().length > 0) {
+        // CASE 2: First content for this session
+
+        // Check if we've already counted the initial content for this session
+        if (!sessionInfo.initialContentCounted) {
+          // Only count non-empty lines
+          const lineCountInitial = content
+            .split("\n")
+            .filter((line) => line.trim().length > 0).length;
+
+          // Mark that we've counted this session's initial content
+          sessionStore.updateSessionInfo(sessionId, {
+            initialContentCounted: true,
+            initialLineCount: lineCountInitial,
+          });
+
+          // Set this as the line count
+          lineCount = lineCountInitial;
+          console.log(
+            `[${sessionId}] Initial content counted: ${lineCount} meaningful lines`
+          );
+        } else {
+          // Initial content was already counted, don't count again
+          console.log(`[${sessionId}] Ignoring duplicate initial content`);
+          lineCount = 0;
+        }
       }
 
+      // Update the session state with new content
       sessionStore.updateSessionState(sessionId, {
         content,
         lastEditBy: userId,
@@ -160,8 +210,11 @@ module.exports = (io, socket) => {
         senderId: userId,
       });
 
-      // Track user metrics - increment lines of code
-      if (userId) {
+      // Track user metrics - increment lines of code only if we actually added lines
+      if (userId && lineCount > 0) {
+        console.log(
+          `[${sessionId}] Incrementing line count for user ${userId} by ${lineCount}`
+        );
         userMetrics.incrementLinesOfCode(userId, lineCount);
         // Update active time
         userMetrics.updateUserActiveTime(userId);
@@ -253,6 +306,39 @@ module.exports = (io, socket) => {
     }
   };
 
+  // Debug command for line counts
+  const handleDebugLineCount = ({ userId }) => {
+    if (!userId) {
+      socket.emit("debug-result", { error: "User ID is required" });
+      return;
+    }
+
+    // Request metrics for the user
+    userMetrics
+      .getUserMetrics(userId)
+      .then((metrics) => {
+        // Send debug info to the client
+        socket.emit("debug-result", {
+          userId,
+          metrics: {
+            linesOfCode: metrics ? metrics.linesOfCode : 0,
+            totalSessions: metrics ? metrics.totalSessions : 0,
+            collaborations: metrics ? metrics.collaborations : 0,
+            lastActive: metrics ? metrics.lastActive : null,
+          },
+        });
+        console.log(
+          `Debug line count for user ${userId}: ${
+            metrics ? metrics.linesOfCode : 0
+          }`
+        );
+      })
+      .catch((error) => {
+        socket.emit("debug-result", { error: error.message });
+        console.error(`Debug error for user ${userId}:`, error);
+      });
+  };
+
   // Register event handlers
   socket.on("join-session", handleJoinSession);
   socket.on("observe-session", handleObserveSession);
@@ -272,6 +358,7 @@ module.exports = (io, socket) => {
       count: participants.length,
     });
   });
+  socket.on("debug-line-count", handleDebugLineCount);
 
   // Handle cleanup when socket disconnects
   const cleanup = () => {

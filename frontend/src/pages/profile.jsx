@@ -31,8 +31,12 @@ import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { getImageUrl, preloadImage } from "../utils/imageUtils.jsx";
 import { useUserMetrics } from "../contexts/UserMetricsContext";
+import { useAuth } from "../hooks/useAuth";
+import { useSocket } from "../contexts/SocketContext";
 
 const Profile = () => {
+  const { user } = useAuth();
+  const { socket } = useSocket();
   const [activeTab, setActiveTab] = useState("personal");
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
@@ -384,7 +388,7 @@ const Profile = () => {
             <FaFileCode />
           </div>
           <span className="stat-value">{statistics.linesOfCode}</span>
-          <span className="stat-label">Lines Of Code</span>
+          <span className="stat-label">Lines Added</span>
         </div>
         <div className="stat-item">
           <div className="stat-icon">
