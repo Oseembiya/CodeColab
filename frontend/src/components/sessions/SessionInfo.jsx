@@ -209,7 +209,7 @@ const SessionInfo = ({ session, onLeave, socket }) => {
         onConfirm={handleConfirmLeave}
         onCancel={handleCancelLeave}
         title="Leave Session"
-        message="Are you sure you want to leave this session? You can rejoin later if needed."
+        message="Are you sure you want to leave this session?"
         confirmText="Leave"
         cancelText="Cancel"
         sessionId={session?.id}
@@ -220,7 +220,7 @@ const SessionInfo = ({ session, onLeave, socket }) => {
         onConfirm={handleConfirmEndSession}
         onCancel={handleCancelEndSession}
         title="Complete Session"
-        message="Are you sure you want to complete this session for all participants? This action cannot be undone."
+        message="Are you sure you want to end this session ?"
         confirmText="Complete Session"
         cancelText="Cancel"
         sessionId={session?.id}
