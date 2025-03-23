@@ -339,6 +339,39 @@ module.exports = (io, socket) => {
       });
   };
 
+  // Handle session ended event
+  const handleSessionEnded = ({ sessionId, userId }) => {
+    if (!sessionId) return;
+
+    console.log(`Session ${sessionId} ended by user ${userId}`);
+
+    // Get all participants in the session before clearing them
+    const participants = sessionStore.getSessionUsers(sessionId);
+
+    // Track completed session for the user ending it
+    if (userId) {
+      userMetrics.trackCompletedSession(userId, sessionId);
+    }
+
+    // Track the session as completed for all active participants
+    participants.forEach((participant) => {
+      if (participant.userId && participant.userId !== userId) {
+        userMetrics.trackCompletedSession(participant.userId, sessionId);
+      }
+    });
+
+    // Clear all participants from the session in the backend store
+    sessionStore.clearSessionParticipants(sessionId);
+
+    // Broadcast the session ended event to all participants and observers
+    io.to(sessionId).to(`observe:${sessionId}`).emit("session-ended", {
+      sessionId,
+      endedBy: userId,
+      endedAt: new Date().toISOString(),
+      participantsCleared: true,
+    });
+  };
+
   // Register event handlers
   socket.on("join-session", handleJoinSession);
   socket.on("observe-session", handleObserveSession);
@@ -350,6 +383,7 @@ module.exports = (io, socket) => {
   socket.on("typing-end", handleTypingEnd);
   socket.on("leave-session", handleLeaveSession);
   socket.on("user-left-session", handleUserLeftSession);
+  socket.on("session-ended", handleSessionEnded);
   socket.on("request-participant-count", ({ sessionId }) => {
     const participants = sessionStore.getSessionUsers(sessionId);
     socket.emit("participants-update", {

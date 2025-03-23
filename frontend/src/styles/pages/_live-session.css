@@ -251,3 +251,30 @@
     bottom: calc(250px + 10px); /* Adjust for mobile output panel */
   }
 }
+
+.end-session-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: #ef4444;
+  color: white;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.end-session-button:hover {
+  background-color: #dc2626;
+}
+
+.end-session-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
+}
+
+.end-session-button svg {
+  font-size: 14px;
+}

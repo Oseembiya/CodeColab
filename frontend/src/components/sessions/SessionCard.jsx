@@ -74,6 +74,8 @@ const SessionCard = ({ session, onJoin, view }) => {
         return "status-badge green";
       case "scheduled":
         return "status-badge blue";
+      case "ended":
+        return "status-badge red";
       default:
         return "status-badge gray";
     }
@@ -92,6 +94,10 @@ const SessionCard = ({ session, onJoin, view }) => {
     if (session.status === "scheduled") {
       // For scheduled sessions, show "0/X" or special message
       return `0/${maxParticipants}`;
+    } else if (session.status === "ended") {
+      // For ended sessions, show total participants who were in the session
+      const totalParticipants = session.participants?.length || 0;
+      return `${totalParticipants} Participated`;
     } else {
       // For active sessions, show actual count
       return `${participantCount}/${maxParticipants}`;
@@ -100,7 +106,12 @@ const SessionCard = ({ session, onJoin, view }) => {
 
   // Determine join button text and disabled state based on session status
   const getJoinButtonProps = () => {
-    if (session.status === "scheduled") {
+    if (session.status === "ended") {
+      return {
+        text: "Completed",
+        disabled: true,
+      };
+    } else if (session.status === "scheduled") {
       const scheduledTime = new Date(session.startTime);
       const now = new Date();
       const isInFuture = scheduledTime > now;

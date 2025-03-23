@@ -265,6 +265,11 @@
   color: #9ca3af; /* gray color */
 }
 
+.status-badge.red {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444; /* red color */
+}
+
 /* Session Description */
 .session-description {
   color: var(--text-color);

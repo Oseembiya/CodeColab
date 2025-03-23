@@ -58,7 +58,9 @@ const Sessions = () => {
       session.title.toLowerCase().includes(filters.search.toLowerCase()) ||
       session.description.toLowerCase().includes(filters.search.toLowerCase());
     const matchesStatus =
-      filters.status === "all" || session.status === filters.status;
+      filters.status === "all" ||
+      session.status === filters.status ||
+      (filters.status === "completed" && session.status === "ended");
     const matchesLanguage =
       filters.language === "all" || session.language === filters.language;
     const matchesPrivacy =

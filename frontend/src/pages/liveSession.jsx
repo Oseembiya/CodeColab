@@ -8,6 +8,7 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import SessionInfo from "../components/sessions/SessionInfo";
 import CollaborativeEditor from "../components/editor/CollaborativeEditor";
 import VideoChat from "../components/communications/VideoChat";
+import Toast from "../components/common/Alert";
 
 const CollaborativeSession = () => {
   const { sessionId } = useParams();
@@ -18,6 +19,7 @@ const CollaborativeSession = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const userId = auth.currentUser?.uid;
+  const [sessionEndedMessage, setSessionEndedMessage] = useState(null);
 
   useEffect(() => {
     // Redirect if not authenticated
@@ -77,7 +79,7 @@ const CollaborativeSession = () => {
       }
       leaveSession();
     };
-  }, [sessionId]);
+  }, [sessionId, socket]);
 
   useEffect(() => {
     setLoading(true);
@@ -202,9 +204,110 @@ const CollaborativeSession = () => {
     return null;
   };
 
+  // Socket event listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    // Join session
+    if (sessionId) {
+      socket.emit("join-session", {
+        sessionId: sessionId,
+        userId: user?.uid,
+        username: user?.displayName,
+        photoURL: user?.photoURL,
+      });
+    }
+
+    // Listen for session updates
+    socket.on("session-updated", (updatedSession) => {
+      console.log("Session updated:", updatedSession);
+      if (updatedSession.id === sessionId) {
+        joinSession(updatedSession);
+      }
+    });
+
+    // Listen for session ended
+    socket.on(
+      "session-ended",
+      ({
+        sessionId: endedSessionId,
+        endedBy,
+        endedAt,
+        participantsCleared,
+      }) => {
+        console.log(`Session ${endedSessionId} has been marked as completed`);
+
+        if (endedSessionId === sessionId) {
+          // Update session state if currentSession is available
+          if (currentSession) {
+            joinSession({
+              ...currentSession,
+              status: "ended",
+              endedAt: endedAt,
+              participants: [], // Clear participants in the frontend state
+            });
+          }
+
+          const endedByCurrentUser = endedBy === user?.uid;
+          const message = endedByCurrentUser
+            ? "You have successfully completed this session. Redirecting to sessions page..."
+            : "This session has been completed by the host. Redirecting to sessions page...";
+
+          setSessionEndedMessage(message);
+
+          // Redirect after a delay
+          setTimeout(() => {
+            navigate("/dashboard/sessions");
+          }, 3000);
+        }
+      }
+    );
+
+    // Listen for user joined
+    socket.on("user-joined", (userData) => {
+      console.log("User joined:", userData);
+      // Handle user joined logic here
+    });
+
+    // Listen for user left
+    socket.on("user-left", (userData) => {
+      console.log("User left:", userData);
+      // Handle user left logic here
+    });
+
+    // Listen for new notifications
+    socket.on("new-notification", (notification) => {
+      console.log("New notification:", notification);
+      // Handle notification logic here
+    });
+
+    return () => {
+      // Leave the session when unmounting
+      if (sessionId) {
+        socket.emit("leave-session", { sessionId: sessionId });
+      }
+
+      // Clean up event listeners
+      socket.off("session-updated");
+      socket.off("session-ended");
+      socket.off("user-joined");
+      socket.off("user-left");
+      socket.off("new-notification");
+    };
+  }, [socket, sessionId, user, currentSession, joinSession, navigate]);
+
   return (
     <>
       <CheckScheduledSession />
+      {sessionEndedMessage && (
+        <Toast
+          message={sessionEndedMessage}
+          type="success"
+          autoClose={true}
+          autoCloseTime={3000}
+          position="top-center"
+        />
+      )}
 
       {error ? (
         <div className="error-container">

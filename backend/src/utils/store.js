@@ -198,6 +198,23 @@ class SessionStore {
     });
     return this.sessionInfo.get(sessionId);
   }
+
+  /**
+   * Clear all participants from a session (used when a session is completed)
+   */
+  clearSessionParticipants(sessionId) {
+    if (this.activeSessions.has(sessionId)) {
+      // Get the count before clearing
+      const count = this.activeSessions.get(sessionId).size;
+
+      // Clear participants
+      this.activeSessions.set(sessionId, new Map());
+
+      console.log(`Cleared ${count} participants from session ${sessionId}`);
+      return true;
+    }
+    return false;
+  }
 }
 
 // Export a singleton instance

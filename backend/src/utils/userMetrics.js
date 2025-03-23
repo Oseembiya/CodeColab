@@ -308,6 +308,69 @@ const trackCollaboration = async (userId, collaboratorId, sessionId) => {
   }
 };
 
+/**
+ * Track completed session
+ * @param {string} userId - The user's ID
+ * @param {string} sessionId - The session ID
+ */
+const trackCompletedSession = async (userId, sessionId) => {
+  if (!userId || !sessionId) return;
+
+  try {
+    // Get the user metrics
+    const userMetricsRef = doc(db, "userMetrics", userId);
+    const metricsDoc = await getDoc(userMetricsRef);
+
+    if (!metricsDoc.exists()) {
+      // Create a new document with default values
+      await setDoc(userMetricsRef, {
+        totalSessions: 0,
+        hoursSpent: 0,
+        linesOfCode: 0,
+        collaborations: 0,
+        completedSessions: 1,
+        completedSessionIds: [sessionId],
+        lastSessionStart: null,
+        lastActive: new Date().toISOString(),
+      });
+    } else {
+      const data = metricsDoc.data();
+      const completedSessionIds = data.completedSessionIds || [];
+
+      // Only increment if this is a new completed session
+      if (!completedSessionIds.includes(sessionId)) {
+        await updateDoc(userMetricsRef, {
+          completedSessions: increment(1),
+          completedSessionIds: arrayUnion(sessionId),
+          lastActive: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Update cache if exists
+    if (metricsCache.has(userId)) {
+      const cached = metricsCache.get(userId);
+      const completedSessionIds = cached.completedSessionIds || [];
+      const isNewCompletedSession = !completedSessionIds.includes(sessionId);
+
+      if (isNewCompletedSession) {
+        completedSessionIds.push(sessionId);
+      }
+
+      metricsCache.set(userId, {
+        ...cached,
+        completedSessions: isNewCompletedSession
+          ? (cached.completedSessions || 0) + 1
+          : cached.completedSessions || 0,
+        completedSessionIds: completedSessionIds,
+        lastActive: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error("Error tracking completed session:", error);
+  }
+};
+
 // Export functions
 module.exports = {
   getUserMetrics,
@@ -315,4 +378,5 @@ module.exports = {
   updateUserActiveTime,
   incrementLinesOfCode,
   trackCollaboration,
+  trackCompletedSession,
 };

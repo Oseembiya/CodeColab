@@ -7,13 +7,20 @@ import {
   FaLock,
   FaLockOpen,
   FaChevronUp,
+  FaStop,
 } from "react-icons/fa";
 import AlertDialog from "../notifications/AlertDialog";
+import { useAuth } from "../../hooks/useAuth";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../firebaseConfig";
+import { SESSION_STATUS } from "../../config/constants";
 
 const SessionInfo = ({ session, onLeave, socket }) => {
   const [participantCount, setParticipantCount] = useState(0);
   const [isHidden, setIsHidden] = useState(true);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
+  const [showEndAlert, setShowEndAlert] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!socket || !session?.id) return;
@@ -58,15 +65,63 @@ const SessionInfo = ({ session, onLeave, socket }) => {
     setShowLeaveAlert(false);
   };
 
+  const handleEndSession = () => {
+    setShowEndAlert(true);
+  };
+
+  const handleConfirmEndSession = async () => {
+    setShowEndAlert(false);
+    try {
+      const sessionRef = doc(db, "sessions", session.id);
+      await updateDoc(sessionRef, {
+        status: SESSION_STATUS.ENDED,
+        endedAt: new Date().toISOString(),
+        completedBy: user.uid,
+        participants: [], // Clear participants list when session is completed
+      });
+
+      // Notify other participants the session has ended
+      if (socket) {
+        socket.emit("session-ended", {
+          sessionId: session.id,
+          userId: user.uid,
+        });
+      }
+
+      onLeave(); // Navigate away after ending
+    } catch (err) {
+      console.error("Error ending session:", err);
+    }
+  };
+
+  const handleCancelEndSession = () => {
+    setShowEndAlert(false);
+  };
+
+  // Check if current user is the session owner
+  const isOwner = user && session.owner === user.uid;
+
   return (
     <>
       <div className={`session-info ${isHidden ? "hidden" : ""}`}>
         <div className="session-info-header">
           <h2>{session.title}</h2>
           {session.isPrivate ? <FaLock /> : <FaLockOpen />}
-          <button className="leave-button" onClick={handleLeave}>
-            Leave
-          </button>
+          <div className="session-actions">
+            {isOwner ? (
+              <button
+                className="end-session-button"
+                onClick={handleEndSession}
+                title="Complete this session for all participants"
+              >
+                <FaStop /> Complete Session
+              </button>
+            ) : (
+              <button className="leave-button" onClick={handleLeave}>
+                Leave
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="session-meta">
@@ -108,6 +163,21 @@ const SessionInfo = ({ session, onLeave, socket }) => {
         isOpen={showLeaveAlert}
         onConfirm={handleConfirmLeave}
         onCancel={handleCancelLeave}
+        title="Leave Session"
+        message="Are you sure you want to leave this session? You can rejoin later if needed."
+        confirmText="Leave"
+        cancelText="Cancel"
+        sessionId={session?.id}
+      />
+
+      <AlertDialog
+        isOpen={showEndAlert}
+        onConfirm={handleConfirmEndSession}
+        onCancel={handleCancelEndSession}
+        title="Complete Session"
+        message="Are you sure you want to complete this session for all participants? This action cannot be undone."
+        confirmText="Complete Session"
+        cancelText="Cancel"
         sessionId={session?.id}
       />
     </>
@@ -125,6 +195,7 @@ SessionInfo.propTypes = {
     participants: PropTypes.array,
     isPrivate: PropTypes.bool,
     joinCode: PropTypes.string,
+    owner: PropTypes.string,
   }),
   onLeave: PropTypes.func.isRequired,
   socket: PropTypes.object.isRequired,
