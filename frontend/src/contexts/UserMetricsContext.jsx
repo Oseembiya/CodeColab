@@ -11,6 +11,7 @@ export function UserMetricsProvider({ children }) {
     totalSessions: 0,
     hoursSpent: 0,
     linesOfCode: 0,
+    collaborations: 0,
     lastSessionStart: null,
     lastActive: null,
   });
@@ -37,6 +38,7 @@ export function UserMetricsProvider({ children }) {
             totalSessions: data.totalSessions || 0,
             hoursSpent: parseFloat(data.hoursSpent || 0).toFixed(1),
             linesOfCode: data.linesOfCode || 0,
+            collaborations: data.collaborations || 0,
             lastSessionStart: data.lastSessionStart,
             lastActive: data.lastActive,
           });
@@ -46,6 +48,7 @@ export function UserMetricsProvider({ children }) {
             totalSessions: 0,
             hoursSpent: 0,
             linesOfCode: 0,
+            collaborations: 0,
             lastSessionStart: null,
             lastActive: null,
           });
@@ -71,6 +74,7 @@ export function UserMetricsProvider({ children }) {
             totalSessions: data.totalSessions || 0,
             hoursSpent: parseFloat(data.hoursSpent || 0).toFixed(1),
             linesOfCode: data.linesOfCode || 0,
+            collaborations: data.collaborations || 0,
             lastSessionStart: data.lastSessionStart,
             lastActive: data.lastActive,
           });

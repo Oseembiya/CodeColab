@@ -21,6 +21,7 @@ module.exports = (io, socket) => {
       username: username || "Anonymous",
       photoURL: photoURL || "/default-avatar.png",
       joinedAt: new Date().toISOString(),
+      userId: userId, // Add userId to data for collaboration tracking
     };
 
     // Add to session and get updated participants list
@@ -40,6 +41,26 @@ module.exports = (io, socket) => {
     // Track user metrics - increment session count
     if (userId) {
       userMetrics.incrementUserSession(userId, sessionId);
+
+      // Track collaborations with other users in the session
+      if (participants.length > 1) {
+        participants.forEach((participant) => {
+          // Skip self-collaboration
+          if (participant.userId && participant.userId !== userId) {
+            // Track collaboration in both directions
+            userMetrics.trackCollaboration(
+              userId,
+              participant.userId,
+              sessionId
+            );
+            userMetrics.trackCollaboration(
+              participant.userId,
+              userId,
+              sessionId
+            );
+          }
+        });
+      }
     }
 
     console.log(

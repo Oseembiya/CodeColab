@@ -69,7 +69,7 @@ const Profile = () => {
     totalSessions: metricsLoading ? "..." : metrics.totalSessions,
     hoursSpent: metricsLoading ? "..." : metrics.hoursSpent,
     linesOfCode: metricsLoading ? "..." : metrics.linesOfCode,
-    collaborations: 12, // Keep this one until we track it properly
+    collaborations: metricsLoading ? "..." : metrics.collaborations || 0,
   };
 
   const recentActivity = [

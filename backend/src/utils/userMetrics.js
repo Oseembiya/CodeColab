@@ -13,6 +13,7 @@ const {
   setDoc,
   updateDoc,
   increment,
+  arrayUnion,
 } = require("firebase/firestore");
 
 // Cache to prevent excessive DB reads
@@ -42,6 +43,8 @@ const getUserMetrics = async (userId) => {
         totalSessions: 0,
         hoursSpent: 0,
         linesOfCode: 0,
+        collaborations: 0,
+        collaboratedWith: [],
         lastSessionStart: null,
         lastActive: new Date().toISOString(),
       };
@@ -242,10 +245,74 @@ const incrementLinesOfCode = async (userId, lineCount = 1) => {
   }
 };
 
+/**
+ * Track a collaboration between users
+ * @param {string} userId - The user's ID
+ * @param {string} collaboratorId - The collaborator's ID
+ * @param {string} sessionId - The session ID
+ */
+const trackCollaboration = async (userId, collaboratorId, sessionId) => {
+  if (!userId || !collaboratorId || userId === collaboratorId) return;
+
+  try {
+    // Get the user metrics
+    const userMetricsRef = doc(db, "userMetrics", userId);
+    const metricsDoc = await getDoc(userMetricsRef);
+
+    if (!metricsDoc.exists()) {
+      // Create a new document with default values
+      await setDoc(userMetricsRef, {
+        totalSessions: 0,
+        hoursSpent: 0,
+        linesOfCode: 0,
+        collaborations: 1,
+        collaboratedWith: [collaboratorId],
+        lastSessionStart: null,
+        lastActive: new Date().toISOString(),
+      });
+    } else {
+      const data = metricsDoc.data();
+      const collaboratedWith = data.collaboratedWith || [];
+
+      // Only increment if this is a new collaborator
+      if (!collaboratedWith.includes(collaboratorId)) {
+        await updateDoc(userMetricsRef, {
+          collaborations: increment(1),
+          collaboratedWith: arrayUnion(collaboratorId),
+          lastActive: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Update cache if exists
+    if (metricsCache.has(userId)) {
+      const cached = metricsCache.get(userId);
+      const collaboratedWith = cached.collaboratedWith || [];
+      const isNewCollaborator = !collaboratedWith.includes(collaboratorId);
+
+      if (isNewCollaborator) {
+        collaboratedWith.push(collaboratorId);
+      }
+
+      metricsCache.set(userId, {
+        ...cached,
+        collaborations: isNewCollaborator
+          ? (cached.collaborations || 0) + 1
+          : cached.collaborations || 0,
+        collaboratedWith: collaboratedWith,
+        lastActive: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error("Error tracking collaboration:", error);
+  }
+};
+
 // Export functions
 module.exports = {
   getUserMetrics,
   incrementUserSession,
   updateUserActiveTime,
   incrementLinesOfCode,
+  trackCollaboration,
 };

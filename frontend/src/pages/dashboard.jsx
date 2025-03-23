@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaUsers,
@@ -13,6 +13,7 @@ import {
   FaPuzzlePiece,
   FaFileCode,
   FaClock,
+  FaHandshake,
 } from "react-icons/fa";
 import { db } from "../firebaseConfig";
 import {
@@ -173,6 +174,13 @@ const Dashboard = () => {
             </div>
             <h3>{metrics.linesOfCode}</h3>
             <p>Lines Written</p>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon">
+              <FaHandshake />
+            </div>
+            <h3>{metrics.collaborations || 0}</h3>
+            <p>Collaborations</p>
           </div>
         </div>
       </div>
