@@ -340,7 +340,11 @@ module.exports = (io, socket) => {
   };
 
   // Handle session ended event
-  const handleSessionEnded = ({ sessionId, userId }) => {
+  const handleSessionEnded = async ({
+    sessionId,
+    userId,
+    totalParticipants,
+  }) => {
     if (!sessionId) return;
 
     console.log(`Session ${sessionId} ended by user ${userId}`);
@@ -360,16 +364,25 @@ module.exports = (io, socket) => {
       }
     });
 
+    // If totalParticipants was calculated in the frontend and passed,
+    // use that value which includes historical participants.
+    // Otherwise we'll leave it to Firestore to count from userMetrics
+    const participantDetails =
+      totalParticipants !== undefined ? { totalParticipants } : {};
+
     // Clear all participants from the session in the backend store
     sessionStore.clearSessionParticipants(sessionId);
 
     // Broadcast the session ended event to all participants and observers
-    io.to(sessionId).to(`observe:${sessionId}`).emit("session-ended", {
-      sessionId,
-      endedBy: userId,
-      endedAt: new Date().toISOString(),
-      participantsCleared: true,
-    });
+    io.to(sessionId)
+      .to(`observe:${sessionId}`)
+      .emit("session-ended", {
+        sessionId,
+        endedBy: userId,
+        endedAt: new Date().toISOString(),
+        participantsCleared: true,
+        ...participantDetails,
+      });
   };
 
   // Register event handlers

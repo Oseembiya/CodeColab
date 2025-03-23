@@ -95,8 +95,9 @@ const SessionCard = ({ session, onJoin, view }) => {
       // For scheduled sessions, show "0/X" or special message
       return `0/${maxParticipants}`;
     } else if (session.status === "ended") {
-      // For ended sessions, show total participants who were in the session
-      const totalParticipants = session.participants?.length || 0;
+      // For ended sessions, use the new totalParticipants field if available
+      const totalParticipants =
+        session.totalParticipants || session.participants?.length || 0;
       return `${totalParticipants} Participated`;
     } else {
       // For active sessions, show actual count

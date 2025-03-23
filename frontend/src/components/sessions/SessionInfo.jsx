@@ -11,7 +11,14 @@ import {
 } from "react-icons/fa";
 import AlertDialog from "../notifications/AlertDialog";
 import { useAuth } from "../../hooks/useAuth";
-import { doc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { SESSION_STATUS } from "../../config/constants";
 
@@ -73,11 +80,48 @@ const SessionInfo = ({ session, onLeave, socket }) => {
     setShowEndAlert(false);
     try {
       const sessionRef = doc(db, "sessions", session.id);
+
+      // First, get the historical metrics for this session to count all participants
+      // who ever joined this session, even if they left before it ended
+      const userMetricsRef = collection(db, "userMetrics");
+      const metricsQuery = query(
+        userMetricsRef,
+        where("sessionsJoined", "array-contains", session.id)
+      );
+
+      let totalHistoricalParticipants = 0;
+      try {
+        const metricsSnapshot = await getDocs(metricsQuery);
+        // Count the unique users who joined this session based on metrics
+        const uniqueParticipantIds = new Set();
+
+        metricsSnapshot.forEach((doc) => {
+          uniqueParticipantIds.add(doc.id); // Add user ID to the set
+        });
+
+        totalHistoricalParticipants = uniqueParticipantIds.size;
+        console.log(
+          `Found ${totalHistoricalParticipants} historical participants for session ${session.id}`
+        );
+      } catch (metricsError) {
+        console.error("Error fetching historical participants:", metricsError);
+        // Fallback to current participants if metrics query fails
+        totalHistoricalParticipants = session.participants?.length || 0;
+      }
+
+      // Use the historical count, but ensure it's at least as large as current participants
+      const currentParticipants = session.participants?.length || 0;
+      const totalParticipants = Math.max(
+        totalHistoricalParticipants,
+        currentParticipants
+      );
+
       await updateDoc(sessionRef, {
         status: SESSION_STATUS.ENDED,
         endedAt: new Date().toISOString(),
         completedBy: user.uid,
-        participants: [], // Clear participants list when session is completed
+        totalParticipants: totalParticipants, // Store the total historical participant count
+        participants: [], // Clear active participants list when session is completed
       });
 
       // Notify other participants the session has ended
@@ -85,6 +129,7 @@ const SessionInfo = ({ session, onLeave, socket }) => {
         socket.emit("session-ended", {
           sessionId: session.id,
           userId: user.uid,
+          totalParticipants: totalParticipants,
         });
       }
 

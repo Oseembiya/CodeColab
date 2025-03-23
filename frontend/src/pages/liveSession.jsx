@@ -234,6 +234,7 @@ const CollaborativeSession = () => {
         endedBy,
         endedAt,
         participantsCleared,
+        totalParticipants,
       }) => {
         console.log(`Session ${endedSessionId} has been marked as completed`);
 
@@ -244,6 +245,8 @@ const CollaborativeSession = () => {
               ...currentSession,
               status: "ended",
               endedAt: endedAt,
+              totalParticipants:
+                totalParticipants || currentSession.participants?.length || 0,
               participants: [], // Clear participants in the frontend state
             });
           }
