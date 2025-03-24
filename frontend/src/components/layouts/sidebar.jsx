@@ -132,6 +132,7 @@ const Sidebar = memo(({ isOpen, onClose }) => {
             className={`menu-item ${
               location.pathname === "/dashboard" ? "active" : ""
             }`}
+            onClick={onClose}
           >
             <FaHome />
             <span>Dashboard</span>
@@ -142,6 +143,7 @@ const Sidebar = memo(({ isOpen, onClose }) => {
             className={`menu-item ${
               location.pathname === "/dashboard/editor" ? "active" : ""
             }`}
+            onClick={onClose}
           >
             <FaCode />
             <span>Solo Editor</span>
@@ -152,6 +154,7 @@ const Sidebar = memo(({ isOpen, onClose }) => {
             className={`menu-item ${
               location.pathname === "/dashboard/sessions" ? "active" : ""
             }`}
+            onClick={onClose}
           >
             <FaUsers />
             <span>Colab Sessions</span>
@@ -162,6 +165,7 @@ const Sidebar = memo(({ isOpen, onClose }) => {
             className={`menu-item ${
               location.pathname === "/dashboard/whiteboard" ? "active" : ""
             }`}
+            onClick={onClose}
           >
             <FaPencilAlt />
             <span>Whiteboard</span>

@@ -9,7 +9,8 @@
   left: 0;
   top: 0;
   z-index: var(--z-sidebar);
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease-in-out;
+  will-change: transform;
 }
 
 /* Logo Section */
@@ -69,7 +70,7 @@
   padding: var(--spacing-md);
   color: var(--text-color);
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
   border-radius: var(--radius-sm);
   margin: 0 var(--spacing-xs);
 }
@@ -79,8 +80,19 @@
 }
 
 .menu-item.active {
-  background-color: var(--hover-color);
-  color: var(--secondary-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-item.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background-color: var(--secondary-color);
+  transition: transform 0.2s ease;
 }
 
 .menu-item svg {
@@ -236,28 +248,35 @@
   cursor: pointer;
 }
 
+/* Ensure overlay has proper z-index and transition */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: calc(var(--z-sidebar) - 1);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  backdrop-filter: blur(2px);
+}
+
+.sidebar-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Improve mobile transitions */
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
   }
 
   .sidebar.sidebar-open {
     transform: translateX(0);
-  }
-
-  .sidebar-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: calc(var(--z-sidebar) - 1);
-    display: none;
-  }
-
-  .sidebar-overlay.show {
-    display: block;
   }
 
   .sidebar-close-btn {
@@ -272,22 +291,23 @@
   }
 }
 
-/* Tablet styles */
+/* Tablet styles with improved transitions */
 @media (max-width: 768px) and (min-width: 481px) {
   .sidebar {
-    width: 50vw; /* 50% of viewport width */
-    transform: translateX(-50vw);
+    width: 30vw;
+    transform: translateX(-100%);
   }
 
   .sidebar.sidebar-open {
     transform: translateX(0);
   }
 }
-/* Mobile styles */
+
+/* Mobile styles with improved transitions */
 @media (max-width: 480px) {
   .sidebar {
-    width: 100vw; /* Full viewport width */
-    transform: translateX(-100vw);
+    width: 100vw;
+    transform: translateX(-100%);
   }
 
   .sidebar.sidebar-open {
