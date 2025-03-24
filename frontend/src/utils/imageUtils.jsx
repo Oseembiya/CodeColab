@@ -32,9 +32,7 @@ try {
  * @returns {boolean} - Whether to use proxy
  */
 const shouldUseProxy = (url) => {
-  // Disable proxy in development to make debugging easier
-  if (import.meta.env.DEV) return false;
-
+  // Always use proxy for rate-limited domains, even in development
   if (!url) return false;
 
   // Check if it's a domain that might rate limit
@@ -193,14 +191,20 @@ export const getAvatarUrl = (url, size = 96) => {
   if (!url) return "/default-avatar.png";
 
   // For Google profile photos, ensure correct size
-  if (url.includes("googleusercontent.com")) {
-    // Parse size from existing URL or use provided size
-    const sizeMatch = url.match(/=s(\d+)(?:-c)?/);
-    const currentSize = sizeMatch ? parseInt(sizeMatch[1]) : null;
+  if (url.includes("googleusercontent.com") || url.includes("ggpht.com")) {
+    // Handle different Google URL formats
 
-    if (!currentSize || currentSize !== size) {
-      // Replace or add size parameter
-      return url.replace(/=s\d+(?:-c)?/, `=s${size}-c`) || `${url}=s${size}-c`;
+    // Format 1: URLs with size parameter (=s...)
+    const sizeMatch = url.match(/=s(\d+)(?:-c)?/);
+    if (sizeMatch) {
+      return url.replace(/=s\d+(-c)?/, `=s${size}-c`);
+    }
+
+    // Format 2: URLs without size parameter
+    if (url.includes("?")) {
+      return `${url}&s=${size}-c`;
+    } else {
+      return `${url}=s${size}-c`;
     }
   }
 
