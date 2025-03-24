@@ -19,6 +19,7 @@ export default defineConfig({
         secure: false,
       },
     },
+    cors: false, // Let the backend handle CORS
   },
   resolve: {
     alias: {

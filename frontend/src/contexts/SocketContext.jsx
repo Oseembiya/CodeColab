@@ -17,24 +17,26 @@ export function SocketProvider({ children }) {
     }
 
     try {
-      const newSocket = io(
-        import.meta.env.VITE_SOCKET_URL || "http://localhost:3000",
-        {
-          transports: ["websocket"],
-          reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          timeout: 20000,
-          auth: {
-            clientId,
-          },
-        }
-      );
+      const newSocket = io("/", {
+        transports: ["polling", "websocket"],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        timeout: 20000,
+        auth: {
+          clientId,
+        },
+      });
 
       newSocket.on("connect", () => {
         setConnectionStatus("connected");
         setSocket(newSocket);
         console.log("Connected with client ID:", clientId);
+        console.log("Transport used:", newSocket.io.engine.transport.name);
+      });
+
+      newSocket.io.engine.on("transportChange", (transport) => {
+        console.log("Transport changed to:", transport.name);
       });
 
       newSocket.on("connect_error", (err) => {
@@ -47,9 +49,9 @@ export function SocketProvider({ children }) {
         newSocket.observing = null;
       });
 
-      newSocket.on("reconnect_attempt", () => {
+      newSocket.on("reconnect_attempt", (attemptNumber) => {
         setConnectionStatus("reconnecting");
-        console.log("Attempting to reconnect...");
+        console.log(`Attempting to reconnect (attempt ${attemptNumber})...`);
       });
 
       newSocket.on("disconnect", (reason) => {
