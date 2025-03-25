@@ -583,3 +583,41 @@
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
+/* Remote cursors */
+.remote-cursor {
+  background-color: red; /* Will be overridden by inline styles */
+  width: 2px !important;
+  position: absolute;
+  height: 18px !important;
+  z-index: 10;
+  animation: cursorBlink 1s infinite;
+}
+
+/* Cursor label styling */
+[class^="remote-cursor-label-"] {
+  position: absolute;
+  display: inline-block !important;
+  white-space: nowrap !important;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translateY(-100%) translateY(-5px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+/* Animation for cursor blinking */
+@keyframes cursorBlink {
+  0%,
+  20% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  80%,
+  100% {
+    opacity: 1;
+  }
+}

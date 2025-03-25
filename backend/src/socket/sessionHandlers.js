@@ -250,6 +250,21 @@ module.exports = (io, socket) => {
     socket.to(sessionId).emit("typing-end", { userId });
   };
 
+  // Handle cursor position updates
+  const handleCursorPosition = ({ sessionId, userId, position, userName }) => {
+    // Broadcast cursor position to all other users in the session
+    socket.to(sessionId).emit("cursor-update", {
+      userId,
+      position,
+      userName,
+    });
+
+    // Update active time
+    if (userId) {
+      userMetrics.updateUserActiveTime(userId);
+    }
+  };
+
   // Handle leaving a session
   const handleLeaveSession = ({ sessionId, userId }) => {
     socket.leave(sessionId);
@@ -394,6 +409,7 @@ module.exports = (io, socket) => {
   socket.on("language-change", handleLanguageChange);
   socket.on("typing-start", handleTypingStart);
   socket.on("typing-end", handleTypingEnd);
+  socket.on("cursor-update", handleCursorPosition);
   socket.on("leave-session", handleLeaveSession);
   socket.on("user-left-session", handleUserLeftSession);
   socket.on("session-ended", handleSessionEnded);
