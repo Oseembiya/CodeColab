@@ -10,6 +10,12 @@ module.exports = (io, socket) => {
     socket.observingSessions = new Set();
   }
 
+  const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+  const WARNING_TIME = 5 * 60 * 1000; // 5 minute warning before end
+
+  // Add a timeout map to track session timers
+  const sessionTimeouts = new Map();
+
   // Handle joining a session
   const handleJoinSession = ({ sessionId, userId, username, photoURL }) => {
     socket.join(sessionId);
@@ -66,6 +72,25 @@ module.exports = (io, socket) => {
     console.log(
       `User ${username} joined session ${sessionId}. Total participants: ${participants.length}`
     );
+
+    // Set up the session timer
+    const timeoutId = setTimeout(() => {
+      // End the session after 30 minutes
+      endSession(sessionId);
+      io.to(sessionId).emit("session-ended", {
+        reason: "Session time limit (30 minutes) reached",
+      });
+    }, SESSION_DURATION);
+
+    // Store the timeout reference
+    sessionTimeouts.set(sessionId, timeoutId);
+
+    // Also set a warning timer
+    setTimeout(() => {
+      io.to(sessionId).emit("session-ending-soon", {
+        timeLeft: WARNING_TIME / 60000, // minutes left
+      });
+    }, SESSION_DURATION - WARNING_TIME);
   };
 
   // Handle session observation
@@ -398,6 +423,12 @@ module.exports = (io, socket) => {
         participantsCleared: true,
         ...participantDetails,
       });
+
+    // Clear the timeout if session is manually ended
+    if (sessionTimeouts.has(sessionId)) {
+      clearTimeout(sessionTimeouts.get(sessionId));
+      sessionTimeouts.delete(sessionId);
+    }
   };
 
   // Register event handlers
@@ -463,3 +494,13 @@ module.exports = (io, socket) => {
 
   return cleanup;
 };
+
+// Helper function to end the session
+function endSession(sessionId) {
+  // Implement session cleanup logic here
+  // This should do whatever your existing session end code does
+  sessionStore.removeSession(sessionId);
+
+  // Clean up timeout references
+  sessionTimeouts.delete(sessionId);
+}

@@ -16,6 +16,8 @@ import {
 } from "firebase/firestore";
 import { useSocket } from "../contexts/SocketContext";
 import { useAuth } from "../hooks/useAuth";
+import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const SessionContext = createContext(null);
 
@@ -23,6 +25,7 @@ export function SessionProvider({ children }) {
   const [currentSession, setCurrentSession] = useState(null);
   const { socket } = useSocket();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const getSessionData = async (sessionId) => {
     try {
@@ -186,6 +189,29 @@ export function SessionProvider({ children }) {
       setCurrentSession(null);
     }
   };
+
+  useEffect(() => {
+    if (socket) {
+      // Listen for session timeout warning
+      socket.on("session-ending-soon", ({ timeLeft }) => {
+        toast.warning(
+          `This session will end in ${timeLeft} minutes due to the 30-minute limit.`
+        );
+      });
+
+      // Listen for session timeout end
+      socket.on("session-ended", ({ reason }) => {
+        toast.info(reason);
+        // Navigate user back to dashboard or home
+        navigate("/dashboard");
+      });
+
+      return () => {
+        socket.off("session-ending-soon");
+        socket.off("session-ended");
+      };
+    }
+  }, [socket, navigate]);
 
   const value = {
     currentSession,
