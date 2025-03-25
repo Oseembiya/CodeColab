@@ -149,10 +149,6 @@ const CollaborativeEditor = ({ sessionId, userId }) => {
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
           }
         `;
-
-        console.log(
-          `Added cursor decoration for ${userName} at line ${position.lineNumber}, column ${position.column}`
-        );
       }
     });
   }, [remoteCursors, userId]);
@@ -235,10 +231,6 @@ const CollaborativeEditor = ({ sessionId, userId }) => {
       "cursor-update",
       ({ userId: remoteUserId, position, userName }) => {
         if (remoteUserId !== userId) {
-          console.log(
-            `Received cursor update from ${userName || remoteUserId}:`,
-            position
-          );
           setRemoteCursors((prev) => ({
             ...prev,
             [remoteUserId]: { position, userName },
