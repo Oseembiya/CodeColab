@@ -142,13 +142,13 @@ class SessionStore {
   /**
    * Video participants tracking
    */
-  addVideoParticipant(sessionId, peerId) {
+  addVideoParticipant(sessionId, peerId, userData = {}) {
     if (!this.videoParticipants.has(sessionId)) {
-      this.videoParticipants.set(sessionId, new Set());
+      this.videoParticipants.set(sessionId, new Map());
     }
     const participants = this.videoParticipants.get(sessionId);
-    participants.add(peerId);
-    return Array.from(participants);
+    participants.set(peerId, userData);
+    return Array.from(participants.keys());
   }
 
   removeVideoParticipant(sessionId, peerId) {
@@ -162,7 +162,16 @@ class SessionStore {
       return [];
     }
 
-    return Array.from(participants);
+    return Array.from(participants.keys());
+  }
+
+  /**
+   * Get video participant data
+   */
+  getVideoParticipantData(sessionId, peerId) {
+    if (!this.videoParticipants.has(sessionId)) return null;
+    const participants = this.videoParticipants.get(sessionId);
+    return participants.get(peerId) || null;
   }
 
   // Add this method to count active users

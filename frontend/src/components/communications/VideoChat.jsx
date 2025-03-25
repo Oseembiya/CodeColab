@@ -10,232 +10,235 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { useSocket } from "../../contexts/SocketContext";
+import { useAuth } from "../../hooks/useAuth";
 
 // Create a separate RemoteVideo component to prevent re-rendering during parent drags
-const RemoteVideo = memo(({ peerId, peerStream, isInitialSetup }) => {
-  const videoRef = useRef(null);
-  const intervalRef = useRef(null);
-  const sinkIdSetRef = useRef(false);
-  const setupCompletedRef = useRef(false); // Track if initial setup is complete
+const RemoteVideo = memo(
+  ({ peerId, peerStream, isInitialSetup, participantName }) => {
+    const videoRef = useRef(null);
+    const intervalRef = useRef(null);
+    const sinkIdSetRef = useRef(false);
+    const setupCompletedRef = useRef(false); // Track if initial setup is complete
 
-  // Set up the video element once
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video && peerStream) {
-      // Only log during initial setup
-      if (!setupCompletedRef.current && isInitialSetup) {
-        console.log(`Setting up video for peer ${peerId}:`);
-        console.log(`- Video tracks: ${peerStream.getVideoTracks().length}`);
-        console.log(`- Audio tracks: ${peerStream.getAudioTracks().length}`);
-      }
-
-      // Set the stream as source
-      video.srcObject = peerStream;
-      video.volume = 1.0;
-
-      // Ensure the video is not muted
-      video.muted = false;
-
-      // Ensure all tracks are enabled - only once
-      if (!setupCompletedRef.current) {
-        peerStream.getTracks().forEach((track) => {
-          if (!track.enabled) {
-            if (isInitialSetup) {
-              console.log(`Enabling ${track.kind} track that was disabled`);
-            }
-            track.enabled = true;
-          }
-        });
-      }
-
-      // Set sink ID only once
-      if (
-        !sinkIdSetRef.current &&
-        video.setSinkId &&
-        navigator.mediaDevices.enumerateDevices
-      ) {
-        sinkIdSetRef.current = true;
-        navigator.mediaDevices
-          .enumerateDevices()
-          .then((devices) => {
-            const audioOutputs = devices.filter(
-              (device) => device.kind === "audiooutput"
-            );
-            if (audioOutputs.length > 0) {
-              // Try the default device first
-              const defaultDevice = audioOutputs.find(
-                (device) => device.deviceId === "default"
-              );
-              const deviceId = defaultDevice
-                ? defaultDevice.deviceId
-                : audioOutputs[0].deviceId;
-              if (isInitialSetup) {
-                console.log("Setting audio output to:", deviceId);
-              }
-              return video.setSinkId(deviceId);
-            }
-          })
-          .catch((err) =>
-            console.error("Error setting audio output device:", err)
-          );
-      }
-
-      // Handle autoplay once
-      const handleCanPlay = () => {
-        // Only try to play if we haven't successfully played yet
-        if (!video.played.length) {
-          video
-            .play()
-            .then(() => {
-              if (isInitialSetup) console.log("Video playing successfully");
-            })
-            .catch((error) => {
-              console.error("Autoplay prevented:", error);
-
-              // Check if a play button already exists
-              if (!document.querySelector(`.play-button-${peerId}`)) {
-                const playButtonContainer = document.createElement("div");
-                playButtonContainer.className = `play-button-container play-button-${peerId}`;
-                playButtonContainer.style.position = "absolute";
-                playButtonContainer.style.top = "0";
-                playButtonContainer.style.left = "0";
-                playButtonContainer.style.width = "100%";
-                playButtonContainer.style.height = "100%";
-                playButtonContainer.style.display = "flex";
-                playButtonContainer.style.justifyContent = "center";
-                playButtonContainer.style.alignItems = "center";
-                playButtonContainer.style.background = "rgba(0,0,0,0.5)";
-                playButtonContainer.style.zIndex = "5";
-
-                const playButton = document.createElement("button");
-                playButton.textContent = "Click to Play";
-                playButton.className = "audio-play-button";
-                playButton.style.padding = "12px 24px";
-                playButton.style.fontSize = "16px";
-                playButton.style.cursor = "pointer";
-                playButton.style.background = "#4F46E5";
-                playButton.style.color = "white";
-                playButton.style.border = "none";
-                playButton.style.borderRadius = "4px";
-
-                playButton.onclick = () => {
-                  video
-                    .play()
-                    .then(() => {
-                      if (isInitialSetup)
-                        console.log("Video playing after user interaction");
-                      playButtonContainer.remove();
-                    })
-                    .catch((err) => {
-                      console.error("Still can't play after click:", err);
-                    });
-                };
-
-                playButtonContainer.appendChild(playButton);
-                video.parentNode.appendChild(playButtonContainer);
-              }
-            });
+    // Set up the video element once
+    useEffect(() => {
+      const video = videoRef.current;
+      if (video && peerStream) {
+        // Only log during initial setup
+        if (!setupCompletedRef.current && isInitialSetup) {
+          console.log(`Setting up video for peer ${peerId}:`);
+          console.log(`- Video tracks: ${peerStream.getVideoTracks().length}`);
+          console.log(`- Audio tracks: ${peerStream.getAudioTracks().length}`);
         }
-      };
 
-      // Add event listener only once
-      if (!setupCompletedRef.current) {
-        video.addEventListener("canplay", handleCanPlay);
-      }
+        // Set the stream as source
+        video.srcObject = peerStream;
+        video.volume = 1.0;
 
-      // Check if audio tracks exist, but only log during initial setup
-      if (!setupCompletedRef.current && isInitialSetup) {
-        const audioTracks = peerStream.getAudioTracks();
-        console.log(`Remote stream has ${audioTracks.length} audio tracks`);
-        if (audioTracks.length > 0) {
-          console.log("Audio track enabled:", audioTracks[0].enabled);
-        }
-      }
+        // Ensure the video is not muted
+        video.muted = false;
 
-      // Ensure audio is checked periodically (fixes Chrome issues)
-      // Only set up interval if it doesn't exist yet
-      if (!intervalRef.current) {
-        intervalRef.current = setInterval(() => {
-          if (video && !video.paused) {
-            // Check if we have audio tracks in the stream
-            const audioTracks = peerStream.getAudioTracks();
-            if (audioTracks.length > 0) {
-              // Only log and take action if there's an issue
-              if (!audioTracks[0].enabled) {
-                console.log("Re-enabling audio track");
-                audioTracks[0].enabled = true;
-              }
-
-              // Check if video is muted and unmute it if needed
-              if (video.muted) {
-                console.log("Unmuting remote video that was muted");
-                video.muted = false;
-              }
-            }
-          }
-        }, 10000); // Increased to 10 seconds to reduce logs even further
-      }
-
-      // Try initial play if not already played
-      if (!setupCompletedRef.current && video.readyState >= 2) {
-        // HAVE_CURRENT_DATA or higher
-        handleCanPlay();
-      }
-
-      // Mark setup as completed
-      setupCompletedRef.current = true;
-
-      // Clean up
-      return () => {
+        // Ensure all tracks are enabled - only once
         if (!setupCompletedRef.current) {
-          video.removeEventListener("canplay", handleCanPlay);
+          peerStream.getTracks().forEach((track) => {
+            if (!track.enabled) {
+              if (isInitialSetup) {
+                console.log(`Enabling ${track.kind} track that was disabled`);
+              }
+              track.enabled = true;
+            }
+          });
         }
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
+
+        // Set sink ID only once
+        if (
+          !sinkIdSetRef.current &&
+          video.setSinkId &&
+          navigator.mediaDevices.enumerateDevices
+        ) {
+          sinkIdSetRef.current = true;
+          navigator.mediaDevices
+            .enumerateDevices()
+            .then((devices) => {
+              const audioOutputs = devices.filter(
+                (device) => device.kind === "audiooutput"
+              );
+              if (audioOutputs.length > 0) {
+                // Try the default device first
+                const defaultDevice = audioOutputs.find(
+                  (device) => device.deviceId === "default"
+                );
+                const deviceId = defaultDevice
+                  ? defaultDevice.deviceId
+                  : audioOutputs[0].deviceId;
+                if (isInitialSetup) {
+                  console.log("Setting audio output to:", deviceId);
+                }
+                return video.setSinkId(deviceId);
+              }
+            })
+            .catch((err) =>
+              console.error("Error setting audio output device:", err)
+            );
         }
-      };
-    }
-  }, [peerId, peerStream, isInitialSetup]); // isInitialSetup only affects logging, not setup behavior
 
-  return (
-    <div className="video-container">
-      <video ref={videoRef} autoPlay playsInline />
-      <div className="video-label">Participant</div>
+        // Handle autoplay once
+        const handleCanPlay = () => {
+          // Only try to play if we haven't successfully played yet
+          if (!video.played.length) {
+            video
+              .play()
+              .then(() => {
+                if (isInitialSetup) console.log("Video playing successfully");
+              })
+              .catch((error) => {
+                console.error("Autoplay prevented:", error);
 
-      {/* Manual audio toggle button */}
-      <button
-        className="manual-audio-toggle"
-        onClick={() => {
-          const video = videoRef.current;
-          if (!video) return;
+                // Check if a play button already exists
+                if (!document.querySelector(`.play-button-${peerId}`)) {
+                  const playButtonContainer = document.createElement("div");
+                  playButtonContainer.className = `play-button-container play-button-${peerId}`;
+                  playButtonContainer.style.position = "absolute";
+                  playButtonContainer.style.top = "0";
+                  playButtonContainer.style.left = "0";
+                  playButtonContainer.style.width = "100%";
+                  playButtonContainer.style.height = "100%";
+                  playButtonContainer.style.display = "flex";
+                  playButtonContainer.style.justifyContent = "center";
+                  playButtonContainer.style.alignItems = "center";
+                  playButtonContainer.style.background = "rgba(0,0,0,0.5)";
+                  playButtonContainer.style.zIndex = "5";
 
-          // Toggle muted state
-          video.muted = !video.muted;
-          console.log(`Video ${video.muted ? "muted" : "unmuted"} manually`);
-        }}
-        style={{
-          position: "absolute",
-          bottom: "10px",
-          right: "10px",
-          background: "rgba(0,0,0,0.5)",
-          color: "white",
-          border: "none",
-          borderRadius: "50%",
-          width: "30px",
-          height: "30px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          zIndex: "5",
-        }}
-      >
-        <FaMicrophone />
-      </button>
-    </div>
-  );
-});
+                  const playButton = document.createElement("button");
+                  playButton.textContent = "Click to Play";
+                  playButton.className = "audio-play-button";
+                  playButton.style.padding = "12px 24px";
+                  playButton.style.fontSize = "16px";
+                  playButton.style.cursor = "pointer";
+                  playButton.style.background = "#4F46E5";
+                  playButton.style.color = "white";
+                  playButton.style.border = "none";
+                  playButton.style.borderRadius = "4px";
+
+                  playButton.onclick = () => {
+                    video
+                      .play()
+                      .then(() => {
+                        if (isInitialSetup)
+                          console.log("Video playing after user interaction");
+                        playButtonContainer.remove();
+                      })
+                      .catch((err) => {
+                        console.error("Still can't play after click:", err);
+                      });
+                  };
+
+                  playButtonContainer.appendChild(playButton);
+                  video.parentNode.appendChild(playButtonContainer);
+                }
+              });
+          }
+        };
+
+        // Add event listener only once
+        if (!setupCompletedRef.current) {
+          video.addEventListener("canplay", handleCanPlay);
+        }
+
+        // Check if audio tracks exist, but only log during initial setup
+        if (!setupCompletedRef.current && isInitialSetup) {
+          const audioTracks = peerStream.getAudioTracks();
+          console.log(`Remote stream has ${audioTracks.length} audio tracks`);
+          if (audioTracks.length > 0) {
+            console.log("Audio track enabled:", audioTracks[0].enabled);
+          }
+        }
+
+        // Ensure audio is checked periodically (fixes Chrome issues)
+        // Only set up interval if it doesn't exist yet
+        if (!intervalRef.current) {
+          intervalRef.current = setInterval(() => {
+            if (video && !video.paused) {
+              // Check if we have audio tracks in the stream
+              const audioTracks = peerStream.getAudioTracks();
+              if (audioTracks.length > 0) {
+                // Only log and take action if there's an issue
+                if (!audioTracks[0].enabled) {
+                  console.log("Re-enabling audio track");
+                  audioTracks[0].enabled = true;
+                }
+
+                // Check if video is muted and unmute it if needed
+                if (video.muted) {
+                  console.log("Unmuting remote video that was muted");
+                  video.muted = false;
+                }
+              }
+            }
+          }, 10000); // Increased to 10 seconds to reduce logs even further
+        }
+
+        // Try initial play if not already played
+        if (!setupCompletedRef.current && video.readyState >= 2) {
+          // HAVE_CURRENT_DATA or higher
+          handleCanPlay();
+        }
+
+        // Mark setup as completed
+        setupCompletedRef.current = true;
+
+        // Clean up
+        return () => {
+          if (!setupCompletedRef.current) {
+            video.removeEventListener("canplay", handleCanPlay);
+          }
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        };
+      }
+    }, [peerId, peerStream, isInitialSetup]); // isInitialSetup only affects logging, not setup behavior
+
+    return (
+      <div className="video-container">
+        <video ref={videoRef} autoPlay playsInline />
+        <div className="video-label">{participantName || "Participant"}</div>
+
+        {/* Manual audio toggle button */}
+        <button
+          className="manual-audio-toggle"
+          onClick={() => {
+            const video = videoRef.current;
+            if (!video) return;
+
+            // Toggle muted state
+            video.muted = !video.muted;
+            console.log(`Video ${video.muted ? "muted" : "unmuted"} manually`);
+          }}
+          style={{
+            position: "absolute",
+            bottom: "10px",
+            right: "10px",
+            background: "rgba(0,0,0,0.5)",
+            color: "white",
+            border: "none",
+            borderRadius: "50%",
+            width: "30px",
+            height: "30px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            zIndex: "5",
+          }}
+        >
+          <FaMicrophone />
+        </button>
+      </div>
+    );
+  }
+);
 
 // Add display name
 RemoteVideo.displayName = "RemoteVideo";
@@ -244,10 +247,12 @@ RemoteVideo.propTypes = {
   peerId: PropTypes.string.isRequired,
   peerStream: PropTypes.object.isRequired,
   isInitialSetup: PropTypes.bool.isRequired,
+  participantName: PropTypes.string,
 };
 
 const VideoChat = ({ sessionId, userId }) => {
   const { socket } = useSocket();
+  const { user } = useAuth();
   const [peers, setPeers] = useState(new Map());
   const [stream, setStream] = useState(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
@@ -354,10 +359,18 @@ const VideoChat = ({ sessionId, userId }) => {
         peer.on("open", (peerId) => {
           console.log("My peer ID is:", peerId);
           if (socket && !isUnmountingRef.current) {
+            // Get user's display name from auth context, localStorage, or generate a default
+            const userName =
+              user?.displayName ||
+              localStorage.getItem("userName") ||
+              sessionStorage.getItem("userName") ||
+              `User-${userId.substring(0, 6)}`;
+
             socket.emit("join-video", {
               sessionId,
               userId,
               peerId,
+              userName,
             });
           }
         });
@@ -371,7 +384,19 @@ const VideoChat = ({ sessionId, userId }) => {
           call.on("stream", (remoteStream) => {
             if (!isUnmountingRef.current) {
               console.log("Received remote stream from:", call.peer);
-              setPeers((prev) => new Map(prev).set(call.peer, remoteStream));
+
+              // Get peer ID parts to extract user info
+              const peerIdParts = call.peer.split("-");
+              const remoteUserId =
+                peerIdParts.length > 1 ? peerIdParts[1] : "unknown";
+
+              // Store with name information
+              setPeers((prev) =>
+                new Map(prev).set(call.peer, {
+                  stream: remoteStream,
+                  label: `User-${remoteUserId.substring(0, 6)}`,
+                })
+              );
             }
           });
 
@@ -393,8 +418,17 @@ const VideoChat = ({ sessionId, userId }) => {
     };
 
     // Define socket event handlers
-    const handleUserJoined = ({ peerId: newPeerId }) => {
-      console.log("New user joined with peer ID:", newPeerId);
+    const handleUserJoined = ({
+      peerId: newPeerId,
+      userId: remoteUserId,
+      name,
+    }) => {
+      console.log(
+        "New user joined with peer ID:",
+        newPeerId,
+        "and name:",
+        name
+      );
       if (
         peerRef.current &&
         newPeerId !== peerRef.current.id &&
@@ -456,7 +490,13 @@ const VideoChat = ({ sessionId, userId }) => {
               audioTracks[0].enabled = true;
             }
 
-            setPeers((prev) => new Map(prev).set(newPeerId, remoteStream));
+            // Store stream and user name together
+            setPeers((prev) =>
+              new Map(prev).set(newPeerId, {
+                stream: remoteStream,
+                label: name || `User-${remoteUserId.substring(0, 6)}`,
+              })
+            );
           }
         });
       }
@@ -479,6 +519,61 @@ const VideoChat = ({ sessionId, userId }) => {
       socket.on("user-joined", handleUserJoined);
       socket.on("user-left", handleUserLeft);
 
+      // Handle existing participants when joining a session
+      socket.on("existing-video-participants", ({ participants }) => {
+        console.log(
+          `Received ${participants.length} existing participants to connect with`
+        );
+
+        // Only proceed if we have our peer connection and stream ready
+        if (peerRef.current && streamRef.current && !isUnmountingRef.current) {
+          // Call each existing participant
+          participants.forEach(({ peerId, name, userId: remoteUserId }) => {
+            console.log(
+              `Calling existing participant: ${peerId}, name: ${name}`
+            );
+
+            const call = peerRef.current.call(peerId, streamRef.current);
+
+            // Set up call event handlers
+            call.on("error", (err) => {
+              console.error("Call error to existing participant:", err);
+            });
+
+            call.on("stream", (remoteStream) => {
+              console.log(
+                `Received stream from existing participant: ${peerId}`
+              );
+
+              // Check audio track status
+              const audioTracks = remoteStream.getAudioTracks();
+              console.log(
+                `Remote stream has ${audioTracks.length} audio tracks`
+              );
+
+              if (audioTracks.length > 0) {
+                console.log(
+                  "Audio track initial state:",
+                  audioTracks[0].enabled
+                );
+                // Ensure track is enabled
+                audioTracks[0].enabled = true;
+              }
+
+              // Add peer to the peers map with name information
+              if (!isUnmountingRef.current) {
+                setPeers((prev) =>
+                  new Map(prev).set(peerId, {
+                    stream: remoteStream,
+                    label: name || `User-${remoteUserId.substring(0, 6)}`,
+                  })
+                );
+              }
+            });
+          });
+        }
+      });
+
       // Then initialize peer and stream
       setupPeerAndSocket();
     }
@@ -492,6 +587,7 @@ const VideoChat = ({ sessionId, userId }) => {
       if (socket) {
         socket.off("user-joined", handleUserJoined);
         socket.off("user-left", handleUserLeft);
+        socket.off("existing-video-participants");
 
         // 2. Notify server we're leaving
         if (peerRef.current) {
@@ -652,7 +748,11 @@ const VideoChat = ({ sessionId, userId }) => {
 
   // Memoize the peers list to prevent unnecessary re-renders
   const memoizedPeers = useMemo(() => {
-    return Array.from(peers.entries());
+    return Array.from(peers.entries()).map(([peerId, peerData]) => [
+      peerId,
+      peerData.stream || peerData, // Handle both new format and legacy format
+      peerData.label,
+    ]);
   }, [peers]);
 
   return (
@@ -766,12 +866,13 @@ const VideoChat = ({ sessionId, userId }) => {
 
         {/* Remote videos - Using the memoized component */}
         <div className="remote-videos">
-          {memoizedPeers.map(([peerId, peerStream]) => (
+          {memoizedPeers.map(([peerId, peerStream, participantName]) => (
             <RemoteVideo
               key={peerId}
               peerId={peerId}
               peerStream={peerStream}
               isInitialSetup={!initialSetupDone && !isDragging}
+              participantName={participantName}
             />
           ))}
         </div>
