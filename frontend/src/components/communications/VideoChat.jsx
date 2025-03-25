@@ -270,7 +270,7 @@ const VideoChat = ({ sessionId, userId }) => {
   const dragRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const participantCount = peers.size || 0;
+  const participantCount = peers.size + 1; // Add 1 to include the local user
 
   // Add a reference for tracking dragging position to avoid state updates during drag
   const dragPositionRef = useRef({ x: 0, y: 0 });
