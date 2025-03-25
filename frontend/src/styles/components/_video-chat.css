@@ -1,7 +1,8 @@
 .video-chat-container {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  top: 0;
+  left: 0;
+  transform: translate(var(--x, 0px), var(--y, 0px));
   width: 330px;
   height: 400px;
   background: var(--background-color);
@@ -13,11 +14,15 @@
   flex-direction: column;
   overflow: hidden;
   resize: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), left 0.05s linear,
-    top 0.05s linear;
+  will-change: transform;
   transform-origin: bottom right;
-  will-change: transform, left, top;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 /* Collapsed state */
@@ -26,16 +31,18 @@
   height: 60px;
   border-radius: 50%;
   cursor: pointer;
-  transform: scale(1);
+  transform: translate(var(--x, 0px), var(--y, 0px)) scale(1);
   background: var(--secondary-color);
   border: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.05s linear,
-    top 0.05s linear, transform 0.2s ease;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease;
 }
 
 /* Hover effect for collapsed state */
 .video-chat-container.collapsed:hover {
-  transform: scale(1.1);
+  transform: translate(var(--x, 0px), var(--y, 0px)) scale(1.1);
   box-shadow: 0 0 20px rgba(var(--secondary-rgb), 0.3);
 }
 
@@ -173,17 +180,13 @@
   bottom: calc(350px + 20px);
 }
 
-/* Add smooth transition for dragging */
-.video-chat-container:not(.collapsed) {
-  transition: transform 0.05s ease;
-}
-
+/* Dragging state - remove transitions for smoother dragging */
 .video-chat-container.dragging {
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: grabbing !important;
+  /* No transition for transform while dragging */
 }
 
 /* Add pulsing animation for collapsed state */
@@ -290,14 +293,6 @@
 .video-chat-container.dragging .video-drag-handle {
   cursor: grabbing;
   background: rgba(var(--secondary-rgb), 0.2);
-}
-
-/* Hardware acceleration for smoother animations */
-.video-chat-container {
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  transform: translateZ(0);
-  perspective: 1000px;
 }
 
 /* Style new controls */

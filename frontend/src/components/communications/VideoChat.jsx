@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react";
 import Peer from "peerjs";
 import PropTypes from "prop-types";
 import {
@@ -10,6 +10,241 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { useSocket } from "../../contexts/SocketContext";
+
+// Create a separate RemoteVideo component to prevent re-rendering during parent drags
+const RemoteVideo = memo(({ peerId, peerStream, isInitialSetup }) => {
+  const videoRef = useRef(null);
+  const intervalRef = useRef(null);
+  const sinkIdSetRef = useRef(false);
+  const setupCompletedRef = useRef(false); // Track if initial setup is complete
+
+  // Set up the video element once
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && peerStream) {
+      // Only log during initial setup
+      if (!setupCompletedRef.current && isInitialSetup) {
+        console.log(`Setting up video for peer ${peerId}:`);
+        console.log(`- Video tracks: ${peerStream.getVideoTracks().length}`);
+        console.log(`- Audio tracks: ${peerStream.getAudioTracks().length}`);
+      }
+
+      // Set the stream as source
+      video.srcObject = peerStream;
+      video.volume = 1.0;
+
+      // Ensure the video is not muted
+      video.muted = false;
+
+      // Ensure all tracks are enabled - only once
+      if (!setupCompletedRef.current) {
+        peerStream.getTracks().forEach((track) => {
+          if (!track.enabled) {
+            if (isInitialSetup) {
+              console.log(`Enabling ${track.kind} track that was disabled`);
+            }
+            track.enabled = true;
+          }
+        });
+      }
+
+      // Set sink ID only once
+      if (
+        !sinkIdSetRef.current &&
+        video.setSinkId &&
+        navigator.mediaDevices.enumerateDevices
+      ) {
+        sinkIdSetRef.current = true;
+        navigator.mediaDevices
+          .enumerateDevices()
+          .then((devices) => {
+            const audioOutputs = devices.filter(
+              (device) => device.kind === "audiooutput"
+            );
+            if (audioOutputs.length > 0) {
+              // Try the default device first
+              const defaultDevice = audioOutputs.find(
+                (device) => device.deviceId === "default"
+              );
+              const deviceId = defaultDevice
+                ? defaultDevice.deviceId
+                : audioOutputs[0].deviceId;
+              if (isInitialSetup) {
+                console.log("Setting audio output to:", deviceId);
+              }
+              return video.setSinkId(deviceId);
+            }
+          })
+          .catch((err) =>
+            console.error("Error setting audio output device:", err)
+          );
+      }
+
+      // Handle autoplay once
+      const handleCanPlay = () => {
+        // Only try to play if we haven't successfully played yet
+        if (!video.played.length) {
+          video
+            .play()
+            .then(() => {
+              if (isInitialSetup) console.log("Video playing successfully");
+            })
+            .catch((error) => {
+              console.error("Autoplay prevented:", error);
+
+              // Check if a play button already exists
+              if (!document.querySelector(`.play-button-${peerId}`)) {
+                const playButtonContainer = document.createElement("div");
+                playButtonContainer.className = `play-button-container play-button-${peerId}`;
+                playButtonContainer.style.position = "absolute";
+                playButtonContainer.style.top = "0";
+                playButtonContainer.style.left = "0";
+                playButtonContainer.style.width = "100%";
+                playButtonContainer.style.height = "100%";
+                playButtonContainer.style.display = "flex";
+                playButtonContainer.style.justifyContent = "center";
+                playButtonContainer.style.alignItems = "center";
+                playButtonContainer.style.background = "rgba(0,0,0,0.5)";
+                playButtonContainer.style.zIndex = "5";
+
+                const playButton = document.createElement("button");
+                playButton.textContent = "Click to Play";
+                playButton.className = "audio-play-button";
+                playButton.style.padding = "12px 24px";
+                playButton.style.fontSize = "16px";
+                playButton.style.cursor = "pointer";
+                playButton.style.background = "#4F46E5";
+                playButton.style.color = "white";
+                playButton.style.border = "none";
+                playButton.style.borderRadius = "4px";
+
+                playButton.onclick = () => {
+                  video
+                    .play()
+                    .then(() => {
+                      if (isInitialSetup)
+                        console.log("Video playing after user interaction");
+                      playButtonContainer.remove();
+                    })
+                    .catch((err) => {
+                      console.error("Still can't play after click:", err);
+                    });
+                };
+
+                playButtonContainer.appendChild(playButton);
+                video.parentNode.appendChild(playButtonContainer);
+              }
+            });
+        }
+      };
+
+      // Add event listener only once
+      if (!setupCompletedRef.current) {
+        video.addEventListener("canplay", handleCanPlay);
+      }
+
+      // Check if audio tracks exist, but only log during initial setup
+      if (!setupCompletedRef.current && isInitialSetup) {
+        const audioTracks = peerStream.getAudioTracks();
+        console.log(`Remote stream has ${audioTracks.length} audio tracks`);
+        if (audioTracks.length > 0) {
+          console.log("Audio track enabled:", audioTracks[0].enabled);
+        }
+      }
+
+      // Ensure audio is checked periodically (fixes Chrome issues)
+      // Only set up interval if it doesn't exist yet
+      if (!intervalRef.current) {
+        intervalRef.current = setInterval(() => {
+          if (video && !video.paused) {
+            // Check if we have audio tracks in the stream
+            const audioTracks = peerStream.getAudioTracks();
+            if (audioTracks.length > 0) {
+              // Only log and take action if there's an issue
+              if (!audioTracks[0].enabled) {
+                console.log("Re-enabling audio track");
+                audioTracks[0].enabled = true;
+              }
+
+              // Check if video is muted and unmute it if needed
+              if (video.muted) {
+                console.log("Unmuting remote video that was muted");
+                video.muted = false;
+              }
+            }
+          }
+        }, 10000); // Increased to 10 seconds to reduce logs even further
+      }
+
+      // Try initial play if not already played
+      if (!setupCompletedRef.current && video.readyState >= 2) {
+        // HAVE_CURRENT_DATA or higher
+        handleCanPlay();
+      }
+
+      // Mark setup as completed
+      setupCompletedRef.current = true;
+
+      // Clean up
+      return () => {
+        if (!setupCompletedRef.current) {
+          video.removeEventListener("canplay", handleCanPlay);
+        }
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+    }
+  }, [peerId, peerStream, isInitialSetup]); // isInitialSetup only affects logging, not setup behavior
+
+  return (
+    <div className="video-container">
+      <video ref={videoRef} autoPlay playsInline />
+      <div className="video-label">Participant</div>
+
+      {/* Manual audio toggle button */}
+      <button
+        className="manual-audio-toggle"
+        onClick={() => {
+          const video = videoRef.current;
+          if (!video) return;
+
+          // Toggle muted state
+          video.muted = !video.muted;
+          console.log(`Video ${video.muted ? "muted" : "unmuted"} manually`);
+        }}
+        style={{
+          position: "absolute",
+          bottom: "10px",
+          right: "10px",
+          background: "rgba(0,0,0,0.5)",
+          color: "white",
+          border: "none",
+          borderRadius: "50%",
+          width: "30px",
+          height: "30px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          zIndex: "5",
+        }}
+      >
+        <FaMicrophone />
+      </button>
+    </div>
+  );
+});
+
+// Add display name
+RemoteVideo.displayName = "RemoteVideo";
+
+RemoteVideo.propTypes = {
+  peerId: PropTypes.string.isRequired,
+  peerStream: PropTypes.object.isRequired,
+  isInitialSetup: PropTypes.bool.isRequired,
+};
 
 const VideoChat = ({ sessionId, userId }) => {
   const { socket } = useSocket();
@@ -30,7 +265,21 @@ const VideoChat = ({ sessionId, userId }) => {
   const dragRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const participantCount = peers?.length || 0;
+  const participantCount = peers.size || 0;
+
+  // Add a reference for tracking dragging position to avoid state updates during drag
+  const dragPositionRef = useRef({ x: 0, y: 0 });
+  // Add a reference for tracking if we're currently dragging
+  const isDraggingRef = useRef(false);
+  // Reference for animation frame
+  const animFrameRef = useRef(null);
+
+  // Replace the isDragging related prop with an initialSetup flag
+  const [initialSetupDone, setInitialSetupDone] = useState(false);
+  useEffect(() => {
+    // After initial mounting, mark initial setup as done to prevent future logging
+    setInitialSetupDone(true);
+  }, []);
 
   useEffect(() => {
     isUnmountingRef.current = false;
@@ -321,6 +570,7 @@ const VideoChat = ({ sessionId, userId }) => {
     if (e.target.closest(".video-controls")) return;
 
     setIsDragging(true);
+    isDraggingRef.current = true;
     dragStartRef.current = {
       x: e.clientX - position.x,
       y: e.clientY - position.y,
@@ -329,40 +579,59 @@ const VideoChat = ({ sessionId, userId }) => {
 
   const handleMouseMove = useCallback(
     (e) => {
-      if (!isDragging) return;
+      if (!isDragging && !isDraggingRef.current) return;
 
-      const newX = e.clientX - dragStartRef.current.x;
-      const newY = e.clientY - dragStartRef.current.y;
+      // Store position in ref to avoid state updates during drag
+      dragPositionRef.current = {
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y,
+      };
 
-      // Get window dimensions and container dimensions
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
-      const containerWidth = dragRef.current.offsetWidth;
-      const containerHeight = dragRef.current.offsetHeight;
+      // Cancel any existing animation frame
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
 
-      // Keep video within window bounds
-      const boundedX = Math.min(
-        Math.max(0, newX),
-        windowWidth - containerWidth
-      );
-      const boundedY = Math.min(
-        Math.max(0, newY),
-        windowHeight - containerHeight
-      );
+      // Schedule position update on next animation frame
+      animFrameRef.current = requestAnimationFrame(() => {
+        if (!dragRef.current) return;
 
-      setPosition({ x: boundedX, y: boundedY });
+        // Get cached dimensions for better performance
+        const containerWidth = dragRef.current.offsetWidth;
+        const containerHeight = dragRef.current.offsetHeight;
+
+        // Calculate bounded position
+        const boundedX = Math.min(
+          Math.max(0, dragPositionRef.current.x),
+          window.innerWidth - containerWidth
+        );
+        const boundedY = Math.min(
+          Math.max(0, dragPositionRef.current.y),
+          window.innerHeight - containerHeight
+        );
+
+        // Update position state only when animation frame runs
+        setPosition({ x: boundedX, y: boundedY });
+      });
     },
     [isDragging]
   );
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    isDraggingRef.current = false;
+
+    // Cancel any pending animation frames
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
   };
 
   // Add event listeners for dragging
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mousemove", handleMouseMove, { passive: true });
       window.addEventListener("mouseup", handleMouseUp);
     }
 
@@ -372,15 +641,31 @@ const VideoChat = ({ sessionId, userId }) => {
     };
   }, [isDragging, handleMouseMove]);
 
+  // Clean up animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, []);
+
+  // Memoize the peers list to prevent unnecessary re-renders
+  const memoizedPeers = useMemo(() => {
+    return Array.from(peers.entries());
+  }, [peers]);
+
   return (
     <div
-      className={`video-chat-container ${isCollapsed ? "collapsed" : ""}`}
+      className={`video-chat-container ${isCollapsed ? "collapsed" : ""} ${
+        isDragging ? "dragging" : ""
+      }`}
       data-count={participantCount}
       onClick={() => isCollapsed && setIsCollapsed(false)}
       ref={dragRef}
       style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
+        "--x": `${position.x}px`,
+        "--y": `${position.y}px`,
         cursor: isDragging ? "grabbing" : "grab",
       }}
       onMouseDown={handleMouseDown}
@@ -479,101 +764,15 @@ const VideoChat = ({ sessionId, userId }) => {
           <div className="video-label">You</div>
         </div>
 
-        {/* Remote videos */}
+        {/* Remote videos - Using the memoized component */}
         <div className="remote-videos">
-          {Array.from(peers.entries()).map(([peerId, peerStream]) => (
-            <div key={peerId} className="video-container">
-              <video
-                ref={(video) => {
-                  if (video) {
-                    video.srcObject = peerStream;
-                    video.volume = 1.0; // Ensure volume is up
-
-                    // Force audio output device to default (may help in some browsers)
-                    if (
-                      video.setSinkId &&
-                      navigator.mediaDevices.enumerateDevices
-                    ) {
-                      navigator.mediaDevices
-                        .enumerateDevices()
-                        .then((devices) => {
-                          const audioOutputs = devices.filter(
-                            (device) => device.kind === "audiooutput"
-                          );
-                          if (audioOutputs.length > 0) {
-                            // Try the default device first
-                            const defaultDevice = audioOutputs.find(
-                              (device) =>
-                                device.deviceId === "default" ||
-                                device.label.toLowerCase().includes("default")
-                            );
-                            const deviceId = defaultDevice
-                              ? defaultDevice.deviceId
-                              : audioOutputs[0].deviceId;
-                            console.log("Setting audio output to:", deviceId);
-                            return video.setSinkId(deviceId);
-                          }
-                        })
-                        .catch((err) =>
-                          console.error(
-                            "Error setting audio output device:",
-                            err
-                          )
-                        );
-                    }
-
-                    // Handle autoplay restrictions
-                    video.oncanplay = () => {
-                      const playPromise = video.play();
-                      if (playPromise !== undefined) {
-                        playPromise.catch((error) => {
-                          console.error("Autoplay prevented:", error);
-                          // Create a play button when autoplay fails
-                          const playButton = document.createElement("button");
-                          playButton.textContent = "Play Audio";
-                          playButton.className = "audio-play-button";
-                          playButton.onclick = () => {
-                            video.play();
-                            playButton.remove();
-                          };
-                          video.parentNode.appendChild(playButton);
-                        });
-                      }
-                    };
-
-                    // Ensure audio is unmuted periodically (fixes Chrome issues)
-                    const ensureAudio = setInterval(() => {
-                      if (video && !video.paused) {
-                        // Check if we have audio tracks
-                        const audioTracks = peerStream.getAudioTracks();
-                        if (audioTracks.length > 0 && !audioTracks[0].enabled) {
-                          console.log("Re-enabling audio track");
-                          audioTracks[0].enabled = true;
-                        }
-                      }
-                    }, 2000);
-
-                    // Clean up interval when video is removed
-                    video.onremove = () => clearInterval(ensureAudio);
-
-                    // Log if audio tracks exist
-                    const audioTracks = peerStream.getAudioTracks();
-                    console.log(
-                      `Remote stream has ${audioTracks.length} audio tracks`
-                    );
-                    if (audioTracks.length > 0) {
-                      console.log(
-                        "Audio track enabled:",
-                        audioTracks[0].enabled
-                      );
-                    }
-                  }
-                }}
-                autoPlay
-                playsInline
-              />
-              <div className="video-label">Participant</div>
-            </div>
+          {memoizedPeers.map(([peerId, peerStream]) => (
+            <RemoteVideo
+              key={peerId}
+              peerId={peerId}
+              peerStream={peerStream}
+              isInitialSetup={!initialSetupDone && !isDragging}
+            />
           ))}
         </div>
       </div>
