@@ -8,7 +8,6 @@ import { DropdownProvider } from "./contexts/DropdownContext";
 import { UserMetricsProvider } from "./contexts/UserMetricsContext";
 import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
-import { initializeTheme } from "./config/theme";
 import routeConfig from "./config/routes";
 import { NotificationProvider } from "./contexts/NotificationContext";
 
@@ -77,11 +76,6 @@ const generateRoutes = (routes) => {
 };
 
 const App = () => {
-  // Initialize theme
-  useEffect(() => {
-    initializeTheme();
-  }, []);
-
   return (
     <ErrorBoundary>
       <AuthProvider>

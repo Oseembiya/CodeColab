@@ -148,12 +148,18 @@ const BaseEditor = ({
     (e) => {
       if (!isDragging) return;
 
-      const deltaY = dragStartY.current - e.clientY;
-      const newHeight = Math.max(
-        100,
-        Math.min(800, initialHeight.current + deltaY)
-      );
-      setOutputHeight(newHeight);
+      // Use requestAnimationFrame to avoid forced reflow
+      requestAnimationFrame(() => {
+        // Read layout once
+        const deltaY = dragStartY.current - e.clientY;
+        const newHeight = Math.max(
+          100,
+          Math.min(800, initialHeight.current + deltaY)
+        );
+
+        // Write layout once
+        setOutputHeight(newHeight);
+      });
     },
     [isDragging]
   );

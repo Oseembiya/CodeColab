@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import Peer from "peerjs";
 import PropTypes from "prop-types";
 import {
@@ -11,244 +11,7 @@ import {
 } from "react-icons/fa";
 import { useSocket } from "../../contexts/SocketContext";
 import { useAuth } from "../../hooks/useAuth";
-
-// Create a separate RemoteVideo component to prevent re-rendering during parent drags
-const RemoteVideo = memo(
-  ({ peerId, peerStream, isInitialSetup, participantName }) => {
-    const videoRef = useRef(null);
-    const intervalRef = useRef(null);
-    const sinkIdSetRef = useRef(false);
-    const setupCompletedRef = useRef(false); // Track if initial setup is complete
-
-    // Set up the video element once
-    useEffect(() => {
-      const video = videoRef.current;
-      if (video && peerStream) {
-        // Only log during initial setup
-        if (!setupCompletedRef.current && isInitialSetup) {
-          console.log(`Setting up video for peer ${peerId}:`);
-          console.log(`- Video tracks: ${peerStream.getVideoTracks().length}`);
-          console.log(`- Audio tracks: ${peerStream.getAudioTracks().length}`);
-        }
-
-        // Set the stream as source
-        video.srcObject = peerStream;
-        video.volume = 1.0;
-
-        // Ensure the video is not muted
-        video.muted = false;
-
-        // Ensure all tracks are enabled - only once
-        if (!setupCompletedRef.current) {
-          peerStream.getTracks().forEach((track) => {
-            if (!track.enabled) {
-              if (isInitialSetup) {
-                console.log(`Enabling ${track.kind} track that was disabled`);
-              }
-              track.enabled = true;
-            }
-          });
-        }
-
-        // Set sink ID only once
-        if (
-          !sinkIdSetRef.current &&
-          video.setSinkId &&
-          navigator.mediaDevices.enumerateDevices
-        ) {
-          sinkIdSetRef.current = true;
-          navigator.mediaDevices
-            .enumerateDevices()
-            .then((devices) => {
-              const audioOutputs = devices.filter(
-                (device) => device.kind === "audiooutput"
-              );
-              if (audioOutputs.length > 0) {
-                // Try the default device first
-                const defaultDevice = audioOutputs.find(
-                  (device) => device.deviceId === "default"
-                );
-                const deviceId = defaultDevice
-                  ? defaultDevice.deviceId
-                  : audioOutputs[0].deviceId;
-                if (isInitialSetup) {
-                  console.log("Setting audio output to:", deviceId);
-                }
-                return video.setSinkId(deviceId);
-              }
-            })
-            .catch((err) =>
-              console.error("Error setting audio output device:", err)
-            );
-        }
-
-        // Handle autoplay once
-        const handleCanPlay = () => {
-          // Only try to play if we haven't successfully played yet
-          if (!video.played.length) {
-            video
-              .play()
-              .then(() => {
-                if (isInitialSetup) console.log("Video playing successfully");
-              })
-              .catch((error) => {
-                console.error("Autoplay prevented:", error);
-
-                // Check if a play button already exists
-                if (!document.querySelector(`.play-button-${peerId}`)) {
-                  const playButtonContainer = document.createElement("div");
-                  playButtonContainer.className = `play-button-container play-button-${peerId}`;
-                  playButtonContainer.style.position = "absolute";
-                  playButtonContainer.style.top = "0";
-                  playButtonContainer.style.left = "0";
-                  playButtonContainer.style.width = "100%";
-                  playButtonContainer.style.height = "100%";
-                  playButtonContainer.style.display = "flex";
-                  playButtonContainer.style.justifyContent = "center";
-                  playButtonContainer.style.alignItems = "center";
-                  playButtonContainer.style.background = "rgba(0,0,0,0.5)";
-                  playButtonContainer.style.zIndex = "5";
-
-                  const playButton = document.createElement("button");
-                  playButton.textContent = "Click to Play";
-                  playButton.className = "audio-play-button";
-                  playButton.style.padding = "12px 24px";
-                  playButton.style.fontSize = "16px";
-                  playButton.style.cursor = "pointer";
-                  playButton.style.background = "#4F46E5";
-                  playButton.style.color = "white";
-                  playButton.style.border = "none";
-                  playButton.style.borderRadius = "4px";
-
-                  playButton.onclick = () => {
-                    video
-                      .play()
-                      .then(() => {
-                        if (isInitialSetup)
-                          console.log("Video playing after user interaction");
-                        playButtonContainer.remove();
-                      })
-                      .catch((err) => {
-                        console.error("Still can't play after click:", err);
-                      });
-                  };
-
-                  playButtonContainer.appendChild(playButton);
-                  video.parentNode.appendChild(playButtonContainer);
-                }
-              });
-          }
-        };
-
-        // Add event listener only once
-        if (!setupCompletedRef.current) {
-          video.addEventListener("canplay", handleCanPlay);
-        }
-
-        // Check if audio tracks exist, but only log during initial setup
-        if (!setupCompletedRef.current && isInitialSetup) {
-          const audioTracks = peerStream.getAudioTracks();
-          console.log(`Remote stream has ${audioTracks.length} audio tracks`);
-          if (audioTracks.length > 0) {
-            console.log("Audio track enabled:", audioTracks[0].enabled);
-          }
-        }
-
-        // Ensure audio is checked periodically (fixes Chrome issues)
-        // Only set up interval if it doesn't exist yet
-        if (!intervalRef.current) {
-          intervalRef.current = setInterval(() => {
-            if (video && !video.paused) {
-              // Check if we have audio tracks in the stream
-              const audioTracks = peerStream.getAudioTracks();
-              if (audioTracks.length > 0) {
-                // Only log and take action if there's an issue
-                if (!audioTracks[0].enabled) {
-                  console.log("Re-enabling audio track");
-                  audioTracks[0].enabled = true;
-                }
-
-                // Check if video is muted and unmute it if needed
-                if (video.muted) {
-                  console.log("Unmuting remote video that was muted");
-                  video.muted = false;
-                }
-              }
-            }
-          }, 10000); // Increased to 10 seconds to reduce logs even further
-        }
-
-        // Try initial play if not already played
-        if (!setupCompletedRef.current && video.readyState >= 2) {
-          // HAVE_CURRENT_DATA or higher
-          handleCanPlay();
-        }
-
-        // Mark setup as completed
-        setupCompletedRef.current = true;
-
-        // Clean up
-        return () => {
-          if (!setupCompletedRef.current) {
-            video.removeEventListener("canplay", handleCanPlay);
-          }
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-        };
-      }
-    }, [peerId, peerStream, isInitialSetup]); // isInitialSetup only affects logging, not setup behavior
-
-    return (
-      <div className="video-container">
-        <video ref={videoRef} autoPlay playsInline />
-        <div className="video-label">{participantName || "Participant"}</div>
-
-        {/* Manual audio toggle button */}
-        <button
-          className="manual-audio-toggle"
-          onClick={() => {
-            const video = videoRef.current;
-            if (!video) return;
-
-            // Toggle muted state
-            video.muted = !video.muted;
-            console.log(`Video ${video.muted ? "muted" : "unmuted"} manually`);
-          }}
-          style={{
-            position: "absolute",
-            bottom: "10px",
-            right: "10px",
-            background: "rgba(0,0,0,0.5)",
-            color: "white",
-            border: "none",
-            borderRadius: "50%",
-            width: "30px",
-            height: "30px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            zIndex: "5",
-          }}
-        >
-          <FaMicrophone />
-        </button>
-      </div>
-    );
-  }
-);
-
-// Add display name
-RemoteVideo.displayName = "RemoteVideo";
-
-RemoteVideo.propTypes = {
-  peerId: PropTypes.string.isRequired,
-  peerStream: PropTypes.object.isRequired,
-  isInitialSetup: PropTypes.bool.isRequired,
-  participantName: PropTypes.string,
-};
+import RemoteVideo from "./RemoteVideo";
 
 const VideoChat = ({ sessionId, userId }) => {
   const { socket } = useSocket();
@@ -272,19 +35,36 @@ const VideoChat = ({ sessionId, userId }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const participantCount = peers.size + 1; // Add 1 to include the local user
 
-  // Add a reference for tracking dragging position to avoid state updates during drag
+  // Refs for dragging
   const dragPositionRef = useRef({ x: 0, y: 0 });
-  // Add a reference for tracking if we're currently dragging
   const isDraggingRef = useRef(false);
-  // Reference for animation frame
   const animFrameRef = useRef(null);
-
-  // Replace the isDragging related prop with an initialSetup flag
   const [initialSetupDone, setInitialSetupDone] = useState(false);
+
   useEffect(() => {
-    // After initial mounting, mark initial setup as done to prevent future logging
     setInitialSetupDone(true);
   }, []);
+
+  // Helper function to add peer to state
+  const addPeerToState = (peerId, stream, userName) => {
+    if (isUnmountingRef.current) return;
+    setPeers((prev) =>
+      new Map(prev).set(peerId, {
+        stream,
+        label: userName || `User-${peerId.substring(0, 6)}`,
+      })
+    );
+  };
+
+  // Helper function to remove peer from state
+  const removePeerFromState = (peerId) => {
+    if (isUnmountingRef.current) return;
+    setPeers((prev) => {
+      const newPeers = new Map(prev);
+      newPeers.delete(peerId);
+      return newPeers;
+    });
+  };
 
   useEffect(() => {
     isUnmountingRef.current = false;
@@ -306,15 +86,6 @@ const VideoChat = ({ sessionId, userId }) => {
           },
         });
 
-        // Debug info for audio tracks
-        const audioTracks = mediaStream.getAudioTracks();
-        if (audioTracks.length > 0) {
-          console.log("Local audio track created:", audioTracks[0].label);
-          console.log("Audio settings:", audioTracks[0].getSettings());
-        } else {
-          console.warn("No audio track found in local stream");
-        }
-
         streamRef.current = mediaStream;
         setStream(mediaStream);
 
@@ -323,6 +94,7 @@ const VideoChat = ({ sessionId, userId }) => {
           host: import.meta.env.VITE_PEER_HOST || "localhost",
           port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
           path: "/myapp",
+          debug: 1, // Reduced debug level
           config: {
             iceServers: [
               { urls: "stun:stun.l.google.com:19302" },
@@ -330,36 +102,56 @@ const VideoChat = ({ sessionId, userId }) => {
               { urls: "stun:stun2.l.google.com:19302" },
             ],
             sdpTransform: (sdp) => {
-              // Prefer Opus codec for better audio quality
               return sdp.replace(
                 "useinbandfec=1",
                 "useinbandfec=1; stereo=1; maxaveragebitrate=512000"
               );
             },
           },
+          pingInterval: 5000,
+          retryAttempts: 5,
+          iceTransportPolicy: "all",
         });
 
         peerRef.current = peer;
 
-        // Add connection state debugging
+        // Error handling
         peer.on("error", (err) => {
-          console.error("Peer connection error:", err.type, err);
+          console.error("Peer error:", err.type);
           setError(`Peer error: ${err.type}`);
+
+          if (err.type === "network" || err.type === "disconnected") {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (!isUnmountingRef.current && peerRef.current) {
+                if (peerRef.current.disconnected) {
+                  peerRef.current.reconnect();
+                }
+              }
+            }, 3000);
+          }
         });
 
         peer.on("disconnected", () => {
-          console.log("Peer disconnected");
+          if (!isUnmountingRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (peerRef.current && !isUnmountingRef.current) {
+                if (peerRef.current.disconnected) {
+                  peerRef.current.reconnect();
+                }
+              }
+            }, 2000);
+          }
         });
 
         peer.on("close", () => {
-          console.log("Peer connection closed");
+          console.error("Peer connection closed");
         });
 
-        // Set up peer event handlers
+        // Connect to server when peer is ready
         peer.on("open", (peerId) => {
-          console.log("My peer ID is:", peerId);
           if (socket && !isUnmountingRef.current) {
-            // Get user's display name from auth context, localStorage, or generate a default
             const userName =
               user?.displayName ||
               localStorage.getItem("userName") ||
@@ -375,40 +167,26 @@ const VideoChat = ({ sessionId, userId }) => {
           }
         });
 
+        // Handle incoming calls
         peer.on("call", (call) => {
-          console.log("Receiving call from:", call.peer);
           if (streamRef.current) {
             call.answer(streamRef.current);
           }
 
           call.on("stream", (remoteStream) => {
-            if (!isUnmountingRef.current) {
-              console.log("Received remote stream from:", call.peer);
+            const peerIdParts = call.peer.split("-");
+            const remoteUserId =
+              peerIdParts.length > 1 ? peerIdParts[1] : "unknown";
 
-              // Get peer ID parts to extract user info
-              const peerIdParts = call.peer.split("-");
-              const remoteUserId =
-                peerIdParts.length > 1 ? peerIdParts[1] : "unknown";
-
-              // Store with name information
-              setPeers((prev) =>
-                new Map(prev).set(call.peer, {
-                  stream: remoteStream,
-                  label: `User-${remoteUserId.substring(0, 6)}`,
-                })
-              );
-            }
+            addPeerToState(
+              call.peer,
+              remoteStream,
+              `User-${remoteUserId.substring(0, 6)}`
+            );
           });
 
           call.on("close", () => {
-            if (!isUnmountingRef.current) {
-              console.log("Call closed with:", call.peer);
-              setPeers((prev) => {
-                const newPeers = new Map(prev);
-                newPeers.delete(call.peer);
-                return newPeers;
-              });
-            }
+            removePeerFromState(call.peer);
           });
         });
       } catch (err) {
@@ -417,18 +195,12 @@ const VideoChat = ({ sessionId, userId }) => {
       }
     };
 
-    // Define socket event handlers
+    // Socket event handlers
     const handleUserJoined = ({
       peerId: newPeerId,
       userId: remoteUserId,
       name,
     }) => {
-      console.log(
-        "New user joined with peer ID:",
-        newPeerId,
-        "and name:",
-        name
-      );
       if (
         peerRef.current &&
         newPeerId !== peerRef.current.id &&
@@ -437,37 +209,21 @@ const VideoChat = ({ sessionId, userId }) => {
       ) {
         const call = peerRef.current.call(newPeerId, streamRef.current);
 
-        // Add debug for call events
         call.on("error", (err) => {
           console.error("Call error:", err);
         });
 
         call.on("iceStateChanged", (state) => {
-          console.log("ICE connection state changed to:", state);
-
-          // Attempt to recover from failed ICE connections
           if (state === "failed" || state === "disconnected") {
-            console.log("Trying to recover from bad ICE connection state");
-
-            // Option 1: Try closing and reopening the call
             setTimeout(() => {
               if (peerRef.current && !isUnmountingRef.current) {
-                console.log("Attempting ICE recovery by re-calling peer");
                 const newCall = peerRef.current.call(
                   newPeerId,
                   streamRef.current
                 );
 
-                // Set up new call handlers
                 newCall.on("stream", (recoveredStream) => {
-                  console.log("Recovered stream from peer:", newPeerId);
-                  setPeers((prev) =>
-                    new Map(prev).set(newPeerId, recoveredStream)
-                  );
-                });
-
-                newCall.on("error", (recErr) => {
-                  console.error("Recovery call error:", recErr);
+                  addPeerToState(newPeerId, recoveredStream, name);
                 });
               }
             }, 2000);
@@ -475,126 +231,66 @@ const VideoChat = ({ sessionId, userId }) => {
         });
 
         call.on("stream", (remoteStream) => {
-          if (!isUnmountingRef.current) {
-            console.log("Received stream from new user:", newPeerId);
-
-            // Check and log audio status immediately
-            const audioTracks = remoteStream.getAudioTracks();
-            console.log(
-              `Remote stream received with ${audioTracks.length} audio tracks`
-            );
-
-            if (audioTracks.length > 0) {
-              console.log("Audio track initial state:", audioTracks[0].enabled);
-              // Ensure the track is enabled
-              audioTracks[0].enabled = true;
-            }
-
-            // Store stream and user name together
-            setPeers((prev) =>
-              new Map(prev).set(newPeerId, {
-                stream: remoteStream,
-                label: name || `User-${remoteUserId.substring(0, 6)}`,
-              })
-            );
+          // Enable audio tracks
+          const audioTracks = remoteStream.getAudioTracks();
+          if (audioTracks.length > 0) {
+            audioTracks[0].enabled = true;
           }
+
+          addPeerToState(
+            newPeerId,
+            remoteStream,
+            name || `User-${remoteUserId.substring(0, 6)}`
+          );
         });
       }
     };
 
     const handleUserLeft = ({ peerId }) => {
-      console.log("User left:", peerId);
-      if (!isUnmountingRef.current) {
-        setPeers((prev) => {
-          const newPeers = new Map(prev);
-          newPeers.delete(peerId);
-          return newPeers;
-        });
-      }
+      removePeerFromState(peerId);
     };
 
     // Set up everything if socket is available
     if (socket) {
-      // First register socket event listeners
       socket.on("user-joined", handleUserJoined);
       socket.on("user-left", handleUserLeft);
 
-      // Handle existing participants when joining a session
       socket.on("existing-video-participants", ({ participants }) => {
-        console.log(
-          `Received ${participants.length} existing participants to connect with`
-        );
-
-        // Only proceed if we have our peer connection and stream ready
         if (peerRef.current && streamRef.current && !isUnmountingRef.current) {
-          // Call each existing participant
           participants.forEach(({ peerId, name, userId: remoteUserId }) => {
-            console.log(
-              `Calling existing participant: ${peerId}, name: ${name}`
-            );
-
             const call = peerRef.current.call(peerId, streamRef.current);
 
-            // Set up call event handlers
-            call.on("error", (err) => {
-              console.error("Call error to existing participant:", err);
-            });
-
             call.on("stream", (remoteStream) => {
-              console.log(
-                `Received stream from existing participant: ${peerId}`
-              );
-
-              // Check audio track status
               const audioTracks = remoteStream.getAudioTracks();
-              console.log(
-                `Remote stream has ${audioTracks.length} audio tracks`
-              );
-
               if (audioTracks.length > 0) {
-                console.log(
-                  "Audio track initial state:",
-                  audioTracks[0].enabled
-                );
-                // Ensure track is enabled
                 audioTracks[0].enabled = true;
               }
 
-              // Add peer to the peers map with name information
-              if (!isUnmountingRef.current) {
-                setPeers((prev) =>
-                  new Map(prev).set(peerId, {
-                    stream: remoteStream,
-                    label: name || `User-${remoteUserId.substring(0, 6)}`,
-                  })
-                );
-              }
+              addPeerToState(
+                peerId,
+                remoteStream,
+                name || `User-${remoteUserId.substring(0, 6)}`
+              );
             });
           });
         }
       });
 
-      // Then initialize peer and stream
       setupPeerAndSocket();
     }
 
     // Cleanup function
     return () => {
-      console.log("VideoChat component unmounting, cleaning up resources");
       isUnmountingRef.current = true;
 
-      // 1. Remove socket listeners first
+      // Remove socket listeners
       if (socket) {
         socket.off("user-joined", handleUserJoined);
         socket.off("user-left", handleUserLeft);
         socket.off("existing-video-participants");
 
-        // 2. Notify server we're leaving
+        // Notify server we're leaving
         if (peerRef.current) {
-          console.log(
-            "Emitting leave-video event with peerId:",
-            peerRef.current.id
-          );
           socket.emit("leave-video", {
             sessionId,
             userId,
@@ -603,44 +299,37 @@ const VideoChat = ({ sessionId, userId }) => {
         }
       }
 
-      // 3. Clean up peer connections
-      setPeers(new Map()); // Clear peers state
+      // Clear peers state
+      setPeers(new Map());
 
-      // 4. Stop all tracks in the media stream
+      // Stop media tracks
       if (streamRef.current) {
-        console.log("Stopping all media tracks");
         streamRef.current.getTracks().forEach((track) => {
           track.stop();
-          console.log(`Stopped ${track.kind} track`);
         });
         streamRef.current = null;
       }
 
-      // 5. Destroy peer after a small delay to ensure events are processed
+      // Destroy peer connection
       if (peerRef.current) {
         const peerToDestroy = peerRef.current;
-        console.log("Destroying peer connection:", peerToDestroy.id);
-
-        // Use setTimeout to ensure leave-video event is processed first
         setTimeout(() => {
           try {
             peerToDestroy.destroy();
-            console.log("Peer destroyed successfully");
           } catch (err) {
             console.error("Error destroying peer:", err);
           }
         }, 100);
-
         peerRef.current = null;
       }
 
-      // 6. Clear any pending timeouts
+      // Clear timeouts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
     };
-  }, [sessionId, userId, socket]);
+  }, [sessionId, userId, socket, user?.displayName]);
 
   const toggleVideo = () => {
     if (streamRef.current) {
@@ -673,17 +362,12 @@ const VideoChat = ({ sessionId, userId }) => {
     };
   };
 
+  // Use requestAnimationFrame for dragging to avoid forced reflow
   const handleMouseMove = useCallback(
     (e) => {
-      if (!isDragging && !isDraggingRef.current) return;
+      if (!isDraggingRef.current) return;
 
-      // Store position in ref to avoid state updates during drag
-      dragPositionRef.current = {
-        x: e.clientX - dragStartRef.current.x,
-        y: e.clientY - dragStartRef.current.y,
-      };
-
-      // Cancel any existing animation frame
+      // Cancel any pending animation frame
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
       }
@@ -692,22 +376,30 @@ const VideoChat = ({ sessionId, userId }) => {
       animFrameRef.current = requestAnimationFrame(() => {
         if (!dragRef.current) return;
 
-        // Get cached dimensions for better performance
-        const containerWidth = dragRef.current.offsetWidth;
-        const containerHeight = dragRef.current.offsetHeight;
+        // Calculate new position directly from the initial drag offset
+        const newX = e.clientX - dragStartRef.current.x;
+        const newY = e.clientY - dragStartRef.current.y;
 
-        // Calculate bounded position
-        const boundedX = Math.min(
-          Math.max(0, dragPositionRef.current.x),
-          window.innerWidth - containerWidth
+        // Get container dimensions
+        const containerRect = dragRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+
+        // Apply boundaries
+        const boundedX = Math.max(
+          0,
+          Math.min(newX, viewportWidth - containerRect.width)
         );
-        const boundedY = Math.min(
-          Math.max(0, dragPositionRef.current.y),
-          window.innerHeight - containerHeight
+        const boundedY = Math.max(
+          0,
+          Math.min(newY, viewportHeight - containerRect.height)
         );
 
-        // Update position state only when animation frame runs
-        setPosition({ x: boundedX, y: boundedY });
+        // Update position state
+        setPosition({
+          x: boundedX,
+          y: boundedY,
+        });
       });
     },
     [isDragging]
@@ -751,7 +443,7 @@ const VideoChat = ({ sessionId, userId }) => {
     return Array.from(peers.entries()).map(([peerId, peerData]) => [
       peerId,
       peerData.stream || peerData, // Handle both new format and legacy format
-      peerData.label,
+      peerData.label || `User-${peerId.substring(0, 6)}`, // Ensure label is always populated
     ]);
   }, [peers]);
 
@@ -798,7 +490,6 @@ const VideoChat = ({ sessionId, userId }) => {
         <select
           onChange={(e) => {
             if (streamRef.current) {
-              // Get new constraints with selected device
               navigator.mediaDevices
                 .getUserMedia({
                   video: true,
@@ -812,14 +503,10 @@ const VideoChat = ({ sessionId, userId }) => {
                   },
                 })
                 .then((newStream) => {
-                  // Replace the audio track
                   const audioTrack = newStream.getAudioTracks()[0];
                   const oldTrack = streamRef.current.getAudioTracks()[0];
                   streamRef.current.removeTrack(oldTrack);
                   streamRef.current.addTrack(audioTrack);
-
-                  // Update all peer connections
-                  // (This would require modifying how peer connections are managed)
                 });
             }
           }}
@@ -836,18 +523,24 @@ const VideoChat = ({ sessionId, userId }) => {
           step="0.1"
           defaultValue="1"
           onChange={(e) => {
-            // Update volume for all remote videos
-            document
-              .querySelectorAll(".video-container:not(.local) video")
-              .forEach((video) => {
-                video.volume = e.target.value;
-              });
+            // Cache the volume value
+            const volume = e.target.value;
+
+            // Use requestAnimationFrame to batch DOM updates
+            requestAnimationFrame(() => {
+              // Update volume for all remote videos
+              document
+                .querySelectorAll(".video-container:not(.local) video")
+                .forEach((video) => {
+                  video.volume = volume;
+                });
+            });
           }}
         />
       </div>
 
       <div className="video-grid">
-        {/* Local video - Make it display at the top and take full width */}
+        {/* Local video */}
         <div className="video-container local">
           {stream && (
             <video
@@ -864,7 +557,7 @@ const VideoChat = ({ sessionId, userId }) => {
           <div className="video-label">You</div>
         </div>
 
-        {/* Remote videos - Using the memoized component */}
+        {/* Remote videos */}
         <div className="remote-videos">
           {memoizedPeers.map(([peerId, peerStream, participantName]) => (
             <RemoteVideo

@@ -22,10 +22,12 @@ const Whiteboard = () => {
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    let handleResize;
     const initCanvas = async () => {
       try {
-        // Try CommonJS-style require
-        fabric = require("fabric").fabric;
+        // Try dynamic import instead of require
+        const fabricModule = await import("fabric-pure-browser");
+        fabric = fabricModule.fabric;
 
         const fabricCanvas = new fabric.Canvas(canvasRef.current, {
           isDrawingMode: true,
@@ -36,13 +38,29 @@ const Whiteboard = () => {
 
         setCanvas(fabricCanvas);
 
-        // Set up resize handler
-        const handleResize = () => {
-          fabricCanvas.setDimensions({
-            width: window.innerWidth,
-            height: window.innerHeight - 100,
-          });
-          fabricCanvas.renderAll();
+        // Set up debounced resize handler to prevent frequent reflows
+        let resizeTimeout;
+        handleResize = () => {
+          // Cancel any pending resizes
+          if (resizeTimeout) {
+            clearTimeout(resizeTimeout);
+          }
+
+          // Debounce to prevent multiple rapid layout calculations
+          resizeTimeout = setTimeout(() => {
+            // Batch read then write to avoid forced reflow
+            const width = window.innerWidth;
+            const height = window.innerHeight - 100;
+
+            // Only update if dimensions actually changed
+            if (
+              fabricCanvas.width !== width ||
+              fabricCanvas.height !== height
+            ) {
+              fabricCanvas.setDimensions({ width, height });
+              fabricCanvas.renderAll();
+            }
+          }, 100); // 100ms debounce
         };
 
         window.addEventListener("resize", handleResize);

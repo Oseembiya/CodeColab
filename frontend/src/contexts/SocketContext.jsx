@@ -22,7 +22,9 @@ export function SocketProvider({ children }) {
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        timeout: 20000,
+        timeout: 60000,
+        forceNew: true,
+        autoConnect: true,
         auth: {
           clientId,
         },
@@ -46,6 +48,9 @@ export function SocketProvider({ children }) {
       });
 
       newSocket.on("reconnect", () => {
+        console.log("Socket reconnected successfully");
+        setConnectionStatus("connected");
+        setError(null);
         newSocket.observing = null;
       });
 
@@ -54,11 +59,24 @@ export function SocketProvider({ children }) {
         console.log(`Attempting to reconnect (attempt ${attemptNumber})...`);
       });
 
+      newSocket.on("reconnect_error", (err) => {
+        console.error("Socket reconnection error:", err);
+      });
+
+      newSocket.on("reconnect_failed", () => {
+        setConnectionStatus("error");
+        setError("Failed to reconnect after multiple attempts");
+        console.error("Socket reconnection failed after all attempts");
+      });
+
       newSocket.on("disconnect", (reason) => {
         setConnectionStatus("disconnected");
         console.log("Socket disconnected:", reason);
 
         if (reason === "io server disconnect") {
+          console.log(
+            "Server disconnected the client, attempting to reconnect"
+          );
           newSocket.connect();
         }
       });

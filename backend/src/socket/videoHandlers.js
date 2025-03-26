@@ -6,12 +6,6 @@ const sessionStore = require("../utils/store");
 module.exports = (io, socket) => {
   // Handle joining video chat
   const handleJoinVideo = ({ sessionId, userId, peerId, userName }) => {
-    console.log(
-      `User ${userId} (${
-        userName || "Anonymous"
-      }) joined video chat in session ${sessionId} with peer ID ${peerId}`
-    );
-
     // Join the video room
     socket.join(`video-${sessionId}`);
 
@@ -50,9 +44,6 @@ module.exports = (io, socket) => {
 
     // Send list of existing participants to the new user
     if (existingParticipants.length > 0) {
-      console.log(
-        `Sending ${existingParticipants.length} existing participants to new user ${userId}`
-      );
       socket.emit("existing-video-participants", {
         participants: existingParticipants,
       });
@@ -61,12 +52,6 @@ module.exports = (io, socket) => {
 
   // Handle leaving video chat
   const handleLeaveVideo = ({ sessionId, userId, peerId }) => {
-    console.log(
-      `User ${userId} left video chat in session ${sessionId}${
-        peerId ? ` with peerId ${peerId}` : ""
-      }`
-    );
-
     // Leave the video room
     socket.leave(`video-${sessionId}`);
 
@@ -79,14 +64,7 @@ module.exports = (io, socket) => {
     // Remove from tracking if peerId is provided
     if (peerId || socket.videoPeerId) {
       const peerToRemove = peerId || socket.videoPeerId;
-      const participants = sessionStore.removeVideoParticipant(
-        sessionId,
-        peerToRemove
-      );
-
-      console.log(
-        `Removed peer ${peerToRemove} from video participants. Remaining: ${participants.length}`
-      );
+      sessionStore.removeVideoParticipant(sessionId, peerToRemove);
     }
 
     // Clear video data from socket
