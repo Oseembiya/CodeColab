@@ -238,44 +238,6 @@
   display: none;
 }
 
-/* Voice activity animation */
-@keyframes voiceActivity {
-  0% {
-    box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(var(--secondary-rgb), 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0);
-  }
-}
-
-/* Add voice activity indicator to video containers */
-.video-container.speaking {
-  border: 2px solid var(--secondary-color);
-  animation: voiceActivity 1.5s infinite;
-}
-
-/* Voice activity indicator for mic button */
-.control-button[title*="Audio"]:not(.disabled)::after {
-  content: "";
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--secondary-color);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.control-button[title*="Audio"]:not(.disabled).speaking::after {
-  opacity: 1;
-  animation: voiceActivity 1.5s infinite;
-}
-
 /* Drag handle improvements */
 .video-drag-handle {
   cursor: grab;
