@@ -5,18 +5,10 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import { db, auth } from "../firebaseConfig";
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import { collection, addDoc, doc, getDoc } from "firebase/firestore";
 import { useSocket } from "../contexts/SocketContext";
 import { useAuth } from "../hooks/useAuth";
-import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 const SessionContext = createContext(null);
@@ -194,14 +186,45 @@ export function SessionProvider({ children }) {
     if (socket) {
       // Listen for session timeout warning
       socket.on("session-ending-soon", ({ timeLeft }) => {
-        toast.warning(
-          `This session will end in ${timeLeft} minutes due to the 30-minute limit.`
-        );
+        // Create and show a Toast notification
+        const warningToast = document.createElement("div");
+        warningToast.className =
+          "status-message-container warning position-top-right";
+        warningToast.innerHTML = `
+          <div class="status-message-content">
+            <div class="status-icon"><i class="fa fa-exclamation-circle"></i></div>
+            <p>This session will end in ${timeLeft} minutes due to the 30-minute limit.</p>
+            <button class="close-message" aria-label="Close alert">×</button>
+          </div>
+        `;
+        document.body.appendChild(warningToast);
+
+        // Remove after 5 seconds
+        setTimeout(() => {
+          warningToast.classList.add("fade-out");
+          setTimeout(() => {
+            if (warningToast.parentNode) {
+              warningToast.parentNode.removeChild(warningToast);
+            }
+          }, 300);
+        }, 5000);
       });
 
       // Listen for session timeout end
       socket.on("session-ended", ({ reason }) => {
-        toast.info(reason);
+        // Create and show a Toast notification
+        const infoToast = document.createElement("div");
+        infoToast.className =
+          "status-message-container info position-top-right";
+        infoToast.innerHTML = `
+          <div class="status-message-content">
+            <div class="status-icon"><i class="fa fa-info-circle"></i></div>
+            <p>${reason}</p>
+            <button class="close-message" aria-label="Close alert">×</button>
+          </div>
+        `;
+        document.body.appendChild(infoToast);
+
         // Navigate user back to dashboard or home
         navigate("/dashboard");
       });

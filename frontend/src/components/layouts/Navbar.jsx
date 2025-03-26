@@ -7,12 +7,15 @@ import { useEffect } from "react";
 import PropTypes from "prop-types";
 import FriendDropdown from "../common/FriendDropdown";
 import NotificationMenu from "../notifications/NotificationMenu";
+import SessionTimer from "../sessions/SessionTimer";
 
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = auth.currentUser;
   const { currentSession } = useSession();
+  const isSessionPage = location.pathname.includes("/sessions/");
+  const sessionId = isSessionPage ? location.pathname.split("/").pop() : null;
 
   // Preload user avatar to prevent rate limiting
   useEffect(() => {
@@ -31,12 +34,15 @@ const Navbar = ({ toggleSidebar }) => {
         >
           <FaBars />
         </button>
-        {currentSession && location.pathname.includes("/sessions/") && (
-          <div className="active-session-indicator">
+        {currentSession && isSessionPage && (
+          <div className="active-session-indicator flex items-center">
             <span className="session-status">Connected: </span>
-            <span className="session-name">
+            <span className="session-name mr-3">
               {currentSession?.title || "Untitled Session"}
             </span>
+            {sessionId && (
+              <SessionTimer sessionId={sessionId} className="ml-2" />
+            )}
           </div>
         )}
       </div>

@@ -48,12 +48,41 @@ const VideoChat = ({ sessionId, userId }) => {
   // Helper function to add peer to state
   const addPeerToState = (peerId, stream, userName) => {
     if (isUnmountingRef.current) return;
+
+    // Ensure we have a friendly display name
+    const friendlyName = ensureFriendlyName(peerId, userName);
+
     setPeers((prev) =>
       new Map(prev).set(peerId, {
         stream,
-        label: userName || `User-${peerId.substring(0, 6)}`,
+        label: friendlyName,
       })
     );
+  };
+
+  // Helper function to ensure we show a friendly name
+  const ensureFriendlyName = (peerId, providedName) => {
+    // Extract userId from peerId (format: sessionId-userId-timestamp)
+    const peerIdParts = peerId.split("-");
+    const extractedUserId = peerIdParts.length > 1 ? peerIdParts[1] : null;
+
+    // Try all options for a friendly name
+    const friendlyName =
+      // 1. Use the provided name first
+      providedName ||
+      // 2. Check if we have a stored name for this peer
+      localStorage.getItem(`remoteUser-${peerId}`) ||
+      // 3. Use a name stored by userId (more stable than peerId)
+      (extractedUserId && localStorage.getItem(`user-${extractedUserId}`)) ||
+      // 4. Default to User-XXXXX format
+      `User-${(extractedUserId || peerId).substring(0, 6)}`;
+
+    // Store this name for future reference if it's not a generic one
+    if (friendlyName && !friendlyName.startsWith("User-") && extractedUserId) {
+      localStorage.setItem(`user-${extractedUserId}`, friendlyName);
+    }
+
+    return friendlyName;
   };
 
   // Helper function to remove peer from state
@@ -154,9 +183,19 @@ const VideoChat = ({ sessionId, userId }) => {
           if (socket && !isUnmountingRef.current) {
             const userName =
               user?.displayName ||
+              user?.email?.split("@")[0] ||
               localStorage.getItem("userName") ||
               sessionStorage.getItem("userName") ||
               `User-${userId.substring(0, 6)}`;
+
+            // Store in localStorage for consistency across sessions
+            if (
+              !localStorage.getItem("userName") &&
+              userName !== `User-${userId.substring(0, 6)}`
+            ) {
+              localStorage.setItem("userName", userName);
+              localStorage.setItem(`user-${userId}`, userName);
+            }
 
             socket.emit("join-video", {
               sessionId,
@@ -178,11 +217,12 @@ const VideoChat = ({ sessionId, userId }) => {
             const remoteUserId =
               peerIdParts.length > 1 ? peerIdParts[1] : "unknown";
 
-            addPeerToState(
-              call.peer,
-              remoteStream,
-              `User-${remoteUserId.substring(0, 6)}`
-            );
+            // Get the socket-provided name or use a more friendly fallback
+            const name =
+              localStorage.getItem(`remoteUser-${call.peer}`) ||
+              `User-${remoteUserId.substring(0, 6)}`;
+
+            addPeerToState(call.peer, remoteStream, name);
           });
 
           call.on("close", () => {
@@ -201,6 +241,13 @@ const VideoChat = ({ sessionId, userId }) => {
       userId: remoteUserId,
       name,
     }) => {
+      // Store the remote user's name for future reference
+      if (name && name !== `User-${remoteUserId.substring(0, 6)}`) {
+        localStorage.setItem(`remoteUser-${newPeerId}`, name);
+        // Also store by userId for more stability (peerId changes between sessions)
+        localStorage.setItem(`user-${remoteUserId}`, name);
+      }
+
       if (
         peerRef.current &&
         newPeerId !== peerRef.current.id &&
@@ -237,16 +284,22 @@ const VideoChat = ({ sessionId, userId }) => {
             audioTracks[0].enabled = true;
           }
 
-          addPeerToState(
-            newPeerId,
-            remoteStream,
-            name || `User-${remoteUserId.substring(0, 6)}`
-          );
+          // Use our ensureFriendlyName function for consistent naming
+          const friendlyName = ensureFriendlyName(newPeerId, name);
+
+          addPeerToState(newPeerId, remoteStream, friendlyName);
         });
       }
     };
 
-    const handleUserLeft = ({ peerId }) => {
+    const handleUserLeft = ({ peerId, userId }) => {
+      // Clean up the localStorage entries for this peer
+      localStorage.removeItem(`remoteUser-${peerId}`);
+
+      // Don't remove user-{userId} references as they're useful across sessions
+      // But we could clear them if we knew the user account was deleted
+
+      // Existing code to remove peer from state
       removePeerFromState(peerId);
     };
 
@@ -258,6 +311,12 @@ const VideoChat = ({ sessionId, userId }) => {
       socket.on("existing-video-participants", ({ participants }) => {
         if (peerRef.current && streamRef.current && !isUnmountingRef.current) {
           participants.forEach(({ peerId, name, userId: remoteUserId }) => {
+            // Store name reference right away if it's a valid name
+            if (name && name !== `User-${remoteUserId.substring(0, 6)}`) {
+              localStorage.setItem(`remoteUser-${peerId}`, name);
+              localStorage.setItem(`user-${remoteUserId}`, name);
+            }
+
             const call = peerRef.current.call(peerId, streamRef.current);
 
             call.on("stream", (remoteStream) => {
@@ -266,11 +325,9 @@ const VideoChat = ({ sessionId, userId }) => {
                 audioTracks[0].enabled = true;
               }
 
-              addPeerToState(
-                peerId,
-                remoteStream,
-                name || `User-${remoteUserId.substring(0, 6)}`
-              );
+              const friendlyName = ensureFriendlyName(peerId, name);
+
+              addPeerToState(peerId, remoteStream, friendlyName);
             });
           });
         }

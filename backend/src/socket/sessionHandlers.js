@@ -1,5 +1,7 @@
 const sessionStore = require("../utils/store");
 const userMetrics = require("../utils/userMetrics");
+const { db } = require("../../firebaseConfig");
+const { updateDoc, doc } = require("firebase/firestore");
 
 /**
  * Session-related socket event handlers
@@ -12,12 +14,188 @@ module.exports = (io, socket) => {
 
   const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
   const WARNING_TIME = 5 * 60 * 1000; // 5 minute warning before end
+  const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 minutes of inactivity before ending session
+  const MAX_EXTENSIONS = 2; // Maximum number of extensions allowed per session
+  const EXTENSION_DURATION = 15 * 60 * 1000; // 15 minutes extension
 
   // Add a timeout map to track session timers
   const sessionTimeouts = new Map();
+  const sessionIdleTimeouts = new Map();
+  const sessionExtensions = new Map();
+
+  // Helper function to end the session - moved inside the module closure
+  const endSession = (sessionId) => {
+    // Use the proper method from sessionStore
+    const participantsCount = sessionStore.clearSessionParticipants(sessionId);
+    console.log(
+      `Cleared ${participantsCount} participants from session ${sessionId}`
+    );
+
+    // Clean up all timeouts
+    if (sessionTimeouts.has(sessionId)) {
+      clearTimeout(sessionTimeouts.get(sessionId));
+      sessionTimeouts.delete(sessionId);
+    }
+
+    if (sessionIdleTimeouts.has(sessionId)) {
+      clearTimeout(sessionIdleTimeouts.get(sessionId));
+      sessionIdleTimeouts.delete(sessionId);
+    }
+
+    // Clear extensions count
+    sessionExtensions.delete(sessionId);
+
+    // Update session status in Firestore
+    try {
+      const sessionRef = doc(db, "sessions", sessionId);
+      updateDoc(sessionRef, {
+        status: "ended",
+        endedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error(`Error updating session status in Firestore:`, error);
+    }
+  };
+
+  // Helper function to start session timer and store in Firestore
+  const startSessionTimer = async (sessionId) => {
+    try {
+      // Update session in Firestore with scheduled end time
+      const endTime = new Date(Date.now() + SESSION_DURATION);
+      const sessionRef = doc(db, "sessions", sessionId);
+      await updateDoc(sessionRef, {
+        scheduledEndTime: endTime.toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+
+      // Set up the session timer
+      const timeoutId = setTimeout(() => {
+        // End the session after duration
+        endSession(sessionId);
+        io.to(sessionId).emit("session-ended", {
+          reason: "Session time limit (30 minutes) reached",
+        });
+      }, SESSION_DURATION);
+
+      // Store the timeout reference
+      sessionTimeouts.set(sessionId, timeoutId);
+
+      // Also set a warning timer
+      setTimeout(() => {
+        io.to(sessionId).emit("session-ending-soon", {
+          timeLeft: WARNING_TIME / 60000, // minutes left
+          canExtend: (sessionExtensions.get(sessionId) || 0) < MAX_EXTENSIONS,
+        });
+      }, SESSION_DURATION - WARNING_TIME);
+
+      // Set up idle timer
+      resetIdleTimer(sessionId);
+    } catch (error) {
+      console.error(`Error setting up session timer for ${sessionId}:`, error);
+    }
+  };
+
+  // Reset idle timer whenever there's activity
+  const resetIdleTimer = (sessionId) => {
+    // Clear existing idle timeout if any
+    if (sessionIdleTimeouts.has(sessionId)) {
+      clearTimeout(sessionIdleTimeouts.get(sessionId));
+    }
+
+    // Set new idle timeout
+    const idleTimeoutId = setTimeout(() => {
+      const participants = sessionStore.getSessionUsers(sessionId);
+      // Only end for inactivity if participants exist
+      if (participants && participants.length > 0) {
+        io.to(sessionId).emit("session-ended", {
+          reason:
+            "Session ended due to inactivity (10 minutes with no activity)",
+        });
+        endSession(sessionId);
+      }
+    }, IDLE_TIMEOUT);
+
+    sessionIdleTimeouts.set(sessionId, idleTimeoutId);
+  };
+
+  // Handle extending a session
+  const handleExtendSession = ({ sessionId, userId }) => {
+    // Check if session exists and has an active timeout
+    if (!sessionTimeouts.has(sessionId)) {
+      socket.emit("session-extension-failed", {
+        reason: "Session not found or already ended",
+      });
+      return;
+    }
+
+    // Check if we've reached the max extensions
+    const currentExtensions = sessionExtensions.get(sessionId) || 0;
+    if (currentExtensions >= MAX_EXTENSIONS) {
+      socket.emit("session-extension-failed", {
+        reason: `Maximum extensions (${MAX_EXTENSIONS}) already used`,
+      });
+      return;
+    }
+
+    // Clear existing timeout
+    clearTimeout(sessionTimeouts.get(sessionId));
+
+    // Calculate new end time
+    const now = Date.now();
+    const endTime = new Date(now + EXTENSION_DURATION);
+
+    // Set up new timeout with extended duration
+    const timeoutId = setTimeout(() => {
+      endSession(sessionId);
+      io.to(sessionId).emit("session-ended", {
+        reason: `Extended session time limit (${
+          30 + (currentExtensions + 1) * 15
+        } minutes) reached`,
+      });
+    }, EXTENSION_DURATION);
+
+    // Update extensions count and store new timeout
+    sessionExtensions.set(sessionId, currentExtensions + 1);
+    sessionTimeouts.set(sessionId, timeoutId);
+
+    // Also set a new warning timer
+    setTimeout(() => {
+      io.to(sessionId).emit("session-ending-soon", {
+        timeLeft: WARNING_TIME / 60000, // minutes left
+        canExtend: (sessionExtensions.get(sessionId) || 0) < MAX_EXTENSIONS,
+      });
+    }, EXTENSION_DURATION - WARNING_TIME);
+
+    // Update end time in Firestore
+    try {
+      const sessionRef = doc(db, "sessions", sessionId);
+      updateDoc(sessionRef, {
+        scheduledEndTime: endTime.toISOString(),
+        extendedBy: userId,
+        extensionCount: currentExtensions + 1,
+      });
+    } catch (error) {
+      console.error(`Error updating session extension in Firestore:`, error);
+    }
+
+    // Notify all users in the session about the extension
+    io.to(sessionId).emit("session-extended", {
+      extendedBy: userId,
+      newTimeLeft: EXTENSION_DURATION / 60000, // minutes
+      extensionsUsed: currentExtensions + 1,
+      extensionsRemaining: MAX_EXTENSIONS - (currentExtensions + 1),
+      scheduledEndTime: endTime.getTime(), // Send the absolute end time
+      serverTime: now, // Send current server time for sync
+    });
+  };
 
   // Handle joining a session
-  const handleJoinSession = ({ sessionId, userId, username, photoURL }) => {
+  const handleJoinSession = async ({
+    sessionId,
+    userId,
+    username,
+    photoURL,
+  }) => {
     socket.join(sessionId);
 
     // Add user to session with socket data
@@ -73,24 +251,74 @@ module.exports = (io, socket) => {
       `User ${username} joined session ${sessionId}. Total participants: ${participants.length}`
     );
 
-    // Set up the session timer
-    const timeoutId = setTimeout(() => {
-      // End the session after 30 minutes
-      endSession(sessionId);
-      io.to(sessionId).emit("session-ended", {
-        reason: "Session time limit (30 minutes) reached",
-      });
-    }, SESSION_DURATION);
+    // Initialize session timer if it doesn't exist yet (first participant)
+    if (!sessionTimeouts.has(sessionId)) {
+      await startSessionTimer(sessionId);
+    }
 
-    // Store the timeout reference
-    sessionTimeouts.set(sessionId, timeoutId);
+    // Reset idle timer on join
+    resetIdleTimer(sessionId);
 
-    // Also set a warning timer
-    setTimeout(() => {
-      io.to(sessionId).emit("session-ending-soon", {
-        timeLeft: WARNING_TIME / 60000, // minutes left
+    // Send current session timing information
+    try {
+      const sessionRef = doc(db, "sessions", sessionId);
+      const sessionSnapshot = await getDoc(sessionRef);
+
+      if (sessionSnapshot.exists()) {
+        const sessionData = sessionSnapshot.data();
+
+        if (sessionData.scheduledEndTime) {
+          const now = new Date().getTime();
+          const endTime = new Date(sessionData.scheduledEndTime).getTime();
+          const timeLeft = Math.max(0, endTime - now);
+
+          socket.emit("session-time-info", {
+            timeLeft: Math.ceil(timeLeft / 60000), // minutes left
+            extensionsUsed: sessionData.extensionCount || 0,
+            extensionsRemaining:
+              MAX_EXTENSIONS - (sessionData.extensionCount || 0),
+            canExtend: (sessionData.extensionCount || 0) < MAX_EXTENSIONS,
+            serverTime: now,
+            scheduledEndTime: endTime,
+          });
+        } else {
+          // If no scheduledEndTime exists yet, use the default
+          const now = new Date().getTime();
+          socket.emit("session-time-info", {
+            timeLeft: 30,
+            extensionsUsed: 0,
+            extensionsRemaining: MAX_EXTENSIONS,
+            canExtend: true,
+            serverTime: now,
+            scheduledEndTime: now + SESSION_DURATION,
+          });
+        }
+      } else {
+        // Session not found, use defaults
+        const now = new Date().getTime();
+        socket.emit("session-time-info", {
+          timeLeft: 30,
+          extensionsUsed: 0,
+          extensionsRemaining: MAX_EXTENSIONS,
+          canExtend: true,
+          serverTime: now,
+          scheduledEndTime: now + SESSION_DURATION,
+        });
+      }
+    } catch (error) {
+      console.error(`Error getting session timing info:`, error);
+
+      // Even on error, send something back with time synchronization data
+      const now = new Date().getTime();
+      socket.emit("session-time-info", {
+        timeLeft: 30,
+        extensionsUsed: 0,
+        extensionsRemaining: MAX_EXTENSIONS,
+        canExtend: true,
+        serverTime: now,
+        scheduledEndTime: now + SESSION_DURATION,
       });
-    }, SESSION_DURATION - WARNING_TIME);
+    }
   };
 
   // Handle session observation
@@ -454,6 +682,34 @@ module.exports = (io, socket) => {
   });
   socket.on("debug-line-count", handleDebugLineCount);
 
+  // For any activity in the session, reset the idle timer
+  const activityHandlers = [
+    "code-change",
+    "language-change",
+    "whiteboard-update",
+    "chat-message",
+    "cursor-position",
+  ];
+
+  activityHandlers.forEach((event) => {
+    const originalHandler = socket[event];
+
+    socket.on(event, (data) => {
+      // Reset idle timer whenever there's activity
+      if (data && data.sessionId) {
+        resetIdleTimer(data.sessionId);
+      }
+
+      // Call original handler if it exists
+      if (originalHandler) {
+        originalHandler(data);
+      }
+    });
+  });
+
+  // Register the extend session handler
+  socket.on("extend-session", handleExtendSession);
+
   // Handle cleanup when socket disconnects
   const cleanup = () => {
     // Update all session metrics on disconnect
@@ -494,13 +750,3 @@ module.exports = (io, socket) => {
 
   return cleanup;
 };
-
-// Helper function to end the session
-function endSession(sessionId) {
-  // Implement session cleanup logic here
-  // This should do whatever your existing session end code does
-  sessionStore.removeSession(sessionId);
-
-  // Clean up timeout references
-  sessionTimeouts.delete(sessionId);
-}
