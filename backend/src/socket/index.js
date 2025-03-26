@@ -56,14 +56,10 @@ const initializeSocketHandlers = (io) => {
       const existingSocket = sessionStore.connectClient(clientId, socket);
       if (existingSocket) {
         existingSocket.disconnect();
-        console.log(`Disconnected previous session for client: ${clientId}`);
       }
 
       // Update the socket's data
       socket.clientId = clientId;
-      console.log(`Client connected/reconnected: ${clientId}`);
-    } else {
-      console.log("Client connected without ID");
     }
 
     // Handle global stats request
@@ -82,8 +78,6 @@ const initializeSocketHandlers = (io) => {
 
     // Handle disconnection
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
-
       // Run all cleanup functions
       cleanupFunctions.forEach((cleanup) => {
         if (typeof cleanup === "function") {
