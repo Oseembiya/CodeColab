@@ -71,12 +71,28 @@ export const FriendProvider = ({ children }) => {
     setError(null);
 
     try {
-      await friendService.sendFriendRequest(user.uid, receiverId);
+      // Optimistically update UI - add to search results with "pending" status
+      const results = await friendService.sendFriendRequest(
+        user.uid,
+        receiverId
+      );
       setSuccessMessage("Friend request sent successfully!");
-      // No need to reload all data, just update the UI
+
+      // Refresh data to ensure consistency
+      await loadFriendsData();
+
+      return { success: true };
     } catch (err) {
       console.error("Error sending friend request:", err);
+
+      // Handle the "already exists" case as a non-error
+      if (err.message && err.message.includes("already exists")) {
+        setSuccessMessage("This friendship connection already exists");
+        return { success: true, alreadyExists: true };
+      }
+
       setError(err.message || "Failed to send friend request");
+      return { success: false, error: err.message };
     } finally {
       setLoading(false);
     }

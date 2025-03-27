@@ -29,7 +29,7 @@ const getApiClient = async () => {
 export const getFriends = async (userId) => {
   try {
     const api = await getApiClient();
-    const data = await api.get(`/friends?userId=${userId}`);
+    const data = await api.get(`/api/friends?userId=${userId}`);
     return data;
   } catch (error) {
     console.error("Error getting friends:", error);
@@ -45,7 +45,7 @@ export const getFriends = async (userId) => {
 export const getFriendRequests = async (userId) => {
   try {
     const api = await getApiClient();
-    const data = await api.get(`/friends/requests?userId=${userId}`);
+    const data = await api.get(`/api/friends/requests?userId=${userId}`);
     return data;
   } catch (error) {
     console.error("Error getting friend requests:", error);
@@ -62,7 +62,10 @@ export const getFriendRequests = async (userId) => {
 export const sendFriendRequest = async (senderId, receiverId) => {
   try {
     const api = await getApiClient();
-    const data = await api.post("/friends/request", { senderId, receiverId });
+    const data = await api.post("/api/friends/request", {
+      senderId,
+      receiverId,
+    });
     return data;
   } catch (error) {
     console.error("Error sending friend request:", error);
@@ -80,7 +83,7 @@ export const sendFriendRequest = async (senderId, receiverId) => {
 export const respondToFriendRequest = async (requestId, status, userId) => {
   try {
     const api = await getApiClient();
-    const data = await api.put(`/friends/request/${requestId}`, {
+    const data = await api.put(`/api/friends/request/${requestId}`, {
       status,
       userId,
     });
@@ -100,7 +103,7 @@ export const respondToFriendRequest = async (requestId, status, userId) => {
 export const removeFriend = async (friendId, userId) => {
   try {
     const api = await getApiClient();
-    const data = await api.delete(`/friends/${friendId}`, {
+    const data = await api.delete(`/api/friends/${friendId}`, {
       body: JSON.stringify({ userId }),
     });
     return data;
@@ -119,8 +122,12 @@ export const removeFriend = async (friendId, userId) => {
 export const searchUsers = async (query, userId) => {
   try {
     const api = await getApiClient();
+    // Add a timestamp parameter to prevent caching
+    const timestamp = new Date().getTime();
     const data = await api.get(
-      `/friends/search?query=${encodeURIComponent(query)}&userId=${userId}`
+      `/api/friends/search?query=${encodeURIComponent(
+        query
+      )}&userId=${userId}&_t=${timestamp}`
     );
     return data;
   } catch (error) {

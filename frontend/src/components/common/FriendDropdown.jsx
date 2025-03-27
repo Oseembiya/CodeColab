@@ -82,9 +82,23 @@ const FriendDropdown = () => {
   };
 
   const handleAddFriend = async (userId) => {
-    await sendRequest(userId);
-    setSearchQuery("");
-    setSearchResults([]);
+    const result = await sendRequest(userId);
+
+    if (result && result.success) {
+      // Update search results to show user as "requested"
+      setSearchResults((prevResults) =>
+        prevResults.map((user) => {
+          if (user.id === userId) {
+            return {
+              ...user,
+              friendStatus: "pending",
+              requestDirection: "outgoing",
+            };
+          }
+          return user;
+        })
+      );
+    }
   };
 
   const handleAcceptRequest = async (requestId) => {
