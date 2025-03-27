@@ -4,7 +4,7 @@ const videoHandlers = require("./videoHandlers");
 const whiteboardHandlers = require("./whiteboardHandlers");
 const notificationHandlers = require("./notificationHandlers");
 const userMetrics = require("../utils/userMetrics");
-const { db } = require("../../firebaseConfig");
+const { db, admin } = require("../../firebaseConfig");
 const {
   collection,
   getDocs,
@@ -18,6 +18,36 @@ const {
  * @param {Server} io - Socket.io server instance
  */
 const initializeSocketHandlers = (io) => {
+  // Add authentication middleware
+  io.use(async (socket, next) => {
+    const token = socket.handshake.auth.token;
+    const clientId = socket.handshake.auth.clientId;
+
+    // Always require clientId
+    if (!clientId) {
+      return next(new Error("Client ID is required"));
+    }
+
+    // If token exists, verify it
+    if (token) {
+      try {
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        socket.user = decodedToken;
+        socket.userId = decodedToken.uid;
+        console.log(
+          `Authenticated socket connection for user: ${decodedToken.uid}`
+        );
+      } catch (error) {
+        console.error("Socket authentication error:", error.message);
+        return next(new Error("Authentication failed: Invalid token"));
+      }
+    } else {
+      console.log("Socket connection without authentication token");
+    }
+
+    next();
+  });
+
   // Track active users and metrics for global stats
   const getGlobalStats = async () => {
     try {
@@ -52,7 +82,7 @@ const initializeSocketHandlers = (io) => {
 
     // Extract client ID from authentication data
     const clientId = socket.handshake.auth.clientId;
-    const userId = socket.handshake.auth.userId;
+    const userId = socket.userId || socket.handshake.auth.userId;
 
     // Store userId on socket for metrics tracking
     if (userId) {

@@ -4,7 +4,10 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "start:prod": "NODE_ENV=production node src/index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [],
   "author": "",
@@ -18,11 +21,14 @@
     "express-rate-limit": "^7.1.4",
     "firebase": "^11.5.0",
     "firebase-admin": "^12.0.0",
+    "helmet": "^7.2.0",
     "node-cache": "^5.1.2",
     "peer": "^1.0.0",
-    "socket.io": "^4.6.1"
+    "socket.io": "^4.6.1",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
+    "eslint": "^8.57.1",
     "nodemon": "^2.0.22"
   }
 }

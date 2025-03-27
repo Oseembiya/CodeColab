@@ -33,6 +33,9 @@ const peerServer = configurePeerServer();
 // Register API routes
 app.use("/api", apiRoutes);
 
+// Register error handlers after all routes
+app.registerErrorHandlers();
+
 // Initialize socket handlers
 initializeSocketHandlers(io);
 
