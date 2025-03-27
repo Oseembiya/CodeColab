@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebaseConfig";
 import AuthForm from "../components/auth/AuthForm";
-import "../styles/pages/_auth.css";
 
 const AuthPage = () => {
   const navigate = useNavigate();

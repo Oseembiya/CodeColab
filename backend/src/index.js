@@ -3,7 +3,8 @@ const { Server } = require("socket.io");
 const configureApp = require("./config/app");
 const configurePeerServer = require("./config/peer");
 const apiRoutes = require("./routes/api");
-const initializeSocketHandlers = require("./socket");
+const socketModule = require("./socket");
+const logger = require("./utils/logger");
 
 // Create Express app
 const app = configureApp();
@@ -11,8 +12,8 @@ const app = configureApp();
 // Create HTTP server
 const httpServer = createServer(app);
 
-// Initialize Socket.IO
-const io = new Server(httpServer, {
+// Get socket.io config from environment variables
+const socketConfig = {
   cors: {
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     methods: ["GET", "POST"],
@@ -21,11 +22,15 @@ const io = new Server(httpServer, {
   },
   allowEIO3: true, // Allow Engine.IO version 3
   transports: ["websocket", "polling"], // Allow both WebSocket and polling
-  pingTimeout: 60000,
-  pingInterval: 25000,
+  pingTimeout: parseInt(process.env.SOCKET_PING_TIMEOUT || "60000"),
+  pingInterval: parseInt(process.env.SOCKET_PING_INTERVAL || "25000"),
   maxHttpBufferSize: 1e6, // 1 MB
+  connectTimeout: 45000, // 45 seconds connection timeout
   compression: true,
-});
+};
+
+// Initialize Socket.IO
+const io = new Server(httpServer, socketConfig);
 
 // Initialize PeerJS server
 const peerServer = configurePeerServer();
@@ -37,26 +42,53 @@ app.use("/api", apiRoutes);
 app.registerErrorHandlers();
 
 // Initialize socket handlers
-initializeSocketHandlers(io);
+socketModule.initializeSocketHandlers(io);
 
 // Start the server
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`PeerJS server running on port ${process.env.PEER_PORT || 9000}`);
+  logger.info(`Server running on port ${PORT}`);
+  logger.info(`PeerJS server running on port ${process.env.PEER_PORT || 9000}`);
+  logger.info(
+    `CORS configured for: ${
+      process.env.FRONTEND_URL || "http://localhost:5173"
+    }`
+  );
+});
+
+// Health check route
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "UP",
+    server: "Express",
+    socketConnections: io.engine.clientsCount,
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Graceful shutdown
 process.on("SIGINT", () => {
-  console.log("Shutting down servers...");
+  logger.info("Shutting down servers...");
 
   httpServer.close(() => {
-    console.log("Express server closed");
+    logger.info("Express server closed");
   });
 
   peerServer.close(() => {
-    console.log("PeerJS server closed");
+    logger.info("PeerJS server closed");
   });
 
   process.exit(0);
+});
+
+// Handle uncaught exceptions to prevent server crash
+process.on("uncaughtException", (error) => {
+  logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
+  // Keep the server running
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error("Unhandled Promise Rejection", { reason, promise });
+  // Keep the server running
 });

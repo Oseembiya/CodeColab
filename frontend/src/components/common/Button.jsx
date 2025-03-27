@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import "../../styles/components/button.css";
 
 /**
  * Reusable Button component with multiple variants

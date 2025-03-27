@@ -1,6 +1,7 @@
 .container {
   display: flex;
   min-height: 100vh;
+  overflow: hidden; /* Prevent any overflow at the container level */
 }
 
 .main-content {
@@ -8,8 +9,8 @@
   margin-left: 200px; /* Width of your sidebar */
   transition: all 0.3s ease;
   position: relative;
-  width: calc(100% - 200px); /* Add this to account for sidebar width */
-  overflow-x: hidden; /* Add this to prevent horizontal overflow */
+  width: calc(100% - 200px); /* Account for sidebar width */
+  overflow: hidden; /* Prevent horizontal overflow */
 }
 
 @media screen and (max-width: 768px) {
@@ -24,10 +25,13 @@
   margin-top: 60px; /* Height of navbar */
   min-height: calc(100vh - 60px); /* Full viewport height minus navbar */
   background-color: var(--background-color);
-  overflow-y: auto; /* Keep this to handle the main scrolling */
+  overflow-y: auto; /* Main scrolling area */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
   position: relative;
   width: 100%;
-  box-sizing: border-box; /* Add this to include padding in width calculation */
+  box-sizing: border-box; /* Include padding in width calculation */
+  /* Add a fixed height to ensure the scrollbar appears only on this element */
+  height: calc(100vh - 60px);
 }
 
 /* Adjust content area when sidebar is closed */
@@ -47,4 +51,16 @@
   .content-area {
     padding: var(--spacing-sm);
   }
+}
+
+/* Fix for nested scrollable components */
+.scrollable-component {
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Fix for any component that might be causing the double scrollbar */
+body {
+  overflow-y: hidden; /* Prevent body scrolling as we handle it in content-area */
 }

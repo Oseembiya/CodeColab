@@ -35,13 +35,26 @@ export const FriendProvider = ({ children }) => {
     setError(null);
 
     try {
-      const [friendsData, requestsData] = await Promise.all([
-        friendService.getFriends(user.uid),
-        friendService.getFriendRequests(user.uid),
-      ]);
+      // Handle each request separately to prevent one failure from affecting the other
+      let friendsData = { friends: [] };
+      let requestsData = { requests: [] };
 
-      setFriends(friendsData.friends || []);
-      setFriendRequests(requestsData.requests || []);
+      try {
+        friendsData = await friendService.getFriends(user.uid);
+      } catch (err) {
+        console.warn("Error loading friends:", err);
+        // Don't set the error yet, try to fetch requests
+      }
+
+      try {
+        requestsData = await friendService.getFriendRequests(user.uid);
+      } catch (err) {
+        console.warn("Error loading friend requests:", err);
+      }
+
+      // Set the data even if there were errors
+      setFriends(friendsData?.friends || []);
+      setFriendRequests(requestsData?.requests || []);
     } catch (err) {
       console.error("Error loading friends data:", err);
       setError("Failed to load friends data. Please try again later.");

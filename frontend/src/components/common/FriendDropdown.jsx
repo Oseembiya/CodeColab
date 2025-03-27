@@ -11,7 +11,6 @@ import { useFriends } from "../../contexts/FriendContext";
 import { useAvatar } from "../../hooks/useImage";
 import { useDropdown } from "../../contexts/DropdownContext";
 import PropTypes from "prop-types";
-import "../../styles/components/friend-dropdown.css";
 
 const FriendDropdown = () => {
   const [activeTab, setActiveTab] = useState("friends");

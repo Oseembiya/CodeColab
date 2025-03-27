@@ -1,5 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { Suspense, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Suspense, lazy, useEffect } from "react";
 import { AuthProvider } from "./hooks/useAuth";
 import { SessionProvider } from "./contexts/SessionContext";
 import { SocketProvider } from "./contexts/SocketContext";
@@ -10,33 +10,57 @@ import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
 import routeConfig from "./config/routes";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import LoadingFallback from "./components/common/LoadingFallback";
 
-// Improve loading component
-const LoadingFallback = () => (
-  <div className="loading-spinner">
-    <p>Loading...</p>
-  </div>
-);
+// Dynamic import for error tracking (optional for production)
+const initErrorTracking = async () => {
+  if (import.meta.env.MODE === "production") {
+    try {
+      // This would be replaced with your actual error tracking setup
+      console.log("Error tracking initialized in production mode");
+    } catch (error) {
+      console.error("Failed to initialize error tracking:", error);
+    }
+  }
+};
 
 /**
- * Render a route based on its configuration
+ * Render a route based on its configuration with suspense boundaries
+ * for better code splitting and loading states
  */
 const renderRouteElement = (route) => {
   if (route.element.type === "redirect") {
     return <Navigate to={route.element.to} replace />;
   }
 
+  // Add suspense boundaries at the route level
   if (route.element.type === "protected") {
     const ProtectedComponent = route.element.component;
     return (
-      <ProtectedComponent>
-        <MainContent />
-      </ProtectedComponent>
+      <ErrorBoundary>
+        <Suspense
+          fallback={<LoadingFallback message={`Loading ${route.path}...`} />}
+        >
+          <ProtectedComponent>
+            <MainContent />
+          </ProtectedComponent>
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
   const Component = route.element.component;
-  return <Component />;
+  return (
+    <ErrorBoundary>
+      <Suspense
+        fallback={
+          <LoadingFallback message={`Loading ${route.path || "page"}...`} />
+        }
+      >
+        <Component />
+      </Suspense>
+    </ErrorBoundary>
+  );
 };
 
 /**
@@ -75,7 +99,25 @@ const generateRoutes = (routes) => {
   });
 };
 
+/**
+ * ScrollToTop component that handles scrolling to top on route changes
+ */
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
+
 const App = () => {
+  // Initialize error tracking in production
+  useEffect(() => {
+    initErrorTracking();
+  }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>
@@ -85,9 +127,8 @@ const App = () => {
               <NotificationProvider>
                 <UserMetricsProvider>
                   <DropdownProvider>
-                    <Suspense fallback={<LoadingFallback />}>
-                      <Routes>{generateRoutes(routeConfig)}</Routes>
-                    </Suspense>
+                    <ScrollToTop />
+                    <Routes>{generateRoutes(routeConfig)}</Routes>
                   </DropdownProvider>
                 </UserMetricsProvider>
               </NotificationProvider>

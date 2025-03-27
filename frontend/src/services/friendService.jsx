@@ -1,6 +1,25 @@
 /**
  * Service for handling friend-related API requests
  */
+import { createApiClient } from "./api";
+import { auth } from "../firebaseConfig";
+
+// Create an authenticated API client
+const getApiClient = async () => {
+  const getToken = async () => {
+    try {
+      if (auth.currentUser) {
+        return await auth.currentUser.getIdToken(true);
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting token:", error);
+      return null;
+    }
+  };
+
+  return createApiClient(getToken);
+};
 
 /**
  * Get all friends for the current user
@@ -9,14 +28,9 @@
  */
 export const getFriends = async (userId) => {
   try {
-    const response = await fetch(`/api/friends?userId=${userId}`);
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to get friends");
-    }
-
-    return await response.json();
+    const api = await getApiClient();
+    const data = await api.get(`/friends?userId=${userId}`);
+    return data;
   } catch (error) {
     console.error("Error getting friends:", error);
     throw error;
@@ -30,14 +44,9 @@ export const getFriends = async (userId) => {
  */
 export const getFriendRequests = async (userId) => {
   try {
-    const response = await fetch(`/api/friends/requests?userId=${userId}`);
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to get friend requests");
-    }
-
-    return await response.json();
+    const api = await getApiClient();
+    const data = await api.get(`/friends/requests?userId=${userId}`);
+    return data;
   } catch (error) {
     console.error("Error getting friend requests:", error);
     throw error;
@@ -52,20 +61,9 @@ export const getFriendRequests = async (userId) => {
  */
 export const sendFriendRequest = async (senderId, receiverId) => {
   try {
-    const response = await fetch("/api/friends/request", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ senderId, receiverId }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to send friend request");
-    }
-
-    return await response.json();
+    const api = await getApiClient();
+    const data = await api.post("/friends/request", { senderId, receiverId });
+    return data;
   } catch (error) {
     console.error("Error sending friend request:", error);
     throw error;
@@ -81,20 +79,12 @@ export const sendFriendRequest = async (senderId, receiverId) => {
  */
 export const respondToFriendRequest = async (requestId, status, userId) => {
   try {
-    const response = await fetch(`/api/friends/request/${requestId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ status, userId }),
+    const api = await getApiClient();
+    const data = await api.put(`/friends/request/${requestId}`, {
+      status,
+      userId,
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to respond to friend request");
-    }
-
-    return await response.json();
+    return data;
   } catch (error) {
     console.error("Error responding to friend request:", error);
     throw error;
@@ -109,20 +99,11 @@ export const respondToFriendRequest = async (requestId, status, userId) => {
  */
 export const removeFriend = async (friendId, userId) => {
   try {
-    const response = await fetch(`/api/friends/${friendId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
+    const api = await getApiClient();
+    const data = await api.delete(`/friends/${friendId}`, {
       body: JSON.stringify({ userId }),
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to remove friend");
-    }
-
-    return await response.json();
+    return data;
   } catch (error) {
     console.error("Error removing friend:", error);
     throw error;
@@ -137,16 +118,11 @@ export const removeFriend = async (friendId, userId) => {
  */
 export const searchUsers = async (query, userId) => {
   try {
-    const response = await fetch(
-      `/api/friends/search?query=${encodeURIComponent(query)}&userId=${userId}`
+    const api = await getApiClient();
+    const data = await api.get(
+      `/friends/search?query=${encodeURIComponent(query)}&userId=${userId}`
     );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to search users");
-    }
-
-    return await response.json();
+    return data;
   } catch (error) {
     console.error("Error searching users:", error);
     throw error;

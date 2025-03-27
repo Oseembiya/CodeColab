@@ -1,6 +1,5 @@
 import { forwardRef } from "react";
 import PropTypes from "prop-types";
-import "../../styles/components/form-input.css";
 
 /**
  * Reusable form input component

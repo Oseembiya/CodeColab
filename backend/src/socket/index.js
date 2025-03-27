@@ -13,11 +13,28 @@ const {
   getDoc,
 } = require("firebase/firestore");
 
+// Store the io instance for access from other modules
+let ioInstance = null;
+
+/**
+ * Get the Socket.IO instance
+ * @returns {Server} Socket.IO server instance
+ */
+const getIO = () => {
+  if (!ioInstance) {
+    throw new Error("Socket.IO not initialized yet");
+  }
+  return ioInstance;
+};
+
 /**
  * Initialize socket.io handlers
  * @param {Server} io - Socket.io server instance
  */
 const initializeSocketHandlers = (io) => {
+  // Store reference to io for other modules to access
+  ioInstance = io;
+
   // Add authentication middleware
   io.use(async (socket, next) => {
     const token = socket.handshake.auth.token;
@@ -204,4 +221,11 @@ const initializeSocketHandlers = (io) => {
   }, 30000);
 };
 
-module.exports = initializeSocketHandlers;
+// Create a single export object with both functions
+const socketModule = {
+  initializeSocketHandlers,
+  getIO,
+};
+
+// Export the module
+module.exports = socketModule;

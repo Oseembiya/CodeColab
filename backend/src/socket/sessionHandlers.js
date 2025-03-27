@@ -2,6 +2,10 @@ const sessionStore = require("../utils/store");
 const userMetrics = require("../utils/userMetrics");
 const { db } = require("../../firebaseConfig");
 const { updateDoc, doc } = require("firebase/firestore");
+const {
+  updateUserStatus,
+  notifyFriendsAboutStatus,
+} = require("../utils/userStatus");
 
 /**
  * Session-related socket event handlers

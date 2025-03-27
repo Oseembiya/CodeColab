@@ -13,6 +13,7 @@ const verifyAuthToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.warn(`Auth failed: Missing or invalid header - ${req.path}`);
     return res
       .status(401)
       .json({ error: "Unauthorized: Missing or invalid authorization header" });
@@ -21,6 +22,7 @@ const verifyAuthToken = async (req, res, next) => {
   const token = authHeader.split("Bearer ")[1];
 
   if (!token) {
+    console.warn(`Auth failed: Empty token - ${req.path}`);
     return res.status(401).json({ error: "Unauthorized: No token provided" });
   }
 
@@ -28,10 +30,29 @@ const verifyAuthToken = async (req, res, next) => {
     const decodedToken = await admin.auth().verifyIdToken(token);
     req.user = decodedToken;
     req.userId = decodedToken.uid;
+    console.log(
+      `Authenticated request for user ${decodedToken.uid} to ${req.path}`
+    );
     next();
   } catch (error) {
-    console.error("Error verifying auth token:", error);
-    return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    // Log detailed error information for debugging
+    console.error(
+      `Auth token verification failed for ${req.path}:`,
+      error.message
+    );
+
+    // Determine the specific error type for a better client response
+    let errorMessage = "Unauthorized: Invalid token";
+
+    if (error.code === "auth/id-token-expired") {
+      errorMessage = "Unauthorized: Token expired";
+    } else if (error.code === "auth/id-token-revoked") {
+      errorMessage = "Unauthorized: Token revoked";
+    } else if (error.code === "auth/invalid-id-token") {
+      errorMessage = "Unauthorized: Token is invalid";
+    }
+
+    return res.status(401).json({ error: errorMessage });
   }
 };
 
@@ -55,10 +76,13 @@ const optionalAuth = async (req, res, next) => {
     const decodedToken = await admin.auth().verifyIdToken(token);
     req.user = decodedToken;
     req.userId = decodedToken.uid;
+    console.log(
+      `Optionally authenticated request for user ${decodedToken.uid} to ${req.path}`
+    );
   } catch (error) {
     // Just log the error but continue
     console.warn(
-      "Invalid token provided but proceeding as unauthenticated:",
+      `Invalid token for optional auth to ${req.path}:`,
       error.message
     );
   }
@@ -66,7 +90,13 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
+// Helper to check if a request is authenticated
+const isAuthenticated = (req) => {
+  return !!req.user && !!req.userId;
+};
+
 module.exports = {
   verifyAuthToken,
   optionalAuth,
+  isAuthenticated,
 };
