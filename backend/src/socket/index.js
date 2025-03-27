@@ -5,13 +5,6 @@ const whiteboardHandlers = require("./whiteboardHandlers");
 const notificationHandlers = require("./notificationHandlers");
 const userMetrics = require("../utils/userMetrics");
 const { db, admin } = require("../../firebaseConfig");
-const {
-  collection,
-  getDocs,
-  query,
-  doc,
-  getDoc,
-} = require("firebase/firestore");
 
 // Store the io instance for access from other modules
 let ioInstance = null;
@@ -72,8 +65,8 @@ const initializeSocketHandlers = (io) => {
       const activeUsers = sessionStore.getActiveUsersCount();
 
       // Get total lines of code from all users
-      const userMetricsRef = collection(db, "userMetrics");
-      const metricsSnapshot = await getDocs(query(userMetricsRef));
+      const userMetricsRef = db.collection("userMetrics");
+      const metricsSnapshot = await userMetricsRef.get();
 
       let totalLinesOfCode = 0;
       metricsSnapshot.forEach((doc) => {
@@ -121,10 +114,10 @@ const initializeSocketHandlers = (io) => {
     socket.on("get-session-time", async ({ sessionId }) => {
       try {
         // Get session data from Firestore
-        const sessionRef = doc(db, "sessions", sessionId);
-        const sessionSnap = await getDoc(sessionRef);
+        const sessionRef = db.collection("sessions").doc(sessionId);
+        const sessionSnap = await sessionRef.get();
 
-        if (sessionSnap.exists()) {
+        if (sessionSnap.exists) {
           const sessionData = sessionSnap.data();
 
           // Calculate time left based on the stored scheduledEndTime

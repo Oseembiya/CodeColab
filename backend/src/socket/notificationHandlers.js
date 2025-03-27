@@ -1,14 +1,15 @@
 const { db } = require("../../firebaseConfig");
-const { collection, addDoc, serverTimestamp } = require("firebase/firestore");
+// Remove client SDK imports
+// const { collection, addDoc, serverTimestamp } = require("firebase/firestore");
 
 module.exports = (io, socket) => {
   // Send notification to specific user
   const sendNotification = async (notification) => {
     try {
-      // Store in Firestore
-      const notificationRef = await addDoc(collection(db, "notifications"), {
+      // Store in Firestore using admin SDK
+      const notificationRef = await db.collection("notifications").add({
         ...notification,
-        createdAt: serverTimestamp(),
+        createdAt: new Date(), // Admin SDK uses regular Date objects
         read: false,
       });
 

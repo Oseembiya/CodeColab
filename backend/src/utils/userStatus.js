@@ -1,19 +1,11 @@
 const { db } = require("../../firebaseConfig");
-const {
-  doc,
-  updateDoc,
-  collection,
-  getDocs,
-  query,
-  where,
-} = require("firebase/firestore");
 const socketModule = require("../socket");
 
 // Update user status in Firestore
 const updateUserStatus = async (userId, status) => {
   try {
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
+    const userRef = db.collection("users").doc(userId);
+    await userRef.update({
       online: status === "online",
       lastActive: new Date(),
     });
@@ -26,21 +18,19 @@ const updateUserStatus = async (userId, status) => {
 const getFriendsList = async (userId) => {
   try {
     // Get accepted friend requests where user is either sender or receiver
-    const friendsQuery1 = query(
-      collection(db, "friends"),
-      where("senderId", "==", userId),
-      where("status", "==", "accepted")
-    );
+    const friendsQuery1 = db
+      .collection("friends")
+      .where("senderId", "==", userId)
+      .where("status", "==", "accepted");
 
-    const friendsQuery2 = query(
-      collection(db, "friends"),
-      where("receiverId", "==", userId),
-      where("status", "==", "accepted")
-    );
+    const friendsQuery2 = db
+      .collection("friends")
+      .where("receiverId", "==", userId)
+      .where("status", "==", "accepted");
 
     const [sentResults, receivedResults] = await Promise.all([
-      getDocs(friendsQuery1),
-      getDocs(friendsQuery2),
+      friendsQuery1.get(),
+      friendsQuery2.get(),
     ]);
 
     const friends = [];

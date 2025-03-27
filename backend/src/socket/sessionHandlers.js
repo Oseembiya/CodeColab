@@ -1,7 +1,6 @@
 const sessionStore = require("../utils/store");
 const userMetrics = require("../utils/userMetrics");
 const { db } = require("../../firebaseConfig");
-const { updateDoc, doc } = require("firebase/firestore");
 const {
   updateUserStatus,
   notifyFriendsAboutStatus,
@@ -51,8 +50,8 @@ module.exports = (io, socket) => {
 
     // Update session status in Firestore
     try {
-      const sessionRef = doc(db, "sessions", sessionId);
-      updateDoc(sessionRef, {
+      const sessionRef = db.collection("sessions").doc(sessionId);
+      sessionRef.update({
         status: "ended",
         endedAt: new Date().toISOString(),
       });
@@ -66,8 +65,8 @@ module.exports = (io, socket) => {
     try {
       // Update session in Firestore with scheduled end time
       const endTime = new Date(Date.now() + SESSION_DURATION);
-      const sessionRef = doc(db, "sessions", sessionId);
-      await updateDoc(sessionRef, {
+      const sessionRef = db.collection("sessions").doc(sessionId);
+      await sessionRef.update({
         scheduledEndTime: endTime.toISOString(),
         createdAt: new Date().toISOString(),
       });
@@ -172,8 +171,8 @@ module.exports = (io, socket) => {
 
     // Update end time in Firestore
     try {
-      const sessionRef = doc(db, "sessions", sessionId);
-      updateDoc(sessionRef, {
+      const sessionRef = db.collection("sessions").doc(sessionId);
+      sessionRef.update({
         scheduledEndTime: endTime.toISOString(),
         extendedBy: userId,
         extensionCount: currentExtensions + 1,
@@ -265,8 +264,8 @@ module.exports = (io, socket) => {
 
     // Send current session timing information
     try {
-      const sessionRef = doc(db, "sessions", sessionId);
-      const sessionSnapshot = await getDoc(sessionRef);
+      const sessionRef = db.collection("sessions").doc(sessionId);
+      const sessionSnapshot = await sessionRef.get();
 
       if (sessionSnapshot.exists()) {
         const sessionData = sessionSnapshot.data();

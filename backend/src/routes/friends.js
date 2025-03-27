@@ -1,21 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { db } = require("../../firebaseConfig");
-
-const {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  orderBy,
-  limit,
-} = require("firebase/firestore");
+const { db, admin } = require("../../firebaseConfig");
 
 /**
  * Get all friends for a user
@@ -30,21 +15,19 @@ router.get("/", async (req, res) => {
     }
 
     // Get accepted friend requests where user is either sender or receiver
-    const friendsQuery1 = query(
-      collection(db, "friends"),
-      where("senderId", "==", userId),
-      where("status", "==", "accepted")
-    );
+    const friendsQuery1 = db
+      .collection("friends")
+      .where("senderId", "==", userId)
+      .where("status", "==", "accepted");
 
-    const friendsQuery2 = query(
-      collection(db, "friends"),
-      where("receiverId", "==", userId),
-      where("status", "==", "accepted")
-    );
+    const friendsQuery2 = db
+      .collection("friends")
+      .where("receiverId", "==", userId)
+      .where("status", "==", "accepted");
 
     const [sentResults, receivedResults] = await Promise.all([
-      getDocs(friendsQuery1),
-      getDocs(friendsQuery2),
+      friendsQuery1.get(),
+      friendsQuery2.get(),
     ]);
 
     const friends = [];
@@ -52,13 +35,13 @@ router.get("/", async (req, res) => {
     // Process friends where user is sender
     for (const docSnapshot of sentResults.docs) {
       const friendData = docSnapshot.data();
-      const friendRef = await getDoc(docSnapshot.ref);
+      const friendRef = docSnapshot.ref;
 
       // Get the receiver's user data
-      const receiverRef = doc(db, "users", friendData.receiverId);
-      const receiverDoc = await getDoc(receiverRef);
+      const receiverRef = db.collection("users").doc(friendData.receiverId);
+      const receiverDoc = await receiverRef.get();
 
-      if (receiverDoc.exists()) {
+      if (receiverDoc.exists) {
         const receiverData = receiverDoc.data();
         friends.push({
           id: docSnapshot.id,
@@ -76,10 +59,10 @@ router.get("/", async (req, res) => {
       const friendData = docSnapshot.data();
 
       // Get the sender's user data
-      const senderRef = doc(db, "users", friendData.senderId);
-      const senderDoc = await getDoc(senderRef);
+      const senderRef = db.collection("users").doc(friendData.senderId);
+      const senderDoc = await senderRef.get();
 
-      if (senderDoc.exists()) {
+      if (senderDoc.exists) {
         const senderData = senderDoc.data();
         friends.push({
           id: docSnapshot.id,
@@ -112,24 +95,23 @@ router.get("/requests", async (req, res) => {
     }
 
     // Get pending requests where user is the receiver
-    const requestsQuery = query(
-      collection(db, "friends"),
-      where("receiverId", "==", userId),
-      where("status", "==", "pending"),
-      orderBy("createdAt", "desc")
-    );
+    const requestsQuery = db
+      .collection("friends")
+      .where("receiverId", "==", userId)
+      .where("status", "==", "pending")
+      .orderBy("createdAt", "desc");
 
-    const requestsSnapshot = await getDocs(requestsQuery);
+    const requestsSnapshot = await requestsQuery.get();
     const requests = [];
 
     for (const docSnapshot of requestsSnapshot.docs) {
       const requestData = docSnapshot.data();
 
       // Get the sender's user data
-      const senderRef = doc(db, "users", requestData.senderId);
-      const senderDoc = await getDoc(senderRef);
+      const senderRef = db.collection("users").doc(requestData.senderId);
+      const senderDoc = await senderRef.get();
 
-      if (senderDoc.exists()) {
+      if (senderDoc.exists) {
         const senderData = senderDoc.data();
         requests.push({
           id: docSnapshot.id,
@@ -171,34 +153,32 @@ router.post("/request", async (req, res) => {
 
     // Check if users exist
     const [senderDoc, receiverDoc] = await Promise.all([
-      getDoc(doc(db, "users", senderId)),
-      getDoc(doc(db, "users", receiverId)),
+      db.collection("users").doc(senderId).get(),
+      db.collection("users").doc(receiverId).get(),
     ]);
 
-    if (!senderDoc.exists()) {
+    if (!senderDoc.exists) {
       return res.status(404).json({ error: "Sender user not found" });
     }
 
-    if (!receiverDoc.exists()) {
+    if (!receiverDoc.exists) {
       return res.status(404).json({ error: "Receiver user not found" });
     }
 
     // Check if a request already exists
-    const existingRequestQuery1 = query(
-      collection(db, "friends"),
-      where("senderId", "==", senderId),
-      where("receiverId", "==", receiverId)
-    );
+    const existingRequestQuery1 = db
+      .collection("friends")
+      .where("senderId", "==", senderId)
+      .where("receiverId", "==", receiverId);
 
-    const existingRequestQuery2 = query(
-      collection(db, "friends"),
-      where("senderId", "==", receiverId),
-      where("receiverId", "==", senderId)
-    );
+    const existingRequestQuery2 = db
+      .collection("friends")
+      .where("senderId", "==", receiverId)
+      .where("receiverId", "==", senderId);
 
     const [results1, results2] = await Promise.all([
-      getDocs(existingRequestQuery1),
-      getDocs(existingRequestQuery2),
+      existingRequestQuery1.get(),
+      existingRequestQuery2.get(),
     ]);
 
     if (!results1.empty || !results2.empty) {
@@ -212,14 +192,11 @@ router.post("/request", async (req, res) => {
       senderId,
       receiverId,
       status: "pending",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const friendRequestRef = await addDoc(
-      collection(db, "friends"),
-      friendRequest
-    );
+    const friendRequestRef = await db.collection("friends").add(friendRequest);
 
     // Create a notification for the receiver
     const notification = {
@@ -231,10 +208,10 @@ router.post("/request", async (req, res) => {
         senderDoc.data().displayName || "A user"
       } sent you a friend request`,
       read: false,
-      createdAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    await addDoc(collection(db, "notifications"), notification);
+    await db.collection("notifications").add(notification);
 
     return res.status(201).json({
       success: true,
@@ -270,10 +247,10 @@ router.put("/request/:requestId", async (req, res) => {
     }
 
     // Get the friend request
-    const requestRef = doc(db, "friends", requestId);
-    const requestDoc = await getDoc(requestRef);
+    const requestRef = db.collection("friends").doc(requestId);
+    const requestDoc = await requestRef.get();
 
-    if (!requestDoc.exists()) {
+    if (!requestDoc.exists) {
       return res.status(404).json({ error: "Friend request not found" });
     }
 
@@ -287,15 +264,15 @@ router.put("/request/:requestId", async (req, res) => {
     }
 
     // Update the friend request status
-    await updateDoc(requestRef, {
+    await requestRef.update({
       status,
-      updatedAt: serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     // If accepted, create a notification for the sender
     if (status === "accepted") {
-      const receiverRef = doc(db, "users", requestData.receiverId);
-      const receiverDoc = await getDoc(receiverRef);
+      const receiverRef = db.collection("users").doc(requestData.receiverId);
+      const receiverDoc = await receiverRef.get();
 
       const notification = {
         userId: requestData.senderId,
@@ -306,10 +283,10 @@ router.put("/request/:requestId", async (req, res) => {
           receiverDoc.data().displayName || "A user"
         } accepted your friend request`,
         read: false,
-        createdAt: serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      await addDoc(collection(db, "notifications"), notification);
+      await db.collection("notifications").add(notification);
     }
 
     return res.status(200).json({ success: true, status });
@@ -335,25 +312,23 @@ router.delete("/:friendId", async (req, res) => {
     }
 
     // Find the friendship document
-    const query1 = query(
-      collection(db, "friends"),
-      where("senderId", "==", userId),
-      where("receiverId", "==", friendId),
-      where("status", "==", "accepted"),
-      limit(1)
-    );
+    const query1 = db
+      .collection("friends")
+      .where("senderId", "==", userId)
+      .where("receiverId", "==", friendId)
+      .where("status", "==", "accepted")
+      .limit(1);
 
-    const query2 = query(
-      collection(db, "friends"),
-      where("senderId", "==", friendId),
-      where("receiverId", "==", userId),
-      where("status", "==", "accepted"),
-      limit(1)
-    );
+    const query2 = db
+      .collection("friends")
+      .where("senderId", "==", friendId)
+      .where("receiverId", "==", userId)
+      .where("status", "==", "accepted")
+      .limit(1);
 
     const [results1, results2] = await Promise.all([
-      getDocs(query1),
-      getDocs(query2),
+      query1.get(),
+      query2.get(),
     ]);
 
     let friendshipDoc;
@@ -367,7 +342,7 @@ router.delete("/:friendId", async (req, res) => {
     }
 
     // Delete the friendship
-    await deleteDoc(doc(db, "friends", friendshipDoc.id));
+    await friendshipDoc.ref.delete();
 
     return res.status(200).json({ success: true });
   } catch (error) {
@@ -393,23 +368,21 @@ router.get("/search", async (req, res) => {
     }
 
     // Get all users
-    const usersSnapshot = await getDocs(collection(db, "users"));
+    const usersSnapshot = await db.collection("users").get();
     const users = [];
 
     // Get current friends and pending requests
-    const friendsQuery1 = query(
-      collection(db, "friends"),
-      where("senderId", "==", userId)
-    );
+    const friendsQuery1 = db
+      .collection("friends")
+      .where("senderId", "==", userId);
 
-    const friendsQuery2 = query(
-      collection(db, "friends"),
-      where("receiverId", "==", userId)
-    );
+    const friendsQuery2 = db
+      .collection("friends")
+      .where("receiverId", "==", userId);
 
     const [friendsResults1, friendsResults2] = await Promise.all([
-      getDocs(friendsQuery1),
-      getDocs(friendsQuery2),
+      friendsQuery1.get(),
+      friendsQuery2.get(),
     ]);
 
     const friendMap = new Map();

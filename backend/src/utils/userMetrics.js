@@ -7,14 +7,16 @@
  */
 
 const { db } = require("../../firebaseConfig");
-const {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  increment,
-  arrayUnion,
-} = require("firebase/firestore");
+const admin = require("firebase-admin");
+// Remove client SDK imports
+// const {
+//   doc,
+//   getDoc,
+//   setDoc,
+//   updateDoc,
+//   increment,
+//   arrayUnion,
+// } = require("firebase/firestore");
 
 // Cache to prevent excessive DB reads
 const metricsCache = new Map();
@@ -31,11 +33,11 @@ const getUserMetrics = async (userId) => {
   }
 
   try {
-    const userMetricsRef = doc(db, "userMetrics", userId);
-    const metricsDoc = await getDoc(userMetricsRef);
+    const userMetricsRef = db.collection("userMetrics").doc(userId);
+    const metricsDoc = await userMetricsRef.get();
 
     let metrics;
-    if (metricsDoc.exists()) {
+    if (metricsDoc.exists) {
       metrics = metricsDoc.data();
     } else {
       // Initialize metrics for new users
@@ -50,7 +52,7 @@ const getUserMetrics = async (userId) => {
       };
 
       // Create the document
-      await setDoc(userMetricsRef, metrics);
+      await userMetricsRef.set(metrics);
     }
 
     // Update cache
@@ -72,15 +74,15 @@ const incrementUserSession = async (userId, sessionId) => {
 
   try {
     // First check if user metrics document exists, create if not
-    const userMetricsRef = doc(db, "userMetrics", userId);
-    const metricsDoc = await getDoc(userMetricsRef);
+    const userMetricsRef = db.collection("userMetrics").doc(userId);
+    const metricsDoc = await userMetricsRef.get();
 
     // Start session timestamp
     const sessionStart = new Date().toISOString();
 
-    if (!metricsDoc.exists()) {
+    if (!metricsDoc.exists) {
       // Create a new document if it doesn't exist
-      await setDoc(userMetricsRef, {
+      await userMetricsRef.set({
         totalSessions: 1,
         sessionsJoined: [sessionId], // Track unique sessions
         hoursSpent: 0,
@@ -98,8 +100,8 @@ const incrementUserSession = async (userId, sessionId) => {
       // Only increment if this is a new session
       if (!sessionsJoined.includes(sessionId)) {
         sessionsJoined.push(sessionId);
-        await updateDoc(userMetricsRef, {
-          totalSessions: increment(1),
+        await userMetricsRef.update({
+          totalSessions: admin.firestore.FieldValue.increment(1),
           sessionsJoined: sessionsJoined,
           lastSessionStart: sessionStart,
           lastActive: sessionStart,
@@ -109,7 +111,7 @@ const incrementUserSession = async (userId, sessionId) => {
         );
       } else {
         // Just update timestamps without incrementing
-        await updateDoc(userMetricsRef, {
+        await userMetricsRef.update({
           lastSessionStart: sessionStart,
           lastActive: sessionStart,
         });
@@ -154,12 +156,12 @@ const updateUserActiveTime = async (userId, lastActive = new Date()) => {
 
   try {
     // First check if user metrics document exists, create if not
-    const userMetricsRef = doc(db, "userMetrics", userId);
-    const metricsDoc = await getDoc(userMetricsRef);
+    const userMetricsRef = db.collection("userMetrics").doc(userId);
+    const metricsDoc = await userMetricsRef.get();
 
-    if (!metricsDoc.exists()) {
+    if (!metricsDoc.exists) {
       // Create a new document with default values
-      await setDoc(userMetricsRef, {
+      await userMetricsRef.set({
         totalSessions: 0,
         hoursSpent: 0,
         linesOfCode: 0,
@@ -181,8 +183,8 @@ const updateUserActiveTime = async (userId, lastActive = new Date()) => {
     // Only update if meaningful time has passed (more than a minute)
     if (timeSpentHours > 0.016) {
       // Update Firestore - increment hours spent
-      await updateDoc(userMetricsRef, {
-        hoursSpent: increment(timeSpentHours),
+      await userMetricsRef.update({
+        hoursSpent: admin.firestore.FieldValue.increment(timeSpentHours),
         lastActive: currentTime.toISOString(),
       });
 
@@ -211,12 +213,12 @@ const incrementLinesOfCode = async (userId, lineCount = 1) => {
 
   try {
     // First check if user metrics document exists, create if not
-    const userMetricsRef = doc(db, "userMetrics", userId);
-    const metricsDoc = await getDoc(userMetricsRef);
+    const userMetricsRef = db.collection("userMetrics").doc(userId);
+    const metricsDoc = await userMetricsRef.get();
 
-    if (!metricsDoc.exists()) {
+    if (!metricsDoc.exists) {
       // Create a new document with the initial line count
-      await setDoc(userMetricsRef, {
+      await userMetricsRef.set({
         totalSessions: 0,
         hoursSpent: 0,
         linesOfCode: lineCount,
@@ -225,8 +227,8 @@ const incrementLinesOfCode = async (userId, lineCount = 1) => {
       });
     } else {
       // Update existing document
-      await updateDoc(userMetricsRef, {
-        linesOfCode: increment(lineCount),
+      await userMetricsRef.update({
+        linesOfCode: admin.firestore.FieldValue.increment(lineCount),
         lastActive: new Date().toISOString(),
       });
     }
@@ -256,12 +258,12 @@ const trackCollaboration = async (userId, collaboratorId, sessionId) => {
 
   try {
     // Get the user metrics
-    const userMetricsRef = doc(db, "userMetrics", userId);
-    const metricsDoc = await getDoc(userMetricsRef);
+    const userMetricsRef = db.collection("userMetrics").doc(userId);
+    const metricsDoc = await userMetricsRef.get();
 
     if (!metricsDoc.exists()) {
       // Create a new document with default values
-      await setDoc(userMetricsRef, {
+      await userMetricsRef.set({
         totalSessions: 0,
         hoursSpent: 0,
         linesOfCode: 0,
@@ -276,9 +278,10 @@ const trackCollaboration = async (userId, collaboratorId, sessionId) => {
 
       // Only increment if this is a new collaborator
       if (!collaboratedWith.includes(collaboratorId)) {
-        await updateDoc(userMetricsRef, {
-          collaborations: increment(1),
-          collaboratedWith: arrayUnion(collaboratorId),
+        await userMetricsRef.update({
+          collaborations: admin.firestore.FieldValue.increment(1),
+          collaboratedWith:
+            admin.firestore.FieldValue.arrayUnion(collaboratorId),
           lastActive: new Date().toISOString(),
         });
       }
@@ -318,12 +321,12 @@ const trackCompletedSession = async (userId, sessionId) => {
 
   try {
     // Get the user metrics
-    const userMetricsRef = doc(db, "userMetrics", userId);
-    const metricsDoc = await getDoc(userMetricsRef);
+    const userMetricsRef = db.collection("userMetrics").doc(userId);
+    const metricsDoc = await userMetricsRef.get();
 
     if (!metricsDoc.exists()) {
       // Create a new document with default values
-      await setDoc(userMetricsRef, {
+      await userMetricsRef.set({
         totalSessions: 0,
         hoursSpent: 0,
         linesOfCode: 0,
@@ -339,9 +342,9 @@ const trackCompletedSession = async (userId, sessionId) => {
 
       // Only increment if this is a new completed session
       if (!completedSessionIds.includes(sessionId)) {
-        await updateDoc(userMetricsRef, {
-          completedSessions: increment(1),
-          completedSessionIds: arrayUnion(sessionId),
+        await userMetricsRef.update({
+          completedSessions: admin.firestore.FieldValue.increment(1),
+          completedSessionIds: admin.firestore.FieldValue.arrayUnion(sessionId),
           lastActive: new Date().toISOString(),
         });
       }
