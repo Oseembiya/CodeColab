@@ -1,6 +1,6 @@
-import { useEffect, useRef, memo } from "react";
+import { useEffect, useRef, memo, useState } from "react";
 import PropTypes from "prop-types";
-import { FaMicrophone } from "react-icons/fa";
+import { FaMicrophone, FaExclamationTriangle } from "react-icons/fa";
 
 // RemoteVideo component to handle video playback of remote peers
 const RemoteVideo = memo(
@@ -9,23 +9,54 @@ const RemoteVideo = memo(
     const intervalRef = useRef(null);
     const sinkIdSetRef = useRef(false);
     const setupCompletedRef = useRef(false);
+    const [streamError, setStreamError] = useState(false);
+    const errorTimeoutRef = useRef(null);
+
+    // Reset error state when stream changes
+    useEffect(() => {
+      setStreamError(false);
+
+      // Clear any pending error timeout
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+
+      return () => {
+        if (errorTimeoutRef.current) {
+          clearTimeout(errorTimeoutRef.current);
+        }
+      };
+    }, [peerStream]);
 
     // Set up the video element once
     useEffect(() => {
       const video = videoRef.current;
-      if (!video || !peerStream) return;
+      if (!video || !peerStream) {
+        setStreamError(true);
+        return;
+      }
 
       // Set the stream as source
-      video.srcObject = peerStream;
-      video.volume = 1.0;
-      video.muted = false;
+      try {
+        video.srcObject = peerStream;
+        video.volume = 1.0;
+        video.muted = false;
+      } catch (err) {
+        console.error(`Error setting video source for peer ${peerId}:`, err);
+        setStreamError(true);
+        return;
+      }
 
       // Only run setup logic once
       if (!setupCompletedRef.current) {
         // Enable all tracks
-        peerStream.getTracks().forEach((track) => {
-          if (!track.enabled) track.enabled = true;
-        });
+        try {
+          peerStream.getTracks().forEach((track) => {
+            if (!track.enabled) track.enabled = true;
+          });
+        } catch (err) {
+          console.error(`Error enabling tracks for peer ${peerId}:`, err);
+        }
 
         // Configure audio output device
         if (video.setSinkId && navigator.mediaDevices.enumerateDevices) {
@@ -55,6 +86,8 @@ const RemoteVideo = memo(
         const handleCanPlay = () => {
           if (!video.played.length) {
             video.play().catch((error) => {
+              console.error("Error playing video:", error);
+
               // Create play button only if autoplay fails
               if (!document.querySelector(`.play-button-${peerId}`)) {
                 const playButtonContainer = document.createElement("div");
@@ -87,7 +120,10 @@ const RemoteVideo = memo(
                     .then(() => {
                       playButtonContainer.remove();
                     })
-                    .catch(console.error);
+                    .catch((playError) => {
+                      console.error("Second play attempt failed:", playError);
+                      setStreamError(true);
+                    });
                 };
 
                 playButtonContainer.appendChild(playButton);
@@ -99,17 +135,50 @@ const RemoteVideo = memo(
 
         video.addEventListener("canplay", handleCanPlay);
 
+        // Add error event listener
+        const handleError = (e) => {
+          console.error(`Video error for peer ${peerId}:`, e);
+          setStreamError(true);
+        };
+
+        video.addEventListener("error", handleError);
+
         // Ensure audio is checked periodically (fixes Chrome issues)
         intervalRef.current = setInterval(() => {
           if (video && !video.paused) {
-            const audioTracks = peerStream.getAudioTracks();
-            if (audioTracks.length > 0) {
-              if (!audioTracks[0].enabled) {
-                audioTracks[0].enabled = true;
+            try {
+              const audioTracks = peerStream.getAudioTracks();
+              if (audioTracks.length > 0) {
+                if (!audioTracks[0].enabled) {
+                  audioTracks[0].enabled = true;
+                }
+                if (video.muted) {
+                  video.muted = false;
+                }
               }
-              if (video.muted) {
-                video.muted = false;
+            } catch (e) {
+              // If we can't access tracks, the stream might be gone
+              console.warn(
+                `Couldn't access audio tracks for peer ${peerId}:`,
+                e
+              );
+
+              // Don't set error immediately, give it a chance to recover
+              if (errorTimeoutRef.current) {
+                clearTimeout(errorTimeoutRef.current);
               }
+
+              errorTimeoutRef.current = setTimeout(() => {
+                // Check if tracks are still inaccessible
+                try {
+                  const trackCount = peerStream.getTracks().length;
+                  if (trackCount === 0) {
+                    setStreamError(true);
+                  }
+                } catch (trackError) {
+                  setStreamError(true);
+                }
+              }, 5000);
             }
           }
         }, 10000);
@@ -123,10 +192,19 @@ const RemoteVideo = memo(
 
       // Clean up
       return () => {
-        video.removeEventListener("canplay", video.handleCanPlay);
+        if (video) {
+          video.removeEventListener("canplay", video.handleCanPlay);
+          video.removeEventListener("error", video.handleError);
+        }
+
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
+        }
+
+        if (errorTimeoutRef.current) {
+          clearTimeout(errorTimeoutRef.current);
+          errorTimeoutRef.current = null;
         }
       };
     }, [peerId, peerStream]);
@@ -137,6 +215,14 @@ const RemoteVideo = memo(
         <div className="video-label">
           {participantName || `User-${peerId.substring(0, 6)}`}
         </div>
+
+        {/* Show error state if stream has issues */}
+        {streamError && (
+          <div className="stream-error-overlay">
+            <FaExclamationTriangle />
+            <span>Connection issues</span>
+          </div>
+        )}
 
         {/* Manual audio toggle button */}
         <button

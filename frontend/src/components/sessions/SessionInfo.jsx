@@ -28,6 +28,7 @@ const SessionInfo = ({ session, onLeave, socket }) => {
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
   const [showEndAlert, setShowEndAlert] = useState(false);
   const { user } = useAuth();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   useEffect(() => {
     if (!socket || !session?.id) return;
@@ -51,10 +52,34 @@ const SessionInfo = ({ session, onLeave, socket }) => {
     };
   }, [socket, session?.id]);
 
+  useEffect(() => {
+    // If we have a session already, clear any timeout
+    if (session?.id) {
+      setLoadingTimeout(false);
+      return;
+    }
+
+    // Set a timeout for the loading state
+    const timeout = setTimeout(() => {
+      setLoadingTimeout(true);
+    }, 3000); // 3 seconds is reasonable
+
+    return () => clearTimeout(timeout);
+  }, [session]);
+
   if (!session || !session.title) {
     return (
       <div className="session-info loading">
-        <p>Loading session information...</p>
+        {loadingTimeout ? (
+          <div className="status-message warning">
+            <p>
+              Session information taking longer than expected. Please try
+              refreshing if this persists.
+            </p>
+          </div>
+        ) : (
+          <div className="loading-message">Loading session information...</div>
+        )}
       </div>
     );
   }
