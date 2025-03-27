@@ -294,7 +294,7 @@
 /* Tablet styles with improved transitions */
 @media (max-width: 768px) and (min-width: 481px) {
   .sidebar {
-    width: 30vw;
+    width: 40vw;
     transform: translateX(-100%);
   }
 
