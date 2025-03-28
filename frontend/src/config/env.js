@@ -17,6 +17,9 @@ const formatUrl = (url) => {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 };
 
+// Production backend URL fallback
+const DEFAULT_PROD_BACKEND = "https://codecolab-852p.onrender.com";
+
 // API and connection settings
 const config = {
   // Environment info
@@ -29,16 +32,19 @@ const config = {
   api: {
     url: formatUrl(
       import.meta.env.VITE_API_URL ||
-        (isDev ? "http://localhost:3001/api" : "/api")
+        (isDev ? "http://localhost:3001/api" : `${DEFAULT_PROD_BACKEND}/api`)
     ),
     socketUrl: formatUrl(
-      import.meta.env.VITE_SOCKET_URL || (isDev ? "http://localhost:3001" : "")
+      import.meta.env.VITE_SOCKET_URL ||
+        (isDev ? "http://localhost:3001" : DEFAULT_PROD_BACKEND)
     ),
   },
 
   // PeerJS configuration
   peer: {
-    host: import.meta.env.VITE_PEER_HOST || "localhost",
+    host:
+      import.meta.env.VITE_PEER_HOST ||
+      (isDev ? "localhost" : DEFAULT_PROD_BACKEND.replace(/^https?:\/\//, "")),
     port: parseInt(import.meta.env.VITE_PEER_PORT || (isDev ? "9000" : "443")),
     path: import.meta.env.VITE_PEER_PATH || "/peerjs",
     secure: isProd,
