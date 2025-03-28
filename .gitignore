@@ -1,33 +1,64 @@
-# Firebase build and deployment files
-/firebase-debug.log
-/firebase-debug.*.log
+# Dependencies
+node_modules/
+**/node_modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+.nyc_output
+
+# Build / Production
+/frontend/build
+/frontend/dist
+/build
+/dist
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/.env.development
+**/.env.production
+
+# Firebase
+firebase-admin-key.json
+*-service-account.json
+.firebase/
 .firebaserc
 
-# Firebase Hosting
-/firebase.json
-*.cache
-hosting/.cache
-
-#firebase config
-/backend/firebaseConfig.js*
-
-# Firebase Functions
-/functions/node_modules/
-/functions/.env
-/functions/package-lock.json
-
-# Firebase Emulators
-/firebase-*.zip
-/.firebase/
-/emulator-ui/
-
 # Logs
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Environment files (local configs)
-/.env.*
-# frontend/.env judge0 api key
-.env
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+.vite/
+
+# Misc
+.cache
+.temp
+temp/
+tmp/
