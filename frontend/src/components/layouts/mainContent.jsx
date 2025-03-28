@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import Sidebar from './Sidebar';
-import Navbar from './Navbar';
-import { Outlet } from 'react-router-dom';
+import { useState } from "react";
+import Sidebar from "./sidebar";
+import Navbar from "./Navbar";
+import { Outlet } from "react-router-dom";
 
 const MainContent = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -11,7 +11,7 @@ const MainContent = () => {
   };
 
   return (
-    <div className={`container ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+    <div className={`container ${isSidebarOpen ? "sidebar-open" : ""}`}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="main-content">
         <Navbar toggleSidebar={toggleSidebar} />
@@ -23,4 +23,4 @@ const MainContent = () => {
   );
 };
 
-export default MainContent; 
+export default MainContent;
