@@ -55,7 +55,12 @@ const getProxyUrl = (url) => {
 
   // Use full API URL in production, relative URL in development
   if (config.isProduction) {
-    return `${apiBaseUrl}/image-proxy?url=${encodedUrl}`;
+    // Strip '/api' from the end if it exists to avoid double paths
+    const baseUrl = apiBaseUrl.endsWith("/api")
+      ? apiBaseUrl.substring(0, apiBaseUrl.length - 4)
+      : apiBaseUrl;
+
+    return `${baseUrl}/api/image-proxy?url=${encodedUrl}`;
   } else {
     return `/api/image-proxy?url=${encodedUrl}`;
   }
