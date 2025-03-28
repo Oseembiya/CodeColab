@@ -68,6 +68,24 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       sourcemap: mode !== "production",
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: [
+              "react",
+              "react-dom",
+              "react-router-dom",
+              "socket.io-client",
+            ],
+            firebase: [
+              "firebase/app",
+              "firebase/auth",
+              "firebase/firestore",
+              "firebase/storage",
+            ],
+          },
+        },
+      },
     },
   };
 });
