@@ -1,6 +1,7 @@
 /**
  * Centralized image utility for handling image loading, caching, and proxying
  */
+import config from "../config/env";
 
 // Constants
 const LOCAL_STORAGE_PREFIX = "codecolab_img_cache_";
@@ -50,7 +51,14 @@ const shouldUseProxy = (url) => {
  */
 const getProxyUrl = (url) => {
   const encodedUrl = encodeURIComponent(url);
-  return `/api/image-proxy?url=${encodedUrl}`;
+  const apiBaseUrl = config.api.url || "";
+
+  // Use full API URL in production, relative URL in development
+  if (config.isProduction) {
+    return `${apiBaseUrl}/image-proxy?url=${encodedUrl}`;
+  } else {
+    return `/api/image-proxy?url=${encodedUrl}`;
+  }
 };
 
 /**
