@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
+    "prestart": "node render-init.js",
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "start:prod": "NODE_ENV=production node src/index.js",
