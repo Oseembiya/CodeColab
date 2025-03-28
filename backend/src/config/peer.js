@@ -6,7 +6,7 @@ const { PeerServer } = require("peer");
 const configurePeerServer = () => {
   const peerServer = PeerServer({
     port: process.env.PEER_PORT || 9000,
-    path: "/myapp",
+    path: process.env.PEER_PATH || "/peerjs",
     proxied: true,
     allow_discovery: true,
     cleanup_out_msgs: 1000,
@@ -23,8 +23,17 @@ const configurePeerServer = () => {
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" },
-        // Add TURN servers here if you have them
-      ],
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" },
+        { urls: "stun:stun.cloudflare.com:3478" },
+        { urls: "stun:stun.stunprotocol.org:3478" },
+        // Add TURN server configuration if available in environment variables
+        process.env.TURN_SERVER_URL && {
+          urls: process.env.TURN_SERVER_URL,
+          username: process.env.TURN_USERNAME || "",
+          credential: process.env.TURN_CREDENTIAL || "",
+        },
+      ].filter(Boolean), // Filter out undefined entries
     },
   });
 

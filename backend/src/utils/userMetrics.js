@@ -8,17 +8,7 @@
 
 const { db } = require("../../firebaseConfig");
 const admin = require("firebase-admin");
-// Remove client SDK imports
-// const {
-//   doc,
-//   getDoc,
-//   setDoc,
-//   updateDoc,
-//   increment,
-//   arrayUnion,
-// } = require("firebase/firestore");
 
-// Cache to prevent excessive DB reads
 const metricsCache = new Map();
 
 /**
