@@ -56,6 +56,7 @@ const config = {
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY,
     credentialsFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    credentialsJson: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
 
     // Client SDK (for backend use)
     apiKey: process.env.FIREBASE_API_KEY,
@@ -80,10 +81,11 @@ const validateConfig = () => {
   // At least one Firebase auth method must be configured
   if (
     !config.firebase.credentialsFile &&
+    !config.firebase.credentialsJson &&
     !(config.firebase.clientEmail && config.firebase.privateKey)
   ) {
     throw new Error(
-      "Either GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY must be set"
+      "Either GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS_JSON, or FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY must be set"
     );
   }
 
