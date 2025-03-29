@@ -1,33 +1,36 @@
-import React, { memo } from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
-import OptimizedImage from "./OptimizedImage";
+import { getAvatarUrl } from "../../utils/imageUtils";
+
+// Import the default avatar data URL from imageUtils
+import { getImageUrl } from "../../utils/imageUtils";
+
+// Default avatar as data URL to avoid 404 errors
+const DEFAULT_AVATAR_SVG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cpath fill='%23c6c6c6' d='M0 0h128v128H0z'/%3E%3Ccircle fill='%23fff' cx='64' cy='48' r='28'/%3E%3Cpath fill='%23fff' d='M64 95c19.883 0 36-8.075 36-18.031V89c0 18-16.117 33-36 33S28 107 28 89V76.969C28 86.925 44.117 95 64 95z'/%3E%3C/svg%3E";
 
 /**
  * Avatar component that uses OptimizedImage for efficient loading
  */
 const Avatar = ({
   src,
-  alt,
-  size = "md",
+  alt = "User avatar",
+  size = 40,
   className = "",
-  fallbackSrc = "/assets/default-avatar.png",
+  fallbackSrc = DEFAULT_AVATAR_SVG,
   onClick,
   showStatus = false,
   status = "offline",
   ...props
 }) => {
-  // Map size values to pixel dimensions
-  const sizeMap = {
-    xs: 24,
-    sm: 32,
-    md: 48,
-    lg: 64,
-    xl: 96,
-    xxl: 128,
-  };
+  const [error, setError] = useState(false);
 
-  // Get pixel size or use exact number
-  const pixelSize = sizeMap[size] || (typeof size === "number" ? size : 48);
+  // Use processed URL or fallback if error
+  const imageUrl = error ? fallbackSrc : getAvatarUrl(src, size);
+
+  const handleError = () => {
+    setError(true);
+  };
 
   // Generate classes for avatar
   const avatarClasses = [
@@ -44,14 +47,12 @@ const Avatar = ({
 
   return (
     <div className={avatarClasses} onClick={onClick} {...props}>
-      <OptimizedImage
-        src={src}
-        alt={alt || "Avatar"}
-        width={pixelSize}
-        height={pixelSize}
-        fallbackSrc={fallbackSrc}
-        className="avatar-image"
-        placeholderSrc={fallbackSrc} // Use fallback as low-res placeholder
+      <img
+        src={imageUrl}
+        alt={alt}
+        className={`rounded-full ${className}`}
+        style={{ width: size, height: size, objectFit: "cover" }}
+        onError={handleError}
       />
 
       {showStatus && <span className={statusClasses} title={status} />}
@@ -60,12 +61,9 @@ const Avatar = ({
 };
 
 Avatar.propTypes = {
-  src: PropTypes.string.isRequired,
+  src: PropTypes.string,
   alt: PropTypes.string,
-  size: PropTypes.oneOfType([
-    PropTypes.oneOf(["xs", "sm", "md", "lg", "xl", "xxl"]),
-    PropTypes.number,
-  ]),
+  size: PropTypes.number,
   className: PropTypes.string,
   fallbackSrc: PropTypes.string,
   onClick: PropTypes.func,
@@ -73,4 +71,4 @@ Avatar.propTypes = {
   status: PropTypes.oneOf(["online", "offline", "away", "busy"]),
 };
 
-export default memo(Avatar);
+export default Avatar;

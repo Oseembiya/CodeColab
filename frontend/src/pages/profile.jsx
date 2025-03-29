@@ -34,6 +34,9 @@ import { useUserMetrics } from "../contexts/UserMetricsContext";
 import { useAuth } from "../hooks/useAuth";
 import { useSocket } from "../contexts/SocketContext";
 
+const DEFAULT_AVATAR_SVG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cpath fill='%23c6c6c6' d='M0 0h128v128H0z'/%3E%3Ccircle fill='%23fff' cx='64' cy='48' r='28'/%3E%3Cpath fill='%23fff' d='M64 95c19.883 0 36-8.075 36-18.031V89c0 18-16.117 33-36 33S28 107 28 89V76.969C28 86.925 44.117 95 64 95z'/%3E%3C/svg%3E";
+
 const Profile = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
@@ -340,13 +343,13 @@ const Profile = () => {
           className="avatar-large"
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = "/default-avatar.png";
+            e.target.src = DEFAULT_AVATAR_SVG;
           }}
           loading="lazy"
           crossOrigin="anonymous"
         />
       ) : (
-        <FaUserCircle className="avatar-icon" />
+        <FaUserCircle className="default-avatar-icon" size={150} />
       )}
 
       {isEditing && (
