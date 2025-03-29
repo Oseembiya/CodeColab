@@ -181,13 +181,68 @@ router.post("/request", async (req, res) => {
       existingRequestQuery2.get(),
     ]);
 
-    if (!results1.empty || !results2.empty) {
+    // Check if there's an active (pending or accepted) friend request
+    let hasActiveRequest = false;
+    let rejectedRequestId = null;
+
+    // Check first direction (sender -> receiver)
+    if (!results1.empty) {
+      const request = results1.docs[0].data();
+      if (request.status === "pending" || request.status === "accepted") {
+        hasActiveRequest = true;
+      } else if (request.status === "rejected") {
+        // Store the rejected request ID to potentially update it
+        rejectedRequestId = results1.docs[0].id;
+      }
+    }
+
+    // Check second direction (receiver -> sender)
+    if (!results2.empty && !hasActiveRequest) {
+      const request = results2.docs[0].data();
+      if (request.status === "pending" || request.status === "accepted") {
+        hasActiveRequest = true;
+      }
+      // We don't update rejected requests in the opposite direction
+    }
+
+    // Only block if there's an active request
+    if (hasActiveRequest) {
       return res.status(400).json({
         error: "Friend request already exists or users are already friends",
       });
     }
 
-    // Create the friend request
+    // If there was a rejected request, update it instead of creating a new one
+    if (rejectedRequestId) {
+      const requestRef = db.collection("friends").doc(rejectedRequestId);
+
+      await requestRef.update({
+        status: "pending",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Create a notification for the receiver
+      const notification = {
+        userId: receiverId,
+        type: "friend_request",
+        senderId,
+        senderName: senderDoc.data().displayName || "A user",
+        message: `${
+          senderDoc.data().displayName || "A user"
+        } sent you a friend request`,
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await db.collection("notifications").add(notification);
+
+      return res.status(201).json({
+        success: true,
+        requestId: rejectedRequestId,
+      });
+    }
+
+    // Create a new friend request if there's no existing one
     const friendRequest = {
       senderId,
       receiverId,

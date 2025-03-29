@@ -27,6 +27,21 @@ export const FriendProvider = ({ children }) => {
     }
   }, [user?.uid]);
 
+  // Set up real-time listener for friend requests
+  useEffect(() => {
+    if (user?.uid) {
+      const unsubscribe = friendService.subscribeFriendRequests(
+        user.uid,
+        (requests) => {
+          setFriendRequests(requests);
+        }
+      );
+
+      // Clean up listener when component unmounts or user changes
+      return () => unsubscribe();
+    }
+  }, [user?.uid]);
+
   // Load friends and friend requests
   const loadFriendsData = async () => {
     if (!user?.uid) return;
@@ -37,24 +52,16 @@ export const FriendProvider = ({ children }) => {
     try {
       // Handle each request separately to prevent one failure from affecting the other
       let friendsData = { friends: [] };
-      let requestsData = { requests: [] };
 
       try {
         friendsData = await friendService.getFriends(user.uid);
       } catch (err) {
         console.warn("Error loading friends:", err);
-        // Don't set the error yet, try to fetch requests
-      }
-
-      try {
-        requestsData = await friendService.getFriendRequests(user.uid);
-      } catch (err) {
-        console.warn("Error loading friend requests:", err);
       }
 
       // Set the data even if there were errors
       setFriends(friendsData?.friends || []);
-      setFriendRequests(requestsData?.requests || []);
+      // Friend requests are now handled by the real-time listener
     } catch (err) {
       console.error("Error loading friends data:", err);
       setError("Failed to load friends data. Please try again later.");

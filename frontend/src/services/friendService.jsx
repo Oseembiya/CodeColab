@@ -3,6 +3,16 @@
  */
 import { createApiClient } from "./api";
 import { auth } from "../firebaseConfig";
+import { db } from "../firebaseConfig";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 
 // Create an authenticated API client
 const getApiClient = async () => {
@@ -136,6 +146,59 @@ export const searchUsers = async (query, userId) => {
   }
 };
 
+/**
+ * Set up a real-time listener for friend requests
+ * @param {string} userId - User ID to get requests for
+ * @param {Function} callback - Function to call when data changes
+ * @returns {Function} - Unsubscribe function to stop listening
+ */
+export const subscribeFriendRequests = (userId, callback) => {
+  if (!userId) return () => {};
+
+  const requestsQuery = query(
+    collection(db, "friends"),
+    where("receiverId", "==", userId),
+    where("status", "==", "pending"),
+    orderBy("createdAt", "desc")
+  );
+
+  return onSnapshot(
+    requestsQuery,
+    async (snapshot) => {
+      const requests = [];
+
+      for (const docSnapshot of snapshot.docs) {
+        const requestData = docSnapshot.data();
+
+        try {
+          // Get the sender's user data
+          const senderRef = doc(db, "users", requestData.senderId);
+          const senderDoc = await getDoc(senderRef);
+
+          if (senderDoc.exists()) {
+            const senderData = senderDoc.data();
+            requests.push({
+              id: docSnapshot.id,
+              senderId: requestData.senderId,
+              senderName: senderData.displayName || "User",
+              senderPhoto: senderData.photoURL || null,
+              status: requestData.status,
+              createdAt: requestData.createdAt?.toDate() || new Date(),
+            });
+          }
+        } catch (err) {
+          console.error("Error getting sender data:", err);
+        }
+      }
+
+      callback(requests);
+    },
+    (error) => {
+      console.error("Error listening to friend requests:", error);
+    }
+  );
+};
+
 export default {
   getFriends,
   getFriendRequests,
@@ -143,4 +206,5 @@ export default {
   respondToFriendRequest,
   removeFriend,
   searchUsers,
+  subscribeFriendRequests,
 };
