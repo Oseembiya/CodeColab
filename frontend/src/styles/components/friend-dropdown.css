@@ -118,7 +118,6 @@
 /* Dropdown Content */
 .friend-dropdown-content {
   flex: 1;
-  overflow-y: auto;
   max-height: 350px;
 }
 
@@ -202,8 +201,39 @@
   font-size: 0.9rem;
 }
 
+/* Friend request sent button */
+.friend-action.sent {
+  width: auto;
+  padding: 0 10px;
+  background-color: var(--hover-color);
+  border-radius: 12px;
+  cursor: default;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--warning-color);
+  border: 1px solid var(--warning-color);
+}
+
+/* Friend action as status button */
+.friend-action.status-btn {
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  cursor: default;
+  padding: 0;
+  background: none;
+}
+
+.friend-action.status-btn .status-badge {
+  margin: 0;
+}
+
 .friend-action:hover {
   background-color: var(--hover-color);
+}
+
+.friend-action.status-btn:hover {
+  background: none;
 }
 
 .friend-action.remove:hover {
@@ -332,7 +362,6 @@
 }
 
 .search-results {
-  overflow-y: auto;
   max-height: 300px;
 }
 
@@ -348,6 +377,19 @@
 
 .search-result-item:hover {
   background-color: var(--hover-color);
+}
+
+/* User status for search results */
+.user-status {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+}
+
+.user-status .status-badge {
+  margin: 0;
 }
 
 /* Status badges */
@@ -381,6 +423,20 @@
 .status-badge.pending {
   background-color: rgba(var(--warning-rgb), 0.15);
   color: var(--warning-color);
+  border: 1px solid var(--warning-color);
+  font-weight: 500;
+  padding: 5px 10px;
+  margin-right: 0; /* Align with the right edge like the add button */
+}
+
+/* Status badge specific to search results */
+.search-result-item .status-badge.pending {
+  display: inline-block;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: bold;
 }
 
 .status-badge.rejected {
@@ -394,7 +450,8 @@
 }
 
 .search-result-item.status-pending {
-  background-color: rgba(var(--warning-rgb), 0.05);
+  background-color: rgba(var(--warning-rgb), 0.03);
+  border-left: 3px solid var(--warning-color);
 }
 
 .search-result-item.status-rejected {

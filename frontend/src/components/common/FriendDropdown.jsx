@@ -67,21 +67,15 @@ const FriendDropdown = () => {
     searchTimeoutRef.current = setTimeout(async () => {
       const results = await searchUsers(searchQuery);
 
-      // Filter out users that already have a relationship
+      // Filter out only users who are already friends
+      // But KEEP users with pending requests to display differently
       const filteredResults = (results.users || []).filter((user) => {
         // Hide users who are already friends
         if (user.friendStatus === "accepted") {
           return false;
         }
 
-        // Hide users who have pending outgoing requests
-        if (
-          user.friendStatus === "pending" &&
-          user.requestDirection === "outgoing"
-        ) {
-          return false;
-        }
-
+        // Keep users with pending requests, rejected requests, and no requests
         return true;
       });
 
@@ -105,6 +99,17 @@ const FriendDropdown = () => {
   };
 
   const handleAddFriend = async (userId) => {
+    // Check if user already has a pending request
+    const existingUser = searchResults.find((user) => user.id === userId);
+    if (
+      existingUser &&
+      existingUser.friendStatus === "pending" &&
+      existingUser.requestDirection === "outgoing"
+    ) {
+      // Just update the UI to show the pending status - no need to send another request
+      return;
+    }
+
     const result = await sendRequest(userId);
 
     if (result && result.success) {
@@ -240,16 +245,22 @@ const FriendDropdown = () => {
                     </div>
                   ) : searchResults.length === 0 ? (
                     <div className="empty-state">
-                      <p>No users found</p>
+                      <p>No users found with this name</p>
+                      <small>
+                        Only users you can add as friends will appear in search
+                        results. Existing friends won&apos;t be shown.
+                      </small>
                     </div>
                   ) : (
-                    searchResults.map((user) => (
-                      <SearchResultItem
-                        key={user.id}
-                        user={user}
-                        onAddFriend={() => handleAddFriend(user.id)}
-                      />
-                    ))
+                    <>
+                      {searchResults.map((user) => (
+                        <SearchResultItem
+                          key={user.id}
+                          user={user}
+                          onAddFriend={() => handleAddFriend(user.id)}
+                        />
+                      ))}
+                    </>
                   )}
                 </div>
               </div>
@@ -354,15 +365,19 @@ const FriendRequestItem = ({ request, onAccept, onReject }) => {
 const SearchResultItem = ({ user, onAddFriend }) => {
   const { url: avatarUrl } = useAvatar(user.photoURL);
 
-  // Debug
-  console.log(
-    "Search result user:",
-    user.displayName,
-    "status:",
-    user.friendStatus,
-    "direction:",
-    user.requestDirection
-  );
+  // Only log with debug=true in URL for debugging
+  const showDebug =
+    new URLSearchParams(window.location.search).get("debug") === "true";
+  if (showDebug) {
+    console.log(
+      "User in search results:",
+      user.displayName,
+      "status:",
+      user.friendStatus,
+      "direction:",
+      user.requestDirection
+    );
+  }
 
   // Determine what action button to show based on status
   const renderActionButton = () => {
@@ -370,11 +385,19 @@ const SearchResultItem = ({ user, onAddFriend }) => {
       case "accepted":
         return <span className="status-badge friends">Friends</span>;
       case "pending":
-        return user.requestDirection === "outgoing" ? (
-          <span className="status-badge pending">Requested</span>
-        ) : (
-          <span className="status-badge pending">Respond</span>
-        );
+        if (user.requestDirection === "outgoing") {
+          return (
+            <button
+              className="friend-action sent"
+              disabled
+              title="Request already sent"
+            >
+              Sent
+            </button>
+          );
+        } else {
+          return <span className="status-badge pending">Respond</span>;
+        }
       case "rejected":
         return (
           <div className="action-with-status">
