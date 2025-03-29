@@ -38,6 +38,16 @@ const peerServer = configurePeerServer();
 // Register API routes
 app.use("/api", apiRoutes);
 
+// Add root route handler
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "online",
+    message: "CodeColab API Server",
+    docs: "/api/docs",
+    health: "/health",
+  });
+});
+
 // Register error handlers after all routes
 app.registerErrorHandlers();
 
