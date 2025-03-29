@@ -225,7 +225,19 @@ const AuthForm = ({ isLogin }) => {
 
       setIsGoogleLoading(true);
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({});
+
+      // Add specific scopes needed
+      provider.addScope("email");
+      provider.addScope("profile");
+
+      // Set custom parameters for more reliable auth
+      provider.setCustomParameters({
+        prompt: "select_account",
+      });
+
+      // Clear any previous auth sessions in localStorage
+      localStorage.removeItem("firebase:authUser");
+      sessionStorage.removeItem("firebase:authUser");
 
       // Use redirect-based auth instead of popup
       await signInWithRedirect(auth, provider);
