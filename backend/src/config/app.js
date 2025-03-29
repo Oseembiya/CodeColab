@@ -14,6 +14,35 @@ const configureApp = () => {
   app.use(
     helmet({
       crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+      crossOriginEmbedderPolicy: false,
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          connectSrc: [
+            "'self'",
+            "https://*.google.com",
+            "https://*.googleapis.com",
+            "https://*.firebaseio.com",
+            "wss://*.firebaseio.com",
+            "https://*.firebase.com",
+            process.env.FRONTEND_URL || "http://localhost:5173",
+          ],
+          frameSrc: [
+            "'self'",
+            "https://*.google.com",
+            "https://*.firebaseapp.com",
+          ],
+          imgSrc: ["'self'", "https://*.google.com", "data:", "blob:"],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://*.google.com",
+            "https://*.googleapis.com",
+            "https://*.gstatic.com",
+          ],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://*.googleapis.com"],
+        },
+      },
     })
   );
 
@@ -23,7 +52,21 @@ const configureApp = () => {
       origin: process.env.FRONTEND_URL || "http://localhost:5173",
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Access-Control-Allow-Headers",
+      ],
+      exposedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "Content-Length",
+        "X-Requested-With",
+      ],
+      maxAge: 86400,
     })
   );
 

@@ -242,39 +242,47 @@ const AuthForm = ({ isLogin }) => {
       // Set custom parameters for more reliable auth
       provider.setCustomParameters({
         prompt: "select_account",
+        // Use login_hint if you have the user's email already
+        // login_hint: formData.email || "",
       });
 
-      // Clear any previous auth sessions in localStorage
-      localStorage.removeItem("firebase:authUser");
-      sessionStorage.removeItem("firebase:authUser");
+      // Production vs Development strategy
+      const isProduction = import.meta.env.MODE === "production";
 
-      // Try popup first, fall back to redirect if needed
-      try {
-        // Use popup approach first (often more reliable than redirect)
-        const result = await signInWithPopup(auth, provider);
-        console.log("Successfully signed in with popup");
-        if (result?.user) {
-          await saveUserToFirestore(result.user);
-          navigate("/dashboard");
-        }
-      } catch (popupError) {
-        console.error("Popup auth failed, detailed error:", {
-          code: popupError.code,
-          message: popupError.message,
-          fullError: popupError,
-        });
-
-        // If popup is blocked or fails, fallback to redirect
-        if (
-          popupError.code === "auth/popup-blocked" ||
-          popupError.code === "auth/popup-closed-by-user" ||
-          popupError.code === "auth/cancelled-popup-request"
-        ) {
-          console.log("Falling back to redirect auth method");
+      if (isProduction) {
+        // In production, prefer redirect method to avoid COOP issues
+        console.log("Using redirect auth method for production environment");
+        try {
           await signInWithRedirect(auth, provider);
-        } else {
-          // Rethrow non-popup related errors
-          throw popupError;
+          // The result will be handled in the useEffect with getRedirectResult
+          return;
+        } catch (redirectError) {
+          console.error("Redirect auth failed:", redirectError);
+          throw redirectError;
+        }
+      } else {
+        // In development, try popup first
+        try {
+          const result = await signInWithPopup(auth, provider);
+          console.log("Successfully signed in with popup");
+          if (result?.user) {
+            await saveUserToFirestore(result.user);
+            navigate("/dashboard");
+          }
+        } catch (popupError) {
+          console.error("Popup auth failed:", popupError);
+
+          // If popup is blocked, fallback to redirect
+          if (
+            popupError.code === "auth/popup-blocked" ||
+            popupError.code === "auth/popup-closed-by-user" ||
+            popupError.code === "auth/cancelled-popup-request"
+          ) {
+            console.log("Falling back to redirect auth method");
+            await signInWithRedirect(auth, provider);
+          } else {
+            throw popupError;
+          }
         }
       }
     } catch (error) {
