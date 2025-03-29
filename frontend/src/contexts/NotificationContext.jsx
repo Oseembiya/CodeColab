@@ -13,24 +13,35 @@ export const NotificationProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load notifications when user is authenticated
+  // Set up real-time Firestore listener for notifications
   useEffect(() => {
     if (user?.uid) {
-      loadNotifications();
+      setLoading(true);
+
+      // Subscribe to notifications with Firestore real-time updates
+      const unsubscribe = notificationService.subscribeToNotifications(
+        user.uid,
+        (notificationsData) => {
+          setNotifications(notificationsData);
+          setUnreadCount(notificationsData.filter((n) => !n.read).length);
+          setLoading(false);
+        }
+      );
+
+      // Clean up the listener when unmounting or user changes
+      return () => unsubscribe();
     } else {
       setNotifications([]);
       setUnreadCount(0);
     }
   }, [user?.uid]);
 
-  // Listen for real-time notifications
+  // Listen for socket notifications (keep this for backward compatibility)
   useEffect(() => {
     if (socket && user?.uid) {
       socket.on("new-notification", (notification) => {
         if (notification.userId === user.uid) {
-          setNotifications((prev) => [notification, ...prev]);
-          setUnreadCount((prev) => prev + 1);
-
+          // The Firestore listener will handle this, but keep for legacy support
           // Show browser notification if supported
           if (
             "Notification" in window &&
@@ -51,28 +62,17 @@ export const NotificationProvider = ({ children }) => {
   }, [socket, user?.uid]);
 
   const loadNotifications = async () => {
-    if (!user?.uid) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await notificationService.getNotifications(user.uid);
-      setNotifications(data);
-      setUnreadCount(data.filter((n) => !n.read).length);
-    } catch (err) {
-      console.error("Error loading notifications:", err);
-      setError("Failed to load notifications");
-    } finally {
-      setLoading(false);
-    }
+    // This function is kept for backward compatibility
+    // Now notifications load automatically via the listener
+    return;
   };
 
   const markAsRead = async (notificationId) => {
     try {
       await notificationService.markAsRead(notificationId);
 
-      // Update local state
+      // The Firestore listener will automatically update the UI
+      // but we'll update locally too for immediate feedback
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
       );

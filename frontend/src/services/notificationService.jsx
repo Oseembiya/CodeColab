@@ -8,6 +8,7 @@ import {
   orderBy,
   writeBatch,
   deleteDoc,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
@@ -101,4 +102,39 @@ export const deleteNotification = async (notificationId) => {
     console.error("Error deleting notification:", error);
     throw error;
   }
+};
+
+/**
+ * Set up a real-time listener for notifications
+ * @param {string} userId - User ID to get notifications for
+ * @param {Function} callback - Function to call when notifications change
+ * @returns {Function} - Unsubscribe function to stop listening
+ */
+export const subscribeToNotifications = (userId, callback) => {
+  if (!userId) return () => {};
+
+  const notificationsRef = collection(db, "notifications");
+  const q = query(
+    notificationsRef,
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
+
+  return onSnapshot(
+    q,
+    (querySnapshot) => {
+      const notifications = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        // Convert Firestore timestamp to JS Date if needed
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        readAt: doc.data().readAt?.toDate() || null,
+      }));
+
+      callback(notifications);
+    },
+    (error) => {
+      console.error("Error listening to notifications:", error);
+    }
+  );
 };
