@@ -14,6 +14,7 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -62,14 +63,23 @@ const AuthForm = ({ isLogin }) => {
       try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
+          console.log("Successfully signed in via redirect");
           await saveUserToFirestore(result.user);
           navigate("/dashboard");
         }
       } catch (error) {
         console.error("Redirect Result Error:", error);
-        if (error.code !== "auth/cancelled-popup-request") {
+        setIsGoogleLoading(false);
+        // Only show errors for non-cancelled requests
+        if (
+          error.code !== "auth/cancelled-popup-request" &&
+          error.code !== "auth/redirect-cancelled-by-user"
+        ) {
           setFirebaseError("An error occurred during sign in.");
+          setTimeout(() => setFirebaseError(""), 5000);
         }
+      } finally {
+        setIsGoogleLoading(false);
       }
     };
 
@@ -213,26 +223,23 @@ const AuthForm = ({ isLogin }) => {
         return;
       }
 
+      setIsGoogleLoading(true);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({});
 
-      // Try to get existing credential first
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        await saveUserToFirestore(result.user);
-        navigate("/dashboard");
-      }
+      // Use redirect-based auth instead of popup
+      await signInWithRedirect(auth, provider);
+      // The page will redirect and later return with the result
+      // Result is handled in the useEffect with getRedirectResult
     } catch (error) {
-      // Don't log popup-closed-by-user as an error since it's a normal user action
-      if (error.code !== "auth/popup-closed-by-user") {
+      setIsGoogleLoading(false);
+
+      if (error.code !== "auth/cancelled-popup-request") {
         console.error("Google Auth Error:", error);
       }
 
       // Handle specific error cases
       const errorMessages = {
-        "auth/popup-blocked": "Pop-up was blocked. Please enable pop-ups.",
-        "auth/popup-closed-by-user": "", // No error message for closed popup
-        "auth/cancelled-popup-request": "",
         "auth/network-request-failed":
           "Network error. Please check your connection.",
       };
@@ -240,17 +247,10 @@ const AuthForm = ({ isLogin }) => {
       const errorMessage =
         errorMessages[error.code] || "An error occurred during sign in.";
 
-      // Only set error message if there's something to show
       if (errorMessage) {
         setFirebaseError(errorMessage);
-
-        // Clear error message after a delay (except for cancelled-popup-request)
-        if (error.code !== "auth/cancelled-popup-request") {
-          setTimeout(() => setFirebaseError(""), 5000);
-        }
+        setTimeout(() => setFirebaseError(""), 5000);
       }
-    } finally {
-      setIsGoogleLoading(false);
     }
   };
 
@@ -311,6 +311,8 @@ const AuthForm = ({ isLogin }) => {
                   value={formData.fullName}
                   onChange={handleChange}
                   placeholder="Enter your full name"
+                  maxLength={20}
+                  autoComplete="name"
                 />
                 <span className="icon-container">
                   <FaUser className="input-icon" />
@@ -332,6 +334,8 @@ const AuthForm = ({ isLogin }) => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="your@email.com"
+                maxLength={30}
+                autoComplete="username"
               />
               <span className="icon-container">
                 <FaEnvelope className="input-icon" />
