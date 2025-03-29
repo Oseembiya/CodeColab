@@ -157,6 +157,20 @@
   object-fit: cover;
 }
 
+/* Default avatar fallback */
+.default-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--secondary-color);
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
 .friend-info {
   flex: 1;
   overflow: hidden;
@@ -346,6 +360,19 @@
   margin-top: 4px;
 }
 
+/* Container for showing both status badge and action button */
+.action-with-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.action-with-status .status-badge {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
 .status-badge.friends {
   background-color: rgba(var(--success-rgb), 0.15);
   color: var(--success-color);
@@ -354,6 +381,24 @@
 .status-badge.pending {
   background-color: rgba(var(--warning-rgb), 0.15);
   color: var(--warning-color);
+}
+
+.status-badge.rejected {
+  background-color: rgba(var(--error-rgb), 0.15);
+  color: var(--error-color);
+}
+
+/* Highlight rows based on friend status */
+.search-result-item.status-accepted {
+  background-color: rgba(var(--success-rgb), 0.05);
+}
+
+.search-result-item.status-pending {
+  background-color: rgba(var(--warning-rgb), 0.05);
+}
+
+.search-result-item.status-rejected {
+  background-color: rgba(var(--error-rgb), 0.05);
 }
 
 /* Empty states and loading */

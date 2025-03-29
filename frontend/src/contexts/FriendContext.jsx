@@ -90,14 +90,18 @@ export const FriendProvider = ({ children }) => {
 
       return { success: true };
     } catch (err) {
-      console.error("Error sending friend request:", err);
-
       // Handle the "already exists" case as a non-error
-      if (err.message && err.message.includes("already exists")) {
-        setSuccessMessage("This friendship connection already exists");
+      if (
+        err.message &&
+        err.message.includes("already exists") &&
+        !err.message.includes("rejected")
+      ) {
+        setSuccessMessage("Friend request already sent or connection exists");
         return { success: true, alreadyExists: true };
       }
 
+      // Only log errors that aren't about duplicate requests
+      console.error("Error sending friend request:", err);
       setError(err.message || "Failed to send friend request");
       return { success: false, error: err.message };
     } finally {

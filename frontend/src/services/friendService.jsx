@@ -78,7 +78,10 @@ export const sendFriendRequest = async (senderId, receiverId) => {
     });
     return data;
   } catch (error) {
-    console.error("Error sending friend request:", error);
+    // Don't log "already exists" as an error - it's an expected case
+    if (!(error.message && error.message.includes("already exists"))) {
+      console.error("Error sending friend request:", error);
+    }
     throw error;
   }
 };

@@ -172,12 +172,9 @@ export const getImageUrl = (url, timestamp) => {
  * @param {Function} onError - Callback on load error
  */
 export const preloadImage = (src, onLoad, onError) => {
-  if (
-    !src ||
-    src === DEFAULT_AVATAR_SVG ||
-    src.includes("default-avatar.png")
-  ) {
-    return; // Don't queue default images or empty URLs
+  // Don't queue default images, SVGs, or empty URLs
+  if (!src || src === DEFAULT_AVATAR_SVG || src.startsWith("data:")) {
+    return;
   }
 
   // Use proxy for rate-limited images

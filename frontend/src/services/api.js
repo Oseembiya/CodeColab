@@ -121,10 +121,18 @@ export const createApiClient = (getToken = null) => {
 
       return data;
     } catch (error) {
-      console.error(
-        `API call error (${options.method || "GET"} ${endpoint}):`,
-        error
-      );
+      // Don't log specific expected errors
+      const isExpectedError =
+        error.message &&
+        (error.message.includes("already exists") ||
+          error.message.includes("Friend request already exists"));
+
+      if (!isExpectedError) {
+        console.error(
+          `API call error (${options.method || "GET"} ${endpoint}):`,
+          error
+        );
+      }
       throw error;
     }
   };
