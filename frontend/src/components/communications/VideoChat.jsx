@@ -220,7 +220,7 @@ const VideoChat = ({ sessionId, userId }) => {
         const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
           host: import.meta.env.VITE_PEER_HOST || "localhost",
           port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
-          path: "/myapp",
+          path: import.meta.env.VITE_PEER_PATH || "/peerjs",
           debug: 1, // Reduced debug level
           config: {
             iceServers: [

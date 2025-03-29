@@ -14,6 +14,7 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth";
@@ -62,14 +63,32 @@ const AuthForm = ({ isLogin }) => {
       try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
+          console.log("Successfully signed in via redirect");
           await saveUserToFirestore(result.user);
           navigate("/dashboard");
         }
       } catch (error) {
         console.error("Redirect Result Error:", error);
-        if (error.code !== "auth/cancelled-popup-request") {
-          setFirebaseError("An error occurred during sign in.");
+        // Log detailed error information for debugging
+        console.error("Detailed redirect error:", {
+          code: error.code,
+          message: error.message,
+          fullError: error,
+        });
+
+        setIsGoogleLoading(false);
+        // Only show errors for non-cancelled requests
+        if (
+          error.code !== "auth/cancelled-popup-request" &&
+          error.code !== "auth/redirect-cancelled-by-user"
+        ) {
+          setFirebaseError(
+            error.message || "An error occurred during sign in."
+          );
+          setTimeout(() => setFirebaseError(""), 5000);
         }
+      } finally {
+        setIsGoogleLoading(false);
       }
     };
 
@@ -213,44 +232,78 @@ const AuthForm = ({ isLogin }) => {
         return;
       }
 
+      setIsGoogleLoading(true);
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({});
 
-      // Try to get existing credential first
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        await saveUserToFirestore(result.user);
-        navigate("/dashboard");
+      // Add specific scopes needed
+      provider.addScope("email");
+      provider.addScope("profile");
+
+      // Set custom parameters for more reliable auth
+      provider.setCustomParameters({
+        prompt: "select_account",
+      });
+
+      // Clear any previous auth sessions in localStorage
+      localStorage.removeItem("firebase:authUser");
+      sessionStorage.removeItem("firebase:authUser");
+
+      // Try popup first, fall back to redirect if needed
+      try {
+        // Use popup approach first (often more reliable than redirect)
+        const result = await signInWithPopup(auth, provider);
+        console.log("Successfully signed in with popup");
+        if (result?.user) {
+          await saveUserToFirestore(result.user);
+          navigate("/dashboard");
+        }
+      } catch (popupError) {
+        console.error("Popup auth failed, detailed error:", {
+          code: popupError.code,
+          message: popupError.message,
+          fullError: popupError,
+        });
+
+        // If popup is blocked or fails, fallback to redirect
+        if (
+          popupError.code === "auth/popup-blocked" ||
+          popupError.code === "auth/popup-closed-by-user" ||
+          popupError.code === "auth/cancelled-popup-request"
+        ) {
+          console.log("Falling back to redirect auth method");
+          await signInWithRedirect(auth, provider);
+        } else {
+          // Rethrow non-popup related errors
+          throw popupError;
+        }
       }
     } catch (error) {
-      // Don't log popup-closed-by-user as an error since it's a normal user action
-      if (error.code !== "auth/popup-closed-by-user") {
-        console.error("Google Auth Error:", error);
-      }
+      setIsGoogleLoading(false);
+
+      console.error("Google Auth Error (detailed):", {
+        code: error.code,
+        message: error.message,
+        fullError: error,
+      });
 
       // Handle specific error cases
       const errorMessages = {
-        "auth/popup-blocked": "Pop-up was blocked. Please enable pop-ups.",
-        "auth/popup-closed-by-user": "", // No error message for closed popup
-        "auth/cancelled-popup-request": "",
         "auth/network-request-failed":
           "Network error. Please check your connection.",
+        "auth/popup-blocked":
+          "Popup was blocked. Please allow popups for this site.",
+        "auth/popup-closed-by-user": "Sign-in was cancelled. Please try again.",
+        "auth/cancelled-popup-request":
+          "The previous sign-in attempt was cancelled.",
+        "auth/account-exists-with-different-credential":
+          "An account already exists with the same email. Try signing in with a different method.",
       };
 
       const errorMessage =
         errorMessages[error.code] || "An error occurred during sign in.";
 
-      // Only set error message if there's something to show
-      if (errorMessage) {
-        setFirebaseError(errorMessage);
-
-        // Clear error message after a delay (except for cancelled-popup-request)
-        if (error.code !== "auth/cancelled-popup-request") {
-          setTimeout(() => setFirebaseError(""), 5000);
-        }
-      }
-    } finally {
-      setIsGoogleLoading(false);
+      setFirebaseError(errorMessage);
+      setTimeout(() => setFirebaseError(""), 5000);
     }
   };
 
@@ -311,6 +364,8 @@ const AuthForm = ({ isLogin }) => {
                   value={formData.fullName}
                   onChange={handleChange}
                   placeholder="Enter your full name"
+                  maxLength={20}
+                  autoComplete="name"
                 />
                 <span className="icon-container">
                   <FaUser className="input-icon" />
@@ -332,6 +387,8 @@ const AuthForm = ({ isLogin }) => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="your@email.com"
+                maxLength={30}
+                autoComplete="username"
               />
               <span className="icon-container">
                 <FaEnvelope className="input-icon" />
