@@ -8,7 +8,6 @@
 .profile-container {
   max-width: 850px;
   margin: 0 auto;
-  padding: var(--spacing-lg) 0;
 }
 
 /* Header - Match dashboard-header style */
@@ -79,18 +78,30 @@
 .profile-avatar {
   text-align: center;
   position: relative;
-  width: 150px;
-  margin: 0 auto var(--spacing-xl);
+  width: 140px;
+  margin: 0 auto var(--spacing-lg);
 }
 
 .avatar-large {
-  width: 150px;
-  height: 150px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--secondary-color);
   box-shadow: var(--shadow-md);
   transition: transform 0.3s ease;
+}
+
+/* Default avatar icon styling */
+.default-avatar-icon {
+  width: 140px;
+  height: 140px;
+  color: var(--secondary-color);
+  border-radius: 50%;
+  box-shadow: var(--shadow-md);
+  background-color: var(--surface-color);
+  padding: 5px;
+  border: 3px solid var(--secondary-color);
 }
 
 .avatar-icon {
@@ -123,7 +134,7 @@
 .profile-tabs {
   display: flex;
   gap: var(--spacing-md);
-  margin: var(--spacing-xl) 0;
+  margin: var(--spacing-lg) 0;
   border-bottom: 2px solid var(--line-color);
   padding-bottom: 2px;
 }

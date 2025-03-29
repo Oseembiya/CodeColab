@@ -9,6 +9,10 @@ const CACHE_VERSION = 1;
 const DELAY_BETWEEN_LOADS = 300; // ms delay between image loads
 const MAX_RETRY_ATTEMPTS = 3;
 
+// Default avatar as data URL to avoid 404 errors
+const DEFAULT_AVATAR_SVG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cpath fill='%23c6c6c6' d='M0 0h128v128H0z'/%3E%3Ccircle fill='%23fff' cx='64' cy='48' r='28'/%3E%3Cpath fill='%23fff' d='M64 95c19.883 0 36-8.075 36-18.031V89c0 18-16.117 33-36 33S28 107 28 89V76.969C28 86.925 44.117 95 64 95z'/%3E%3C/svg%3E";
+
 // Internal state
 const loadedImages = new Set();
 const imageLoadQueue = [];
@@ -150,7 +154,7 @@ const processQueue = () => {
  * @returns {string} Formatted image URL
  */
 export const getImageUrl = (url, timestamp) => {
-  if (!url) return "/default-avatar.png";
+  if (!url) return DEFAULT_AVATAR_SVG;
 
   // For Google/other rate-limited images, use proxy
   if (shouldUseProxy(url)) {
@@ -168,8 +172,9 @@ export const getImageUrl = (url, timestamp) => {
  * @param {Function} onError - Callback on load error
  */
 export const preloadImage = (src, onLoad, onError) => {
-  if (!src || src.includes("default-avatar.png")) {
-    return; // Don't queue default images or empty URLs
+  // Don't queue default images, SVGs, or empty URLs
+  if (!src || src === DEFAULT_AVATAR_SVG || src.startsWith("data:")) {
+    return;
   }
 
   // Use proxy for rate-limited images
@@ -201,7 +206,7 @@ export const isImageLoaded = (url) => {
  * @returns {string} - Formatted avatar URL
  */
 export const getAvatarUrl = (url, size = 96) => {
-  if (!url) return "/default-avatar.png";
+  if (!url) return DEFAULT_AVATAR_SVG;
 
   // For Google profile photos, ensure correct size
   if (url.includes("googleusercontent.com") || url.includes("ggpht.com")) {

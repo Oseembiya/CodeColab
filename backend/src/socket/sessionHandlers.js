@@ -6,6 +6,10 @@ const {
   notifyFriendsAboutStatus,
 } = require("../utils/userStatus");
 
+// Define a default avatar data URL for fallback
+const DEFAULT_AVATAR_SVG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cpath fill='%23c6c6c6' d='M0 0h128v128H0z'/%3E%3Ccircle fill='%23fff' cx='64' cy='48' r='28'/%3E%3Cpath fill='%23fff' d='M64 95c19.883 0 36-8.075 36-18.031V89c0 18-16.117 33-36 33S28 107 28 89V76.969C28 86.925 44.117 95 64 95z'/%3E%3C/svg%3E";
+
 /**
  * Session-related socket event handlers
  */
@@ -206,7 +210,7 @@ module.exports = (io, socket) => {
       socketId: socket.id,
       clientId: socket.clientId,
       username: username || "Anonymous",
-      photoURL: photoURL || "/default-avatar.png",
+      photoURL: photoURL || DEFAULT_AVATAR_SVG,
       joinedAt: new Date().toISOString(),
       userId: userId, // Add userId to data for collaboration tracking
     };

@@ -12,6 +12,10 @@ import { useAvatar } from "../../hooks/useImage";
 import { useDropdown } from "../../contexts/DropdownContext";
 import PropTypes from "prop-types";
 
+// Add the default avatar SVG data URL
+const DEFAULT_AVATAR_SVG =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cpath fill='%23c6c6c6' d='M0 0h128v128H0z'/%3E%3Ccircle fill='%23fff' cx='64' cy='48' r='28'/%3E%3Cpath fill='%23fff' d='M64 95c19.883 0 36-8.075 36-18.031V89c0 18-16.117 33-36 33S28 107 28 89V76.969C28 86.925 44.117 95 64 95z'/%3E%3C/svg%3E";
+
 const FriendDropdown = () => {
   const [activeTab, setActiveTab] = useState("friends");
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,7 +66,20 @@ const FriendDropdown = () => {
 
     searchTimeoutRef.current = setTimeout(async () => {
       const results = await searchUsers(searchQuery);
-      setSearchResults(results.users || []);
+
+      // Filter out only users who are already friends
+      // But KEEP users with pending requests to display differently
+      const filteredResults = (results.users || []).filter((user) => {
+        // Hide users who are already friends
+        if (user.friendStatus === "accepted") {
+          return false;
+        }
+
+        // Keep users with pending requests, rejected requests, and no requests
+        return true;
+      });
+
+      setSearchResults(filteredResults);
     }, 300);
 
     return () => {
@@ -82,6 +99,17 @@ const FriendDropdown = () => {
   };
 
   const handleAddFriend = async (userId) => {
+    // Check if user already has a pending request
+    const existingUser = searchResults.find((user) => user.id === userId);
+    if (
+      existingUser &&
+      existingUser.friendStatus === "pending" &&
+      existingUser.requestDirection === "outgoing"
+    ) {
+      // Just update the UI to show the pending status - no need to send another request
+      return;
+    }
+
     const result = await sendRequest(userId);
 
     if (result && result.success) {
@@ -217,16 +245,22 @@ const FriendDropdown = () => {
                     </div>
                   ) : searchResults.length === 0 ? (
                     <div className="empty-state">
-                      <p>No users found</p>
+                      <p>No users found with this name</p>
+                      <small>
+                        Only users you can add as friends will appear in search
+                        results. Existing friends won&apos;t be shown.
+                      </small>
                     </div>
                   ) : (
-                    searchResults.map((user) => (
-                      <SearchResultItem
-                        key={user.id}
-                        user={user}
-                        onAddFriend={() => handleAddFriend(user.id)}
-                      />
-                    ))
+                    <>
+                      {searchResults.map((user) => (
+                        <SearchResultItem
+                          key={user.id}
+                          user={user}
+                          onAddFriend={() => handleAddFriend(user.id)}
+                        />
+                      ))}
+                    </>
                   )}
                 </div>
               </div>
@@ -245,7 +279,20 @@ const FriendItem = ({ user, action, onAction }) => {
   return (
     <div className="friend-item">
       <div className="friend-avatar">
-        <img src={avatarUrl} alt={user.displayName} />
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={user.displayName}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = DEFAULT_AVATAR_SVG;
+            }}
+          />
+        ) : (
+          <div className="default-avatar-fallback">
+            {user.displayName.charAt(0)}
+          </div>
+        )}
       </div>
       <div className="friend-info">
         <div className="friend-name">{user.displayName}</div>
@@ -271,7 +318,20 @@ const FriendRequestItem = ({ request, onAccept, onReject }) => {
   return (
     <div className="friend-request-item">
       <div className="friend-avatar">
-        <img src={avatarUrl} alt={request.senderName} />
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={request.senderName}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = DEFAULT_AVATAR_SVG;
+            }}
+          />
+        ) : (
+          <div className="default-avatar-fallback">
+            {request.senderName.charAt(0)}
+          </div>
+        )}
       </div>
       <div className="friend-info">
         <div className="friend-name">{request.senderName}</div>
@@ -305,16 +365,52 @@ const FriendRequestItem = ({ request, onAccept, onReject }) => {
 const SearchResultItem = ({ user, onAddFriend }) => {
   const { url: avatarUrl } = useAvatar(user.photoURL);
 
+  // Only log with debug=true in URL for debugging
+  const showDebug =
+    new URLSearchParams(window.location.search).get("debug") === "true";
+  if (showDebug) {
+    console.log(
+      "User in search results:",
+      user.displayName,
+      "status:",
+      user.friendStatus,
+      "direction:",
+      user.requestDirection
+    );
+  }
+
   // Determine what action button to show based on status
   const renderActionButton = () => {
     switch (user.friendStatus) {
       case "accepted":
         return <span className="status-badge friends">Friends</span>;
       case "pending":
-        return user.requestDirection === "outgoing" ? (
-          <span className="status-badge pending">Requested</span>
-        ) : (
-          <span className="status-badge pending">Respond</span>
+        if (user.requestDirection === "outgoing") {
+          return (
+            <button
+              className="friend-action sent"
+              disabled
+              title="Request already sent"
+            >
+              Sent
+            </button>
+          );
+        } else {
+          return <span className="status-badge pending">Respond</span>;
+        }
+      case "rejected":
+        return (
+          <div className="action-with-status">
+            <span className="status-badge rejected">Request Rejected</span>
+            <button
+              className="friend-action add"
+              onClick={onAddFriend}
+              aria-label="Add friend"
+              title="Try again"
+            >
+              <FaUserPlus />
+            </button>
+          </div>
         );
       case "none":
       default:
@@ -332,9 +428,23 @@ const SearchResultItem = ({ user, onAddFriend }) => {
   };
 
   return (
-    <div className="search-result-item">
+    <div className={`search-result-item status-${user.friendStatus}`}>
       <div className="friend-avatar">
-        <img src={avatarUrl} alt={user.displayName} />
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={user.displayName}
+            onError={(e) => {
+              e.target.onerror = null;
+              // Use the SVG defined at the top of this file
+              e.target.src = DEFAULT_AVATAR_SVG;
+            }}
+          />
+        ) : (
+          <div className="default-avatar-fallback">
+            {user.displayName.charAt(0)}
+          </div>
+        )}
       </div>
       <div className="friend-info">
         <div className="friend-name">{user.displayName}</div>

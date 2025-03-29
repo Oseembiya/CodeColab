@@ -43,6 +43,14 @@ const axiosWithRetry = async (config) => {
   }
 };
 
+// Define a default avatar SVG for fallback
+const DEFAULT_AVATAR_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <path fill="#c6c6c6" d="M0 0h128v128H0z"/>
+  <circle fill="#fff" cx="64" cy="48" r="28"/>
+  <path fill="#fff" d="M64 95c19.883 0 36-8.075 36-18.031V89c0 18-16.117 33-36 33S28 107 28 89V76.969C28 86.925 44.117 95 64 95z"/>
+</svg>`;
+
 /**
  * Image proxy endpoint
  * GET /api/image-proxy?url=https://example.com/image.jpg
@@ -52,7 +60,7 @@ router.get("/", imageProxyLimiter, async (req, res) => {
     const { url } = req.query;
 
     if (!url) {
-      return res.status(400).send("URL parameter is required");
+      return res.status(400).json({ error: "URL parameter is required" });
     }
 
     // Check if image is in cache
@@ -96,10 +104,9 @@ router.get("/", imageProxyLimiter, async (req, res) => {
     res.set("Access-Control-Allow-Origin", "*"); // Allow CORS
     return res.send(response.data);
   } catch (error) {
-    console.error("Image proxy error:", error.message);
-
-    // Send a 302 redirect to a default avatar
-    res.redirect("/default-avatar.png");
+    console.error("Image proxy error:", error);
+    res.setHeader("Content-Type", "image/svg+xml");
+    return res.status(200).send(DEFAULT_AVATAR_SVG);
   }
 });
 
