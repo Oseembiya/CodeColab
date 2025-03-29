@@ -2,6 +2,7 @@ import { useNotifications } from "../../contexts/NotificationContext";
 import { IoMdNotifications } from "react-icons/io";
 import { formatDistanceToNow } from "date-fns";
 import { useDropdown } from "../../contexts/DropdownContext";
+import { useState } from "react";
 
 // Helper function to safely format dates
 const formatNotificationTime = (timestamp) => {
@@ -32,6 +33,12 @@ const NotificationMenu = () => {
     useNotifications();
   const { openDropdownMenu, isDropdownOpen } = useDropdown();
   const dropdownName = "notifications";
+  const [animatingRead, setAnimatingRead] = useState(false);
+
+  // Filter to show only unread notifications
+  const unreadNotifications = notifications.filter(
+    (notification) => !notification.read
+  );
 
   const handleToggle = () => {
     openDropdownMenu(dropdownName);
@@ -56,8 +63,17 @@ const NotificationMenu = () => {
   };
 
   const handleMarkAllAsRead = async () => {
-    await markAllAsRead();
-    openDropdownMenu(null);
+    const success = await markAllAsRead();
+    if (success) {
+      // Start the animation
+      setAnimatingRead(true);
+
+      // Close the dropdown after the animation completes
+      setTimeout(() => {
+        openDropdownMenu(null);
+        setAnimatingRead(false);
+      }, 600);
+    }
   };
 
   return (
@@ -87,14 +103,14 @@ const NotificationMenu = () => {
           <div className="notification-list">
             {loading ? (
               <div className="notification-loading">Loading...</div>
-            ) : notifications.length === 0 ? (
+            ) : unreadNotifications.length === 0 ? (
               <div className="empty-notifications">No notifications</div>
             ) : (
-              notifications.map((notification) => (
+              unreadNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`notification-item ${
-                    !notification.read ? "unread" : ""
+                  className={`notification-item unread ${
+                    animatingRead ? "fade-to-read" : ""
                   }`}
                   onClick={() => handleNotificationClick(notification)}
                 >
