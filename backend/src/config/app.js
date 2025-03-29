@@ -10,8 +10,12 @@ require("dotenv").config();
 const configureApp = () => {
   const app = express();
 
-  // Security middleware
-  app.use(helmet());
+  // Security middleware with customized Content-Security-Policy
+  app.use(
+    helmet({
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    })
+  );
 
   // Configure CORS
   app.use(
