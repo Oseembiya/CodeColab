@@ -1,7 +1,7 @@
 // Import the necessary Firebase modules
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+
 import { getStorage } from "firebase/storage";
 
 // Firebase configuration
@@ -18,9 +18,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize services
+// Initialize services with optimized settings
 const auth = getAuth(app);
-const db = getFirestore(app);
+
 const storage = getStorage(app);
 
 /**

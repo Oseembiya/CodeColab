@@ -117,7 +117,6 @@ const App = () => {
   useEffect(() => {
     initErrorTracking();
   }, []);
-
   return (
     <ErrorBoundary>
       <AuthProvider>
