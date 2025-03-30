@@ -107,6 +107,22 @@ export const getSupportedLanguages = () => {
   }));
 };
 
+// Helper function to determine if we're running in production/Netlify environment
+const isNetlify = () => {
+  return (
+    window.location.hostname.includes("netlify") ||
+    window.location.hostname.includes("codekolab")
+  );
+};
+
+// Get the appropriate base URL for Judge0 API requests
+const getJudge0BaseUrl = () => {
+  if (isNetlify()) {
+    return "/.netlify/functions/judge0-proxy";
+  }
+  return "/judge0";
+};
+
 export const executeCode = async (code, language = "javascript") => {
   const languageId = getLanguageId(language);
   if (!languageId) {
@@ -125,9 +141,11 @@ public class Main {
   }
 
   try {
+    const baseUrl = getJudge0BaseUrl();
+
     // Create submission
     const submissionResponse = await fetch(
-      "/judge0/submissions?base64_encoded=false&wait=false",
+      `${baseUrl}/submissions?base64_encoded=false&wait=false`,
       {
         method: "POST",
         headers: {
@@ -160,7 +178,7 @@ public class Main {
 
     while (attempts < maxAttempts) {
       const resultResponse = await fetch(
-        `/judge0/submissions/${token}?base64_encoded=false`,
+        `${baseUrl}/submissions/${token}?base64_encoded=false`,
         {
           headers: {
             "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",

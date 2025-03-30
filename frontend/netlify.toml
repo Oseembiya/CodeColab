@@ -1,6 +1,7 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
 
 # Handle Single Page Application routing
 [[redirects]]
@@ -15,6 +16,10 @@
   status = 200
   force = true
   headers = {X-From = "Netlify"}
+  [redirects.headers]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "X-RapidAPI-Host, X-RapidAPI-Key, Content-Type"
 
 [build.environment]
   NODE_VERSION = "18.18.0"
