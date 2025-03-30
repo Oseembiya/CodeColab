@@ -1,7 +1,14 @@
 // Import the necessary Firebase modules
 import { initializeApp } from "firebase/app";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  getFirestore,
+  enableIndexedDbPersistence,
+  initializeFirestore,
+  CACHE_SIZE_UNLIMITED,
+  disableNetwork,
+  enableNetwork,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Firebase configuration
@@ -18,10 +25,56 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize services
+// Initialize services with optimized settings
 const auth = getAuth(app);
-const db = getFirestore(app);
+
+// Initialize Firestore with optimized settings for better performance
+const db = initializeFirestore(app, {
+  // Use a smaller cache to reduce memory usage
+  cacheSizeBytes: 20 * 1024 * 1024, // 20MB instead of default 40MB
+  // Disable background garbage collection which can cause performance jank
+  experimentalForceLongPolling: false,
+  // Improve connection stability
+  experimentalAutoDetectLongPolling: true,
+  // Reduce the number of concurrent connections
+  maxConcurrentLimboResolutions: 50,
+});
+
+// Initialize storage
 const storage = getStorage(app);
+
+// Set up indexed DB persistence for offline support
+// This is wrapped in a try/catch because it can fail in some browsers
+try {
+  enableIndexedDbPersistence(db, {
+    // Critical optimization: Disable synchronizing between tabs
+    // This reduces background work dramatically and prevents setInterval violations
+    synchronizeTabs: false,
+  }).catch((err) => {
+    if (err.code === "failed-precondition") {
+      // Multiple tabs open, persistence can only be enabled in one tab at a time
+      console.warn(
+        "Firebase persistence could not be enabled: Multiple tabs open"
+      );
+    } else if (err.code === "unimplemented") {
+      // The current browser does not support persistence
+      console.warn("Firebase persistence not supported in this browser");
+    }
+  });
+} catch (e) {
+  console.warn("Error enabling persistence:", e);
+}
+
+// Export a function to disable network when app is in background
+// This helps reduce Firebase background operations
+export const disableFirestoreNetwork = () => {
+  return disableNetwork(db);
+};
+
+// Export a function to enable network when app is in foreground
+export const enableFirestoreNetwork = () => {
+  return enableNetwork(db);
+};
 
 /**
  * Observer for auth state changes
