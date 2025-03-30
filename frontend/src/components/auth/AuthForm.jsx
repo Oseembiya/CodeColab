@@ -246,13 +246,13 @@ const AuthForm = ({ isLogin }) => {
         origin_uri: window.location.origin,
       });
 
-               await signInWithRedirect(auth, provider);
-          // The result will be handled in the useEffect with getRedirectResult
-          return;
-        } catch (redirectError) {
-          console.error("Redirect auth failed:", redirectError);
-          throw redirectError;
-        }
+      try {
+        await signInWithRedirect(auth, provider);
+        // The result will be handled in the useEffect with getRedirectResult
+        return;
+      } catch (redirectError) {
+        console.error("Redirect auth failed:", redirectError);
+        throw redirectError;
       }
     } catch (error) {
       setIsGoogleLoading(false);
