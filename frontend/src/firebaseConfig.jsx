@@ -33,6 +33,18 @@ if (
   );
 }
 
+// Add direct handler for auth redirect page to prevent black screen
+if (
+  typeof window !== "undefined" &&
+  window.location.pathname.includes("/__/auth/handler")
+) {
+  console.log("Detected auth handler page, handling redirect");
+  // Short delay to ensure auth processing completes
+  setTimeout(() => {
+    window.location.href = "/dashboard";
+  }, 1500);
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 

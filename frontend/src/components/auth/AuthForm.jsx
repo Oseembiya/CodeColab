@@ -223,14 +223,9 @@ const AuthForm = ({ isLogin }) => {
       provider.addScope("email");
       provider.addScope("profile");
 
-      // Get current domain for redirect_uri
-      const currentDomain = window.location.origin;
-
-      // Set custom parameters for more reliable auth
+      // Simplified parameters - remove explicit redirect_uri to let Firebase handle it
       provider.setCustomParameters({
         prompt: "select_account",
-        // Explicitly set the redirect URI to the current domain
-        redirect_uri: currentDomain,
       });
 
       // For production environment, prefer redirect method as it's more reliable
@@ -240,10 +235,7 @@ const AuthForm = ({ isLogin }) => {
 
       if (isProduction) {
         // In production, use redirect for better compatibility
-        console.log(
-          "Using redirect auth method in production with domain:",
-          currentDomain
-        );
+        console.log("Using redirect auth method in production");
         // Force app check to ensure correct auth domain
         auth.tenantId = null; // Reset any previous tenant
         await signInWithRedirect(auth, provider);
