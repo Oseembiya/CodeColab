@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import PropTypes from "prop-types";
 
 const OutputPanel = memo(
+<<<<<<< HEAD
   ({ output, error, height, onDragStart, onCollapse }) => {
     const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -14,6 +15,39 @@ const OutputPanel = memo(
 
     return (
       <div className={`output-panel ${isCollapsed ? "collapsed" : ""}`}>
+=======
+  ({
+    output,
+    error,
+    height,
+    isCollapsed: externalIsCollapsed,
+    onDragStart,
+    onCollapse,
+  }) => {
+    const [internalIsCollapsed, setInternalIsCollapsed] = useState(true);
+
+    // Use the external isCollapsed state if provided
+    const isCollapsed =
+      externalIsCollapsed !== undefined
+        ? externalIsCollapsed
+        : internalIsCollapsed;
+
+    const handleToggle = () => {
+      setInternalIsCollapsed(!internalIsCollapsed);
+      if (onCollapse) {
+        onCollapse(!isCollapsed);
+      }
+    };
+
+    // Create a memoized style object to prevent unnecessary re-renders
+    const panelStyle = isCollapsed ? {} : { height: `${height}px` };
+
+    return (
+      <div
+        className={`output-panel ${isCollapsed ? "collapsed" : ""}`}
+        style={panelStyle}
+      >
+>>>>>>> 580a21c8a7912155fa4ef159e099f92da6732228
         <div
           className="output-drag-handle"
           onMouseDown={onDragStart}
@@ -41,6 +75,20 @@ const OutputPanel = memo(
         </div>
       </div>
     );
+<<<<<<< HEAD
+=======
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison function for memo
+    // Only re-render if these specific props change
+    return (
+      prevProps.output === nextProps.output &&
+      prevProps.error === nextProps.error &&
+      prevProps.isCollapsed === nextProps.isCollapsed &&
+      // Only consider height changes if not collapsed
+      (prevProps.isCollapsed || prevProps.height === nextProps.height)
+    );
+>>>>>>> 580a21c8a7912155fa4ef159e099f92da6732228
   }
 );
 
@@ -48,6 +96,7 @@ OutputPanel.propTypes = {
   output: PropTypes.string,
   error: PropTypes.bool,
   height: PropTypes.number,
+  isCollapsed: PropTypes.bool,
   onDragStart: PropTypes.func,
   onCollapse: PropTypes.func,
 };
