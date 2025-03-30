@@ -1,4 +1,8 @@
 /*
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cross-Origin-Embedder-Policy: unsafe-none
-  Content-Security-Policy: frame-ancestors 'self' https://accounts.google.com; 
+  Content-Security-Policy: frame-ancestors 'self' https://accounts.google.com https://*.googleusercontent.com https://*.youtube.com https://*.firebaseapp.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app wss://*.firebaseio.com https://codecolab-852p.onrender.com wss://codecolab-852p.onrender.com;
+  Access-Control-Allow-Origin: *
+  X-Frame-Options: SAMEORIGIN
+  Cross-Origin-Resource-Policy: same-site
+*/ 

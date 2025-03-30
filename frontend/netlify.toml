@@ -11,3 +11,14 @@
 [build.environment]
   NODE_VERSION = "18.18.0"
   NPM_VERSION = "9.8.1" 
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "unsafe-none"
+    Cross-Origin-Resource-Policy = "same-site"
+    Content-Security-Policy = "frame-ancestors 'self' https://accounts.google.com https://*.googleusercontent.com https://*.youtube.com https://*.firebaseapp.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app wss://*.firebaseio.com https://codecolab-852p.onrender.com wss://codecolab-852p.onrender.com;"
+    Access-Control-Allow-Origin = "*"
+    X-Frame-Options = "SAMEORIGIN" 
