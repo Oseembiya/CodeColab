@@ -11,6 +11,7 @@ const RemoteVideo = memo(
     const setupCompletedRef = useRef(false);
     const [streamError, setStreamError] = useState(false);
     const errorTimeoutRef = useRef(null);
+    const isUnmountingRef = useRef(false);
 
     // Reset error state when stream changes
     useEffect(() => {
@@ -144,44 +145,67 @@ const RemoteVideo = memo(
         video.addEventListener("error", handleError);
 
         // Ensure audio is checked periodically (fixes Chrome issues)
-        intervalRef.current = setInterval(() => {
-          if (video && !video.paused) {
-            try {
-              const audioTracks = peerStream.getAudioTracks();
-              if (audioTracks.length > 0) {
-                if (!audioTracks[0].enabled) {
-                  audioTracks[0].enabled = true;
-                }
-                if (video.muted) {
-                  video.muted = false;
-                }
-              }
-            } catch (e) {
-              // If we can't access tracks, the stream might be gone
-              console.warn(
-                `Couldn't access audio tracks for peer ${peerId}:`,
-                e
-              );
+        // OPTIMIZATION: Use requestAnimationFrame + throttling instead of setInterval
+        // This prevents the browser's "long task" warning
+        let lastCheckTime = Date.now();
+        const THROTTLE_MS = 10000; // Same as original interval: check every 10 seconds
 
-              // Don't set error immediately, give it a chance to recover
-              if (errorTimeoutRef.current) {
-                clearTimeout(errorTimeoutRef.current);
-              }
+        const checkAudioState = () => {
+          const now = Date.now();
+          const timeElapsed = now - lastCheckTime;
 
-              errorTimeoutRef.current = setTimeout(() => {
-                // Check if tracks are still inaccessible
-                try {
-                  const trackCount = peerStream.getTracks().length;
-                  if (trackCount === 0) {
+          // Only run the check if enough time has passed
+          if (timeElapsed >= THROTTLE_MS) {
+            if (video && !video.paused) {
+              try {
+                const audioTracks = peerStream.getAudioTracks();
+                if (audioTracks.length > 0) {
+                  if (!audioTracks[0].enabled) {
+                    audioTracks[0].enabled = true;
+                  }
+                  if (video.muted) {
+                    video.muted = false;
+                  }
+                }
+              } catch (e) {
+                // If we can't access tracks, the stream might be gone
+                console.warn(
+                  `Couldn't access audio tracks for peer ${peerId}:`,
+                  e
+                );
+
+                // Don't set error immediately, give it a chance to recover
+                if (errorTimeoutRef.current) {
+                  clearTimeout(errorTimeoutRef.current);
+                }
+
+                errorTimeoutRef.current = setTimeout(() => {
+                  // Check if tracks are still inaccessible
+                  try {
+                    const trackCount = peerStream.getTracks().length;
+                    if (trackCount === 0) {
+                      setStreamError(true);
+                    }
+                  } catch (trackError) {
                     setStreamError(true);
                   }
-                } catch (trackError) {
-                  setStreamError(true);
-                }
-              }, 5000);
+                }, 5000);
+              }
             }
+
+            // Update the last check time
+            lastCheckTime = now;
           }
-        }, 10000);
+
+          // Schedule the next check using requestAnimationFrame
+          // This is much more performance-friendly than setInterval
+          if (!isUnmountingRef.current) {
+            intervalRef.current = requestAnimationFrame(checkAudioState);
+          }
+        };
+
+        // Start the RAF loop
+        intervalRef.current = requestAnimationFrame(checkAudioState);
 
         // Initial play attempt
         if (video.readyState >= 2) handleCanPlay();
@@ -192,13 +216,17 @@ const RemoteVideo = memo(
 
       // Clean up
       return () => {
+        // Set unmounting flag to true to stop the RAF loop
+        isUnmountingRef.current = true;
+
         if (video) {
           video.removeEventListener("canplay", video.handleCanPlay);
           video.removeEventListener("error", video.handleError);
         }
 
         if (intervalRef.current) {
-          clearInterval(intervalRef.current);
+          // Cancel animation frame instead of clearInterval
+          cancelAnimationFrame(intervalRef.current);
           intervalRef.current = null;
         }
 
@@ -208,6 +236,13 @@ const RemoteVideo = memo(
         }
       };
     }, [peerId, peerStream]);
+
+    // Clean up when component unmounts
+    useEffect(() => {
+      return () => {
+        isUnmountingRef.current = true;
+      };
+    }, []);
 
     return (
       <div className="video-container">

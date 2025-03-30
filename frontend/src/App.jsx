@@ -11,6 +11,14 @@ import MainContent from "./components/layouts/mainContent";
 import routeConfig from "./config/routes";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import LoadingFallback from "./components/common/LoadingFallback";
+import {
+  disableFirestoreNetwork,
+  enableFirestoreNetwork,
+} from "./firebaseConfig";
+import { ToastContainer } from "react-toastify";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import "react-toastify/dist/ReactToastify.css";
+import "./styles/App.css";
 
 // Dynamic import for error tracking (optional for production)
 const initErrorTracking = async () => {
@@ -116,6 +124,34 @@ const App = () => {
   // Initialize error tracking in production
   useEffect(() => {
     initErrorTracking();
+  }, []);
+
+  // Add page visibility event listeners to optimize Firebase network usage
+  useEffect(() => {
+    // Function to handle visibility change
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page is hidden (in background)
+        console.log("App moved to background, disabling Firestore network");
+        disableFirestoreNetwork().catch((err) =>
+          console.warn("Could not disable Firestore network:", err)
+        );
+      } else {
+        // Page is visible (in foreground)
+        console.log("App moved to foreground, enabling Firestore network");
+        enableFirestoreNetwork().catch((err) =>
+          console.warn("Could not enable Firestore network:", err)
+        );
+      }
+    };
+
+    // Add event listener
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Clean up on unmount
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   return (
