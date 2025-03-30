@@ -60,8 +60,12 @@ const AuthForm = ({ isLogin }) => {
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   useEffect(() => {
+    console.log("Auth form mounted, setting up listeners");
+
+    // Listen for direct auth state changes
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
+        console.log("Auth state detected user, navigating to dashboard");
         navigate("/dashboard");
       }
     });
@@ -69,12 +73,23 @@ const AuthForm = ({ isLogin }) => {
     // Check for redirect result on component mount
     const checkRedirectResult = async () => {
       try {
+        console.log("Checking for redirect result");
         setIsGoogleLoading(true);
         const result = await getRedirectResult(auth);
+
         if (result?.user) {
           console.log("Successfully signed in with Google redirect");
           await saveUserToFirestore(result.user);
-          navigate("/dashboard");
+
+          // Double check auth state before navigating
+          if (auth.currentUser) {
+            console.log("Current user confirmed, navigating to dashboard");
+            navigate("/dashboard");
+          } else {
+            console.warn("User from redirect but no currentUser?");
+          }
+        } else {
+          console.log("No redirect result found");
         }
       } catch (error) {
         console.error("Redirect auth error:", error);
@@ -84,7 +99,9 @@ const AuthForm = ({ isLogin }) => {
       }
     };
 
-    checkRedirectResult();
+    // Small delay before checking redirect result
+    // This helps ensure Firebase auth is fully initialized
+    setTimeout(checkRedirectResult, 500);
 
     return () => unsubscribe();
   }, [navigate]);

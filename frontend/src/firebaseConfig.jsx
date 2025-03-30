@@ -4,6 +4,8 @@ import {
   getAuth,
   onAuthStateChanged,
   connectAuthEmulator,
+  setPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -38,11 +40,26 @@ if (
   typeof window !== "undefined" &&
   window.location.pathname.includes("/__/auth/handler")
 ) {
-  console.log("Detected auth handler page, handling redirect");
-  // Short delay to ensure auth processing completes
-  setTimeout(() => {
-    window.location.href = "/dashboard";
-  }, 1500);
+  console.log("Detected auth handler page, waiting for auth...");
+
+  // Create a more robust handler that checks auth state before redirecting
+  const checkAuthAndRedirect = () => {
+    const currentUser = auth?.currentUser;
+
+    if (currentUser) {
+      // User is authenticated, redirect to dashboard
+      console.log("Auth detected, redirecting to dashboard");
+      window.location.href = "/dashboard";
+    } else {
+      // Try again in a short while
+      console.log("No auth detected yet, waiting...");
+      setTimeout(checkAuthAndRedirect, 500);
+    }
+  };
+
+  // Start checking auth state after a small initial delay
+  // This allows Firebase to initialize auth properly
+  setTimeout(checkAuthAndRedirect, 1000);
 }
 
 // Initialize Firebase
@@ -52,6 +69,16 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// Set up local persistence to keep users logged in
+// This helps prevent auth state from being lost during redirects
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("Auth persistence set to local");
+  })
+  .catch((error) => {
+    console.error("Error setting auth persistence:", error);
+  });
 
 // Use emulator in development if configured
 if (
