@@ -8,6 +8,14 @@
   to = "/index.html"
   status = 200
 
+# Proxy for Judge0 API
+[[redirects]]
+  from = "/judge0/*"
+  to = "https://judge0-ce.p.rapidapi.com/:splat"
+  status = 200
+  force = true
+  headers = {X-From = "Netlify"}
+
 [build.environment]
   NODE_VERSION = "18.18.0"
   NPM_VERSION = "9.8.1" 
