@@ -58,7 +58,6 @@ const AuthForm = ({ isLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-  const [redirectInProgress, setRedirectInProgress] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -71,7 +70,6 @@ const AuthForm = ({ isLogin }) => {
     const checkRedirectResult = async () => {
       try {
         setIsGoogleLoading(true);
-        setRedirectInProgress(true);
         const result = await getRedirectResult(auth);
         if (result?.user) {
           console.log("Successfully signed in with Google redirect");
@@ -83,7 +81,6 @@ const AuthForm = ({ isLogin }) => {
         handleAuthError(error);
       } finally {
         setIsGoogleLoading(false);
-        setRedirectInProgress(false);
       }
     };
 
@@ -247,7 +244,6 @@ const AuthForm = ({ isLogin }) => {
           "Using redirect auth method in production with domain:",
           currentDomain
         );
-        setRedirectInProgress(true);
         // Force app check to ensure correct auth domain
         auth.tenantId = null; // Reset any previous tenant
         await signInWithRedirect(auth, provider);
@@ -272,7 +268,6 @@ const AuthForm = ({ isLogin }) => {
           popupError.code === "auth/popup-blocked"
         ) {
           console.log("Falling back to redirect auth method");
-          setRedirectInProgress(true);
           await signInWithRedirect(auth, provider);
           // The redirect will take the user away from the page
           return;
@@ -314,9 +309,7 @@ const AuthForm = ({ isLogin }) => {
       setFirebaseError(errorMessage);
       setTimeout(() => setFirebaseError(""), 5000);
     } finally {
-      if (!redirectInProgress) {
-        setIsGoogleLoading(false);
-      }
+      setIsGoogleLoading(false);
     }
   };
 
@@ -353,18 +346,6 @@ const AuthForm = ({ isLogin }) => {
 
   if (auth.currentUser) {
     return null;
-  }
-
-  // Add loading indicator message if redirect is in progress
-  if (redirectInProgress) {
-    return (
-      <div className="loading-fallback">
-        <div className="loading-spinner"></div>
-        <div className="loading-message">
-          Redirecting to Google for authentication...
-        </div>
-      </div>
-    );
   }
 
   return (
