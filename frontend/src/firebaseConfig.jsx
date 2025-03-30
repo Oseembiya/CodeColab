@@ -1,6 +1,10 @@
 // Import the necessary Firebase modules
 import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import {
+  getAuth,
+  onAuthStateChanged,
+  connectAuthEmulator,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -15,6 +19,20 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+// Override authDomain with current domain in production
+if (
+  typeof window !== "undefined" &&
+  window.location.hostname !== "localhost" &&
+  !window.location.hostname.includes("127.0.0.1")
+) {
+  // Use the current hostname for auth domain in production
+  firebaseConfig.authDomain = window.location.hostname;
+  console.log(
+    "Using current hostname for Firebase Auth:",
+    firebaseConfig.authDomain
+  );
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
@@ -22,6 +40,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// Use emulator in development if configured
+if (
+  import.meta.env.MODE === "development" &&
+  import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
+) {
+  connectAuthEmulator(auth, "http://localhost:9099");
+  console.log("Using Firebase Auth Emulator");
+}
 
 /**
  * Observer for auth state changes
