@@ -14,12 +14,15 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth";
 import { auth, db } from "../../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import TermsAndConditions from "./TermsAndConditions";
 import "../../styles/components/_terms-modal.css";
+import "../../styles/components/_loading.css";
 
 const saveUserToFirestore = async (user) => {
   try {
@@ -55,6 +58,7 @@ const AuthForm = ({ isLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [redirectInProgress, setRedirectInProgress] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -62,6 +66,28 @@ const AuthForm = ({ isLogin }) => {
         navigate("/dashboard");
       }
     });
+
+    // Check for redirect result on component mount
+    const checkRedirectResult = async () => {
+      try {
+        setIsGoogleLoading(true);
+        setRedirectInProgress(true);
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          console.log("Successfully signed in with Google redirect");
+          await saveUserToFirestore(result.user);
+          navigate("/dashboard");
+        }
+      } catch (error) {
+        console.error("Redirect auth error:", error);
+        handleAuthError(error);
+      } finally {
+        setIsGoogleLoading(false);
+        setRedirectInProgress(false);
+      }
+    };
+
+    checkRedirectResult();
 
     return () => unsubscribe();
   }, [navigate]);
@@ -207,40 +233,9 @@ const AuthForm = ({ isLogin }) => {
         redirect_uri: window.location.origin,
       });
 
-      // Track popup state to handle premature closing
-      let popupOpened = false;
-
       try {
-        // Create a wrapper promise that will handle timeout
-        const authPromise = new Promise((resolve, reject) => {
-          try {
-            popupOpened = true;
-            signInWithPopup(auth, provider)
-              .then((result) => {
-                popupOpened = false;
-                resolve(result);
-              })
-              .catch((error) => {
-                popupOpened = false;
-                reject(error);
-              });
-          } catch (error) {
-            popupOpened = false;
-            reject(error);
-          }
-        });
-
-        // Add a timeout to handle stalled auth attempts
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            if (popupOpened) {
-              reject(new Error("Authentication timed out. Please try again."));
-            }
-          }, 120000); // 2 minutes timeout
-        });
-
-        // Race the auth attempt against the timeout
-        const result = await Promise.race([authPromise, timeoutPromise]);
+        // Try popup auth first (better UX when it works)
+        const result = await signInWithPopup(auth, provider);
 
         if (result?.user) {
           console.log("Successfully signed in with Google");
@@ -249,6 +244,20 @@ const AuthForm = ({ isLogin }) => {
         }
       } catch (popupError) {
         console.error("Popup auth failed:", popupError);
+
+        // If popup was closed by user or blocked, fall back to redirect
+        if (
+          popupError.code === "auth/popup-closed-by-user" ||
+          popupError.code === "auth/popup-blocked"
+        ) {
+          console.log("Falling back to redirect auth method");
+          setRedirectInProgress(true);
+          await signInWithRedirect(auth, provider);
+          // The redirect will take the user away from the page
+          // Result will be handled in the useEffect hook
+          return;
+        }
+
         throw popupError;
       }
     } catch (error) {
@@ -285,7 +294,9 @@ const AuthForm = ({ isLogin }) => {
       setFirebaseError(errorMessage);
       setTimeout(() => setFirebaseError(""), 5000);
     } finally {
-      setIsGoogleLoading(false);
+      if (!redirectInProgress) {
+        setIsGoogleLoading(false);
+      }
     }
   };
 
@@ -322,6 +333,18 @@ const AuthForm = ({ isLogin }) => {
 
   if (auth.currentUser) {
     return null;
+  }
+
+  // Add loading indicator message if redirect is in progress
+  if (redirectInProgress) {
+    return (
+      <div className="loading-fallback">
+        <div className="loading-spinner"></div>
+        <div className="loading-message">
+          Redirecting to Google for authentication...
+        </div>
+      </div>
+    );
   }
 
   return (
