@@ -19,6 +19,12 @@ const SessionTimer = ({ sessionId, className = "" }) => {
   const timeOffsetRef = useRef(0);
   // Track if we've initialized the timer
   const initializedRef = useRef(false);
+  // Reference for animation frame
+  const animationFrameRef = useRef(null);
+  // Last time an update was performed
+  const lastUpdateTimeRef = useRef(0);
+  // Flag for unmounting
+  const isUnmountingRef = useRef(false);
 
   useEffect(() => {
     if (!socket || !sessionId) return;
@@ -102,17 +108,42 @@ const SessionTimer = ({ sessionId, className = "" }) => {
       setTimeLeft(minutesRemaining);
     };
 
-    // Update countdown every second
-    const timerInterval = setInterval(() => {
-      updateRemainingTime();
-    }, 1000);
+    // OPTIMIZATION: Use requestAnimationFrame instead of setInterval
+    // This is more performance-friendly and avoids timer violations
+    const updateTimerLoop = (timestamp) => {
+      // Skip if component is unmounting
+      if (isUnmountingRef.current) return;
+
+      // Throttle updates to once per second (1000ms)
+      if (
+        !lastUpdateTimeRef.current ||
+        timestamp - lastUpdateTimeRef.current >= 1000
+      ) {
+        updateRemainingTime();
+        lastUpdateTimeRef.current = timestamp;
+      }
+
+      // Continue the loop
+      animationFrameRef.current = requestAnimationFrame(updateTimerLoop);
+    };
+
+    // Start the animation frame loop
+    animationFrameRef.current = requestAnimationFrame(updateTimerLoop);
 
     return () => {
+      // Set unmounting flag
+      isUnmountingRef.current = true;
+
+      // Remove socket listeners
       socket.off("session-time-info");
       socket.off("session-extended");
       socket.off("session-extension-failed");
       socket.off("session-ending-soon");
-      clearInterval(timerInterval);
+
+      // Cancel animation frame
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, [socket, sessionId]);
 
@@ -120,12 +151,30 @@ const SessionTimer = ({ sessionId, className = "" }) => {
   useEffect(() => {
     if (!socket || !sessionId) return;
 
-    const syncInterval = setInterval(() => {
-      socket.emit("get-session-time", { sessionId });
-    }, 60000); // Sync every minute
+    let syncTimeoutId;
 
-    return () => clearInterval(syncInterval);
+    const syncWithServer = () => {
+      socket.emit("get-session-time", { sessionId });
+      // Schedule next sync
+      syncTimeoutId = setTimeout(syncWithServer, 60000); // Sync every minute
+    };
+
+    // Start the sync cycle
+    syncTimeoutId = setTimeout(syncWithServer, 60000);
+
+    return () => {
+      if (syncTimeoutId) {
+        clearTimeout(syncTimeoutId);
+      }
+    };
   }, [socket, sessionId]);
+
+  // Set unmounting flag on component unmount
+  useEffect(() => {
+    return () => {
+      isUnmountingRef.current = true;
+    };
+  }, []);
 
   const handleExtendSession = () => {
     if (!canExtend || extendLoading || !socket || !user) return;
