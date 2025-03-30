@@ -203,11 +203,45 @@ const AuthForm = ({ isLogin }) => {
       // Set custom parameters for more reliable auth
       provider.setCustomParameters({
         prompt: "select_account",
+        // Add redirect_uri to ensure proper return from the auth flow
+        redirect_uri: window.location.origin,
       });
 
+      // Track popup state to handle premature closing
+      let popupOpened = false;
+
       try {
-        // Use popup instead of redirect to avoid CSP issues
-        const result = await signInWithPopup(auth, provider);
+        // Create a wrapper promise that will handle timeout
+        const authPromise = new Promise((resolve, reject) => {
+          try {
+            popupOpened = true;
+            signInWithPopup(auth, provider)
+              .then((result) => {
+                popupOpened = false;
+                resolve(result);
+              })
+              .catch((error) => {
+                popupOpened = false;
+                reject(error);
+              });
+          } catch (error) {
+            popupOpened = false;
+            reject(error);
+          }
+        });
+
+        // Add a timeout to handle stalled auth attempts
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            if (popupOpened) {
+              reject(new Error("Authentication timed out. Please try again."));
+            }
+          }, 120000); // 2 minutes timeout
+        });
+
+        // Race the auth attempt against the timeout
+        const result = await Promise.race([authPromise, timeoutPromise]);
+
         if (result?.user) {
           console.log("Successfully signed in with Google");
           await saveUserToFirestore(result.user);
@@ -237,10 +271,16 @@ const AuthForm = ({ isLogin }) => {
           "The previous sign-in attempt was cancelled.",
         "auth/account-exists-with-different-credential":
           "An account already exists with the same email. Try signing in with a different method.",
+        "auth/timeout": "Authentication timed out. Please try again.",
+        "auth/internal-error":
+          "Authentication service encountered an error. Please try again.",
       };
 
       const errorMessage =
-        errorMessages[error.code] || "An error occurred during sign in.";
+        errorMessages[error.code] ||
+        (error.message.includes("message channel closed")
+          ? "Authentication was interrupted. Please try again."
+          : "An error occurred during sign in.");
 
       setFirebaseError(errorMessage);
       setTimeout(() => setFirebaseError(""), 5000);

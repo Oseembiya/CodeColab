@@ -25,7 +25,11 @@ const configureApp = () => {
             "https://*.firebaseio.com",
             "wss://*.firebaseio.com",
             "https://*.firebase.com",
+            "https://*.rapidapi.com",
+            "https://judge0-ce.p.rapidapi.com",
             process.env.FRONTEND_URL || "http://localhost:5173",
+            process.env.BACKEND_URL || "http://localhost:3000",
+            "https://*.firebasestorage.app",
           ],
           frameSrc: [
             "'self'",
