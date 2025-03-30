@@ -14,8 +14,6 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth";
 import { auth, db } from "../../firebaseConfig";
@@ -57,43 +55,6 @@ const AuthForm = ({ isLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          console.log("Successfully signed in via redirect");
-          await saveUserToFirestore(result.user);
-          navigate("/dashboard");
-        }
-      } catch (error) {
-        console.error("Redirect Result Error:", error);
-        // Log detailed error information for debugging
-        console.error("Detailed redirect error:", {
-          code: error.code,
-          message: error.message,
-          fullError: error,
-        });
-
-        setIsGoogleLoading(false);
-        // Only show errors for non-cancelled requests
-        if (
-          error.code !== "auth/cancelled-popup-request" &&
-          error.code !== "auth/redirect-cancelled-by-user"
-        ) {
-          setFirebaseError(
-            error.message || "An error occurred during sign in."
-          );
-          setTimeout(() => setFirebaseError(""), 5000);
-        }
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    };
-
-    handleRedirectResult();
-  }, [navigate]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -242,17 +203,19 @@ const AuthForm = ({ isLogin }) => {
       // Set custom parameters for more reliable auth
       provider.setCustomParameters({
         prompt: "select_account",
-        // Important: Set the current domain as origin_uri to help with redirect
-        origin_uri: window.location.origin,
       });
 
       try {
-        await signInWithRedirect(auth, provider);
-        // The result will be handled in the useEffect with getRedirectResult
-        return;
-      } catch (redirectError) {
-        console.error("Redirect auth failed:", redirectError);
-        throw redirectError;
+        // Use popup instead of redirect to avoid CSP issues
+        const result = await signInWithPopup(auth, provider);
+        if (result?.user) {
+          console.log("Successfully signed in with Google");
+          await saveUserToFirestore(result.user);
+          navigate("/dashboard");
+        }
+      } catch (popupError) {
+        console.error("Popup auth failed:", popupError);
+        throw popupError;
       }
     } catch (error) {
       setIsGoogleLoading(false);
@@ -281,6 +244,8 @@ const AuthForm = ({ isLogin }) => {
 
       setFirebaseError(errorMessage);
       setTimeout(() => setFirebaseError(""), 5000);
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
