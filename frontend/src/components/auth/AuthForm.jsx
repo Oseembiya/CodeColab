@@ -242,47 +242,35 @@ const AuthForm = ({ isLogin }) => {
       // Set custom parameters for more reliable auth
       provider.setCustomParameters({
         prompt: "select_account",
-        // Use login_hint if you have the user's email already
-        // login_hint: formData.email || "",
+        // Important: Set the current domain as origin_uri to help with redirect
+        origin_uri: window.location.origin,
       });
 
-      // Production vs Development strategy
-      const isProduction = import.meta.env.MODE === "production";
+      // First try popup method (works better in many cases)
+      try {
+        console.log("Attempting popup sign-in");
+        const result = await signInWithPopup(auth, provider);
+        console.log("Successfully signed in with popup");
+        if (result?.user) {
+          await saveUserToFirestore(result.user);
+          navigate("/dashboard");
+        }
+        return;
+      } catch (popupError) {
+        console.error("Popup auth failed:", popupError);
+        console.log("Falling back to redirect auth method");
 
-      if (isProduction) {
-        // In production, prefer redirect method to avoid COOP issues
-        console.log("Using redirect auth method for production environment");
+        // If popup fails, try redirect method
         try {
+          // Clear any pending redirect results first
+          await auth._persistenceManager.clearRedirectResult();
+          console.log("Using redirect auth method");
           await signInWithRedirect(auth, provider);
           // The result will be handled in the useEffect with getRedirectResult
           return;
         } catch (redirectError) {
           console.error("Redirect auth failed:", redirectError);
           throw redirectError;
-        }
-      } else {
-        // In development, try popup first
-        try {
-          const result = await signInWithPopup(auth, provider);
-          console.log("Successfully signed in with popup");
-          if (result?.user) {
-            await saveUserToFirestore(result.user);
-            navigate("/dashboard");
-          }
-        } catch (popupError) {
-          console.error("Popup auth failed:", popupError);
-
-          // If popup is blocked, fallback to redirect
-          if (
-            popupError.code === "auth/popup-blocked" ||
-            popupError.code === "auth/popup-closed-by-user" ||
-            popupError.code === "auth/cancelled-popup-request"
-          ) {
-            console.log("Falling back to redirect auth method");
-            await signInWithRedirect(auth, provider);
-          } else {
-            throw popupError;
-          }
         }
       }
     } catch (error) {
