@@ -221,6 +221,7 @@ const VideoChat = ({ sessionId, userId }) => {
           host: import.meta.env.VITE_PEER_HOST || "localhost",
           port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
           path: import.meta.env.VITE_PEER_PATH || "/peerjs",
+          secure: true, // Ensure we use secure connections
           debug: 1, // Reduced debug level
           config: {
             iceServers: [

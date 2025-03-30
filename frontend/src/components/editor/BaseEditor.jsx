@@ -5,6 +5,7 @@ import {
   lazy,
   useCallback,
   useEffect,
+  useMemo,
 } from "react";
 import PropTypes from "prop-types";
 import EditorToolbar from "./EditorToolbar";
@@ -33,19 +34,23 @@ const BaseEditor = ({
   const [fontSize, setFontSize] = useState(14);
 
   const editorRef = useRef(null);
-  const dragStartY = useRef(0);
-  const initialHeight = useRef(0);
+  const dragStartY = useRef(null);
+  const initialHeight = useRef(null);
 
-  const [editorOptions, setEditorOptions] = useState({
-    minimap: { enabled: false },
-    fontSize: 14,
-    automaticLayout: true,
-    lineNumbers: "on",
-    roundedSelection: false,
-    scrollBeyondLastLine: false,
-    tabSize: 2,
-    wordWrap: "on",
-  });
+  // Memoize editor options to prevent unnecessary rerenders
+  const editorOptions = useMemo(
+    () => ({
+      minimap: { enabled: false },
+      fontSize,
+      automaticLayout: true,
+      lineNumbers: "on",
+      roundedSelection: false,
+      scrollBeyondLastLine: false,
+      tabSize: 2,
+      wordWrap: "on",
+    }),
+    [fontSize]
+  );
 
   const handleRunCode = async () => {
     if (!editorRef.current) return;
@@ -74,18 +79,10 @@ const BaseEditor = ({
 
   const handleZoomIn = () => {
     setFontSize((prev) => Math.min(prev + 2, 24));
-    setEditorOptions((prev) => ({
-      ...prev,
-      fontSize: Math.min(prev.fontSize + 2, 24),
-    }));
   };
 
   const handleZoomOut = () => {
     setFontSize((prev) => Math.max(prev - 2, 12));
-    setEditorOptions((prev) => ({
-      ...prev,
-      fontSize: Math.max(prev.fontSize - 2, 12),
-    }));
   };
 
   const handleCopy = useCallback(() => {
@@ -135,9 +132,9 @@ const BaseEditor = ({
   // Add drag handlers
   const handleDragStart = (e) => {
     e.preventDefault();
-    setIsDragging(true);
     dragStartY.current = e.clientY;
     initialHeight.current = outputHeight;
+    setIsDragging(true);
 
     // Add event listeners for dragging
     document.addEventListener("mousemove", handleDragMove);
@@ -177,6 +174,29 @@ const BaseEditor = ({
       document.removeEventListener("mouseup", handleDragEnd);
     };
   }, [handleDragMove, handleDragEnd]);
+
+  // Debounced window resize handler to prevent frequent re-renders
+  useEffect(() => {
+    const handleResize = () => {
+      // Trigger Monaco editor layout update
+      if (editorRef.current) {
+        editorRef.current.layout();
+      }
+    };
+
+    // Debounce the resize event
+    let resizeTimeout;
+    const debouncedResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(handleResize, 100);
+    };
+
+    window.addEventListener("resize", debouncedResize);
+    return () => {
+      window.removeEventListener("resize", debouncedResize);
+      clearTimeout(resizeTimeout);
+    };
+  }, []);
 
   // When language changes, you might want to update the editor content
   useEffect(() => {

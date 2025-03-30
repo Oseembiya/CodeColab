@@ -58,6 +58,18 @@ export default defineConfig(({ mode }) => {
             });
           },
         },
+        "/peerjs": {
+          target: env.VITE_PEER_URL || "https://codecolab-852p.onrender.com",
+          changeOrigin: true,
+          secure: true,
+          ws: true,
+        },
+        "^/judge0.*": {
+          target: "https://judge0-ce.p.rapidapi.com",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/judge0/, ""),
+        },
       },
     },
     resolve: {
