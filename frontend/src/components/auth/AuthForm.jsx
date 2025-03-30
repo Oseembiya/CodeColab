@@ -229,12 +229,24 @@ const AuthForm = ({ isLogin }) => {
       // Set custom parameters for more reliable auth
       provider.setCustomParameters({
         prompt: "select_account",
-        // Add redirect_uri to ensure proper return from the auth flow
-        redirect_uri: window.location.origin,
+        // Remove explicit redirect_uri to let Firebase handle it properly
       });
 
+      // For production environment, prefer redirect method as it's more reliable
+      const isProduction =
+        window.location.hostname !== "localhost" &&
+        !window.location.hostname.includes("127.0.0.1");
+
+      if (isProduction) {
+        // In production, use redirect for better compatibility
+        console.log("Using redirect auth method in production");
+        setRedirectInProgress(true);
+        await signInWithRedirect(auth, provider);
+        return; // The redirect will navigate away from the page
+      }
+
       try {
-        // Try popup auth first (better UX when it works)
+        // In development, try popup auth first
         const result = await signInWithPopup(auth, provider);
 
         if (result?.user) {
@@ -254,7 +266,6 @@ const AuthForm = ({ isLogin }) => {
           setRedirectInProgress(true);
           await signInWithRedirect(auth, provider);
           // The redirect will take the user away from the page
-          // Result will be handled in the useEffect hook
           return;
         }
 
