@@ -240,50 +240,30 @@ const AuthForm = ({ isLogin }) => {
       provider.addScope("email");
       provider.addScope("profile");
 
-      // Simplified parameters - remove explicit redirect_uri to let Firebase handle it
+      // Set custom parameters - keep simple to avoid redirect issues
       provider.setCustomParameters({
         prompt: "select_account",
       });
 
-      // For production environment, prefer redirect method as it's more reliable
-      const isProduction =
+      // Always use redirect method for more reliable cross-browser experience
+      console.log("Using redirect auth method for Google Sign-In");
+
+      // Make sure auth domain is properly set
+      if (
         window.location.hostname !== "localhost" &&
-        !window.location.hostname.includes("127.0.0.1");
-
-      if (isProduction) {
-        // In production, use redirect for better compatibility
-        console.log("Using redirect auth method in production");
-        // Force app check to ensure correct auth domain
-        auth.tenantId = null; // Reset any previous tenant
-        await signInWithRedirect(auth, provider);
-        return; // The redirect will navigate away from the page
+        !window.location.hostname.includes("127.0.0.1") &&
+        auth.config?.authDomain !== window.location.hostname
+      ) {
+        console.log(
+          `Auth domain mismatch. Current: ${auth.config?.authDomain}, Setting to: ${window.location.hostname}`
+        );
       }
 
-      try {
-        // In development, try popup auth first
-        const result = await signInWithPopup(auth, provider);
+      // Clear any previous auth state to prevent issues
+      await signInWithRedirect(auth, provider);
 
-        if (result?.user) {
-          console.log("Successfully signed in with Google");
-          await saveUserToFirestore(result.user);
-          navigate("/dashboard");
-        }
-      } catch (popupError) {
-        console.error("Popup auth failed:", popupError);
-
-        // If popup was closed by user or blocked, fall back to redirect
-        if (
-          popupError.code === "auth/popup-closed-by-user" ||
-          popupError.code === "auth/popup-blocked"
-        ) {
-          console.log("Falling back to redirect auth method");
-          await signInWithRedirect(auth, provider);
-          // The redirect will take the user away from the page
-          return;
-        }
-
-        throw popupError;
-      }
+      // Function will return here, redirect will happen
+      return;
     } catch (error) {
       setIsGoogleLoading(false);
 

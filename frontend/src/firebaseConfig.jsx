@@ -6,6 +6,7 @@ import {
   connectAuthEmulator,
   setPersistence,
   browserLocalPersistence,
+  getRedirectResult,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -42,23 +43,65 @@ if (
 ) {
   console.log("Detected auth handler page, waiting for auth...");
 
-  // Create a more robust handler that checks auth state before redirecting
-  const checkAuthAndRedirect = () => {
-    const currentUser = auth?.currentUser;
+  // Create a stronger handler that waits for auth to initialize
+  const MAX_WAIT_TIME = 10000; // 10 seconds max wait
+  const START_TIME = Date.now();
 
-    if (currentUser) {
-      // User is authenticated, redirect to dashboard
-      console.log("Auth detected, redirecting to dashboard");
-      window.location.href = "/dashboard";
-    } else {
-      // Try again in a short while
-      console.log("No auth detected yet, waiting...");
+  const checkAuthAndRedirect = () => {
+    // Check if we've waited too long
+    if (Date.now() - START_TIME > MAX_WAIT_TIME) {
+      console.error("Auth redirect timeout - navigating to login page");
+      window.location.href = "/login?error=auth_timeout";
+      return;
+    }
+
+    try {
+      // Try to access auth - might not be initialized yet
+      if (!auth) {
+        console.log("Auth not initialized yet, waiting...");
+        setTimeout(checkAuthAndRedirect, 500);
+        return;
+      }
+
+      const currentUser = auth.currentUser;
+
+      if (currentUser) {
+        // User is authenticated, redirect to dashboard
+        console.log("Auth detected, redirecting to dashboard");
+        window.location.href = "/dashboard";
+      } else {
+        // No user, but we should still redirect out of the handler page
+        // Check if getRedirectResult would be available yet
+        if (typeof getRedirectResult === "function") {
+          console.log("Checking redirect result directly");
+          getRedirectResult(auth)
+            .then((result) => {
+              if (result?.user) {
+                window.location.href = "/dashboard";
+              } else {
+                console.log("No redirect result found, redirecting to login");
+                window.location.href = "/login";
+              }
+            })
+            .catch((error) => {
+              console.error("Error in redirect handler:", error);
+              window.location.href = `/login?error=${encodeURIComponent(
+                error.code || "unknown"
+              )}`;
+            });
+        } else {
+          // Try again in a short while
+          console.log("No auth detected yet, waiting...");
+          setTimeout(checkAuthAndRedirect, 500);
+        }
+      }
+    } catch (error) {
+      console.error("Error in auth handler:", error);
       setTimeout(checkAuthAndRedirect, 500);
     }
   };
 
   // Start checking auth state after a small initial delay
-  // This allows Firebase to initialize auth properly
   setTimeout(checkAuthAndRedirect, 1000);
 }
 
