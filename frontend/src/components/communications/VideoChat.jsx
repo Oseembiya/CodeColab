@@ -12,6 +12,7 @@ import {
 import { useSocket } from "../../contexts/SocketContext";
 import { useAuth } from "../../hooks/useAuth";
 import RemoteVideo from "./RemoteVideo";
+import config from "../../config/env";
 
 const VideoChat = ({ sessionId, userId }) => {
   const { socket } = useSocket();
@@ -218,27 +219,13 @@ const VideoChat = ({ sessionId, userId }) => {
 
         // 2. Initialize PeerJS
         const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
-          host: "codecolab-852p.onrender.com",
-          port: 443,
-          path: "/peerjs",
-          secure: true,
-          debug: 1,
+          host: config.peer.host,
+          port: config.peer.port,
+          path: config.peer.path,
+          secure: config.peer.secure,
+          debug: config.peer.debug,
           config: {
-            iceServers: [
-              { urls: "stun:stun.l.google.com:19302" },
-              { urls: "stun:stun1.l.google.com:19302" },
-              { urls: "stun:stun2.l.google.com:19302" },
-              // Add additional STUN/TURN servers for better connectivity
-              ...(import.meta.env.VITE_TURN_SERVER_URL
-                ? [
-                    {
-                      urls: import.meta.env.VITE_TURN_SERVER_URL,
-                      username: import.meta.env.VITE_TURN_USERNAME || "",
-                      credential: import.meta.env.VITE_TURN_CREDENTIAL || "",
-                    },
-                  ]
-                : []),
-            ],
+            iceServers: config.webrtc.iceServers,
             sdpTransform: (sdp) => {
               return sdp.replace(
                 "useinbandfec=1",

@@ -90,7 +90,7 @@ app.get("/peer-status", (req, res) => {
   const info = {
     status: peerServer ? "UP" : "DOWN",
     port: process.env.PEER_PORT || 9000,
-    path: "/peerjs",
+    path: process.env.PEER_PATH || "/peerjs",
     ssl: true,
     connections: wsCount,
     connectionIds: wsClients,

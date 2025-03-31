@@ -5,17 +5,20 @@ const logger = require("../utils/logger");
  * Configure and create PeerJS server
  */
 const configurePeerServer = () => {
+  // Explicitly define the path to avoid any duplication issues
+  const peerPath = "/peerjs";
+
   // Log detailed configuration
   logger.info("Configuring PeerJS server with settings:", {
     port: process.env.PEER_PORT || 9000,
-    path: "/peerjs",
+    path: peerPath,
     ssl: true,
     proxied: true,
   });
 
   const peerServer = PeerServer({
     port: process.env.PEER_PORT || 9000,
-    path: "/peerjs",
+    path: peerPath,
     proxied: true,
     allow_discovery: true,
     cleanup_out_msgs: 1000,
@@ -52,7 +55,16 @@ const configurePeerServer = () => {
   peerServer.on("connection", (client) => {
     const clientId = client.getId();
     const timestamp = new Date().toISOString();
-    logger.info(`PeerJS client connected: ${clientId} at ${timestamp}`);
+    const clientIp = client._socket?.handshake?.address || "unknown";
+    const clientHeaders = client._socket?.handshake?.headers || {};
+    const clientUrl = clientHeaders.origin || "unknown";
+
+    logger.info(`PeerJS client connected: ${clientId} at ${timestamp}`, {
+      clientId,
+      clientIp,
+      clientUrl,
+      headers: JSON.stringify(clientHeaders),
+    });
     console.log(`PeerJS client connected: ${clientId} at ${timestamp}`);
   });
 
@@ -74,12 +86,12 @@ const configurePeerServer = () => {
   logger.info(
     `PeerJS server initialized on port ${
       process.env.PEER_PORT || 9000
-    } with path /peerjs`
+    } with path ${peerPath}`
   );
   console.log(
     `PeerJS server initialized on port ${
       process.env.PEER_PORT || 9000
-    } with path /peerjs`
+    } with path ${peerPath}`
   );
 
   return peerServer;
