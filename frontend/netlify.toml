@@ -9,6 +9,13 @@
   to = "/index.html"
   status = 200
 
+# Proxy for PeerJS
+[[redirects]]
+  from = "/peerjs/*"
+  to = "https://codecolab-852p.onrender.com:9000/peerjs/:splat"
+  status = 200
+  force = true
+
 # Proxy for Judge0 API
 [[redirects]]
   from = "/judge0/*"
@@ -33,6 +40,6 @@
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
     Cross-Origin-Embedder-Policy = "unsafe-none"
     Cross-Origin-Resource-Policy = "same-site"
-    Content-Security-Policy = "frame-ancestors 'self' https://accounts.google.com https://*.googleusercontent.com https://*.youtube.com https://*.firebaseapp.com https://*.firebaseio.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app wss://*.firebaseio.com https://codecolab-852p.onrender.com wss://codecolab-852p.onrender.com https://*.rapidapi.com https://judge0-ce.p.rapidapi.com https://*.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://*.googleusercontent.com;"
+    Content-Security-Policy = "frame-ancestors 'self' https://accounts.google.com https://*.googleusercontent.com https://*.youtube.com https://*.firebaseapp.com https://*.firebaseio.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app wss://*.firebaseio.com https://codecolab-852p.onrender.com wss://codecolab-852p.onrender.com wss://codecolab-852p.onrender.com:9000 wss://codecolab-852p.onrender.com/peerjs https://*.rapidapi.com https://judge0-ce.p.rapidapi.com https://*.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://*.googleusercontent.com;"
     Access-Control-Allow-Origin = "*"
     X-Frame-Options = "SAMEORIGIN" 

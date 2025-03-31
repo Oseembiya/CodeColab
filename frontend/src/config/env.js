@@ -44,8 +44,8 @@ const config = {
       /^https?:\/\//,
       ""
     ),
-    port: parseInt(import.meta.env.VITE_PEER_PORT || "443"),
-    path: "/peerjs",
+    port: parseInt(import.meta.env.VITE_PEER_PORT || "9000"),
+    path: "/",
     secure: true,
     key: import.meta.env.VITE_PEER_KEY || "peerjs",
     debug: parseInt(import.meta.env.VITE_LOG_LEVEL || "1"),
