@@ -393,15 +393,17 @@ const AuthForm = ({ isLogin }) => {
             <span>or</span>
           </div>
 
-          <button
-            type="button"
-            className="google-button"
-            onClick={handleGoogleClick}
-            disabled={isGoogleLoading || (!isLogin && !formData.acceptTerms)}
-          >
-            <FaGoogle className="google-icon" />
-            {isGoogleLoading ? "Signing in..." : "Sign in with Google"}
-          </button>
+          <div className="google-auth-section">
+            <button
+              type="button"
+              className="google-button"
+              onClick={handleGoogleClick}
+              disabled={isGoogleLoading || (!isLogin && !formData.acceptTerms)}
+            >
+              <FaGoogle className="google-icon" />
+              {isGoogleLoading ? "Signing in..." : "Sign in with Google"}
+            </button>
+          </div>
 
           <p className="login-link">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
