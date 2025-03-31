@@ -69,7 +69,12 @@ export default defineConfig(({ mode }) => {
             // Include sessions-related files in a predictable chunk
             sessions: [
               "./src/pages/liveSession.jsx",
-              "./src/components/sessions",
+              "./src/components/sessions/SessionInfo.jsx",
+              "./src/components/sessions/SessionTimer.jsx",
+              "./src/components/sessions/SessionFilters.jsx",
+              "./src/components/sessions/SessionCard.jsx",
+              "./src/components/sessions/JoinSessionModal.jsx",
+              "./src/components/sessions/CreateSessionModal.jsx",
               "./src/contexts/SessionContext.jsx",
             ],
           },
