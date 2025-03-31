@@ -15,7 +15,7 @@ const configurePeerServer = () => {
     ssl: true, // Always enable SSL for production
     concurrent_limit: 5000,
     cors: {
-      origin: process.env.FRONTEND_URL || "*",
+      origin: "*",
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -40,16 +40,31 @@ const configurePeerServer = () => {
 
   // PeerJS server events
   peerServer.on("connection", (client) => {
-    console.log("PeerJS client connected:", client.getId());
+    console.log(
+      "PeerJS client connected:",
+      client.getId(),
+      "at",
+      new Date().toISOString()
+    );
   });
 
   peerServer.on("disconnect", (client) => {
-    console.log("PeerJS client disconnected:", client.getId());
+    console.log(
+      "PeerJS client disconnected:",
+      client.getId(),
+      "at",
+      new Date().toISOString()
+    );
   });
 
   // Error handling
   peerServer.on("error", (error) => {
-    console.error("PeerJS server error:", error);
+    console.error(
+      "PeerJS server error:",
+      error,
+      "at",
+      new Date().toISOString()
+    );
   });
 
   return peerServer;

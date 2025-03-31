@@ -45,10 +45,10 @@ const config = {
       ""
     ),
     port: parseInt(import.meta.env.VITE_PEER_PORT || "443"),
-    path: import.meta.env.VITE_PEER_PATH || "/peerjs",
+    path: "/peerjs",
     secure: true,
     key: import.meta.env.VITE_PEER_KEY || "peerjs",
-    debug: parseInt(import.meta.env.VITE_LOG_LEVEL || "0"),
+    debug: parseInt(import.meta.env.VITE_LOG_LEVEL || "1"),
   },
 
   // WebRTC configuration

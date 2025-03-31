@@ -10,6 +10,9 @@ require("dotenv").config();
 const configureApp = () => {
   const app = express();
 
+  // Add trust proxy setting for render.com deployment
+  app.set("trust proxy", true);
+
   // Security middleware with customized Content-Security-Policy
   app.use(
     helmet({
