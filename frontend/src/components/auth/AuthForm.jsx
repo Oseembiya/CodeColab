@@ -16,7 +16,7 @@ import {
   signInWithPopup,
   onAuthStateChanged,
 } from "firebase/auth";
-import { auth, db } from "../../firebaseConfig";
+import { auth, db, handlePopupAuth } from "../../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import TermsAndConditions from "./TermsAndConditions";
 import "../../styles/components/_terms-modal.css";
@@ -207,17 +207,41 @@ const AuthForm = ({ isLogin }) => {
 
       // Set custom parameters
       provider.setCustomParameters({
+        // Adding prompt and select_account to force account selection
         prompt: "select_account",
+        // Add auth flow to improve security and handle COOP issues
+        authFlow: "implicit",
       });
 
-      // Use popup for Google Sign-in
-      const result = await signInWithPopup(auth, provider);
+      // Add event listener to help with popup closure detection
+      window.addEventListener(
+        "message",
+        (event) => {
+          // Only handle messages from the expected origin
+          if (
+            event.origin === window.location.origin &&
+            event.data === "auth_popup_closed"
+          ) {
+            setIsGoogleLoading(false);
+          }
+        },
+        { once: true }
+      );
+
+      // Use our custom popup handler to avoid COOP issues
+      const result = await handlePopupAuth(provider);
       await saveUserToFirestore(result.user);
       navigate("/dashboard");
     } catch (error) {
       setIsGoogleLoading(false);
       console.error("Google Auth Error:", error);
-      setFirebaseError("Google sign-in failed. Please try again.");
+
+      // Handle the specific cross-origin error
+      if (error.code === "auth/popup-closed-by-user") {
+        setFirebaseError("Sign-in was cancelled. Please try again.");
+      } else {
+        setFirebaseError("Google sign-in failed. Please try again.");
+      }
     } finally {
       setIsGoogleLoading(false);
     }

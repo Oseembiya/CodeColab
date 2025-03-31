@@ -30,7 +30,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Cross-Origin-Opener-Policy = "unsafe-none"
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
     Cross-Origin-Embedder-Policy = "unsafe-none"
     Cross-Origin-Resource-Policy = "same-site"
     Content-Security-Policy = "frame-ancestors 'self' https://accounts.google.com https://*.googleusercontent.com https://*.youtube.com https://*.firebaseapp.com https://*.firebaseio.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app wss://*.firebaseio.com https://codecolab-852p.onrender.com wss://codecolab-852p.onrender.com https://*.rapidapi.com https://judge0-ce.p.rapidapi.com https://*.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://*.googleusercontent.com;"

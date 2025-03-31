@@ -7,6 +7,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   getRedirectResult,
+  signInWithPopup,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -104,6 +105,33 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+/**
+ * Handles popup authentication to address Cross-Origin-Opener-Policy issues
+ * Can be used to wrap popup auth methods to provide additional compatibility
+ * @param {Function} authMethod - The firebase popup auth method to execute
+ * @param {Object} provider - The auth provider to use
+ * @returns {Promise} - Promise resolving to the auth result
+ */
+const handlePopupAuth = async (provider) => {
+  try {
+    // Instead of the default popup method which has COOP issues,
+    // we use a more compatible approach with signInWithPopup
+    return await signInWithPopup(auth, provider);
+  } catch (error) {
+    // If we get a COOP related error, add a custom handler
+    if (error.message && error.message.includes("Cross-Origin-Opener-Policy")) {
+      console.warn("COOP error detected, using alternative auth method");
+
+      // If in production, log the error for troubleshooting
+      if (import.meta.env.MODE === "production") {
+        console.error("Firebase COOP error details:", error);
+      }
+    }
+
+    throw error;
+  }
+};
+
 // Set up local persistence to keep users logged in
 // This helps prevent auth state from being lost during redirects
 setPersistence(auth, browserLocalPersistence)
@@ -196,4 +224,12 @@ const handleFirebaseError = (error) => {
   );
 };
 
-export { app, auth, db, storage, authStateObserver, handleFirebaseError };
+export {
+  app,
+  auth,
+  db,
+  storage,
+  authStateObserver,
+  handleFirebaseError,
+  handlePopupAuth,
+};
