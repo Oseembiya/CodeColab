@@ -133,23 +133,21 @@ const authStateObserver = (callback) => {
     auth,
     (user) => {
       if (user) {
-        // User is signed in
         callback({
-          status: "signedIn",
+          status: "authenticated",
           user,
           error: null,
         });
       } else {
-        // User is signed out
         callback({
-          status: "signedOut",
+          status: "unauthenticated",
           user: null,
           error: null,
         });
       }
     },
     (error) => {
-      // Auth error occurred
+      console.error("Auth state observer error:", error);
       callback({
         status: "error",
         user: null,
@@ -160,38 +158,42 @@ const authStateObserver = (callback) => {
 };
 
 /**
- * Handle Firebase auth errors with user-friendly messages
- * @param {Error} error Firebase auth error
+ * Handle common Firebase errors
+ * @param {Error} error Firebase error
  * @returns {string} User-friendly error message
  */
 const handleFirebaseError = (error) => {
-  const errorCode = error.code;
-  const errorMessage = error.message;
+  console.error("Firebase error:", error);
+  const errorCode = error.code || "";
 
   // Map error codes to user-friendly messages
-  const errorMap = {
-    "auth/invalid-email": "The email address is not valid.",
-    "auth/user-disabled": "This user account has been disabled.",
-    "auth/user-not-found": "No account found with this email.",
-    "auth/wrong-password": "Incorrect password.",
-    "auth/email-already-in-use": "An account already exists with this email.",
-    "auth/weak-password": "The password is too weak.",
-    "auth/popup-closed-by-user":
-      "Sign-in popup was closed before completing the sign in.",
-    "auth/cancelled-popup-request": "The sign-in popup request was cancelled.",
-    "auth/popup-blocked": "Sign-in popup was blocked by the browser.",
-    "auth/network-request-failed":
-      "A network error occurred. Please check your connection.",
-    "auth/too-many-requests":
-      "Too many unsuccessful sign-in attempts. Please try again later.",
-    "auth/quota-exceeded": "Operation quota exceeded. Please try again later.",
-    "auth/requires-recent-login": "This operation requires re-authentication.",
+  const errorMessages = {
+    "auth/invalid-email": "Invalid email address",
+    "auth/user-disabled": "This account has been disabled",
+    "auth/user-not-found": "No account found with this email",
+    "auth/wrong-password": "Incorrect password",
+    "auth/email-already-in-use": "This email is already in use",
+    "auth/weak-password": "Password is too weak",
+    "auth/requires-recent-login": "Please log in again to continue",
+    "auth/too-many-requests": "Too many attempts. Try again later",
+    "auth/invalid-credential": "Invalid credentials",
+    "auth/invalid-verification-code": "Invalid verification code",
+    "auth/invalid-verification-id": "Invalid verification ID",
+    "auth/missing-verification-code": "Missing verification code",
+    "auth/missing-verification-id": "Missing verification ID",
+    "auth/network-request-failed": "Network error. Check your connection",
+    "auth/popup-closed-by-user": "Sign-in popup was closed before completing",
+    "auth/cancelled-popup-request": "The sign-in popup request was cancelled",
+    "auth/popup-blocked": "Sign-in popup was blocked by the browser",
     "auth/account-exists-with-different-credential":
-      "An account already exists with the same email but different sign-in credentials.",
+      "An account already exists with the same email but different sign-in credentials",
   };
 
-  // Return user-friendly message or fallback to Firebase message
-  return errorMap[errorCode] || `Authentication error: ${errorMessage}`;
+  return (
+    errorMessages[errorCode] ||
+    error.message ||
+    "An authentication error occurred"
+  );
 };
 
 export { app, auth, db, storage, authStateObserver, handleFirebaseError };

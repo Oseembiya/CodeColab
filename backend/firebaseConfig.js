@@ -33,6 +33,16 @@ console.log(
     process.env.FIREBASE_PROJECT_ID ? "Set" : "Not set"
   }`
 );
+console.log(
+  `- FIREBASE_CLIENT_EMAIL: ${
+    process.env.FIREBASE_CLIENT_EMAIL ? "Set" : "Not set"
+  }`
+);
+console.log(
+  `- FIREBASE_PRIVATE_KEY: ${
+    process.env.FIREBASE_PRIVATE_KEY ? "Set" : "Not set"
+  }`
+);
 
 // Initialize Firebase Admin SDK
 let adminConfig = {};

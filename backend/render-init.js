@@ -2,10 +2,10 @@
  * Render initialization script
  * This script runs before the server starts and sets up the needed files and configurations
  */
-const fs = require("fs");
 const path = require("path");
+const fs = require("fs");
 
-console.log("Running Render initialization script...");
+console.log("Backend initialization script running...");
 
 // Create a credentials file from the environment variable if it exists
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
@@ -36,21 +36,10 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   );
 }
 
-// Log all environment variables (without values) for debugging
-console.log("Available environment variables:");
-Object.keys(process.env).forEach((key) => {
-  console.log(
-    `- ${key}: ${
-      key.includes("KEY") ||
-      key.includes("SECRET") ||
-      key.includes("PASSWORD") ||
-      key.includes("CREDENTIALS")
-        ? "[REDACTED]"
-        : "Set"
-    }`
-  );
-});
+// Log environment for debugging
+console.log(`NODE_ENV: ${process.env.NODE_ENV || "not set"}`);
+console.log(`Production mode: ${process.env.NODE_ENV === "production"}`);
 
-console.log("Initialization complete.");
+console.log("Initialization completed, server will start normally.");
 
 // No need to export anything

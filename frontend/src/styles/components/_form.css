@@ -193,28 +193,6 @@ input[type="password"] {
   text-decoration: underline;
 }
 
-.google-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-color);
-  gap: 10px;
-  width: 100%;
-  cursor: pointer;
-  background-color: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-/* Remove shimmer effect */
-.google-button::before {
-  display: none;
-}
-
 .password-input-container {
   position: relative;
   width: 100%;
@@ -247,19 +225,4 @@ input[type="password"] {
 
 .password-toggle:focus {
   outline: none;
-}
-
-.google-auth-section {
-  display: flex;
-  flex-direction: column;
-
-  background-color: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.google-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: rgba(255, 255, 255, 0.05);
 }

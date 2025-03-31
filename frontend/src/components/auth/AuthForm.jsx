@@ -14,8 +14,6 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth";
 import { auth, db } from "../../firebaseConfig";
@@ -69,49 +67,6 @@ const AuthForm = ({ isLogin }) => {
         navigate("/dashboard");
       }
     });
-
-    // Check for redirect result on component mount
-    const checkRedirectResult = async () => {
-      try {
-        console.log("Checking for redirect result");
-        setIsGoogleLoading(true);
-
-        // Log the current URL to check for query parameters
-        console.log("Current URL:", window.location.href);
-
-        // Try to get the redirect result
-        const result = await getRedirectResult(auth);
-
-        if (result?.user) {
-          console.log(
-            "Successfully signed in with Google redirect",
-            result.user.uid
-          );
-          await saveUserToFirestore(result.user);
-
-          navigate("/dashboard");
-        } else {
-          console.log("No redirect result found");
-
-          // Check if we're on the signup page with error parameters
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.has("error")) {
-            const errorCode = urlParams.get("error");
-            console.error(`Auth error from redirect: ${errorCode}`);
-            setFirebaseError(`Authentication error: ${errorCode}`);
-          }
-        }
-      } catch (error) {
-        console.error("Redirect auth error:", error);
-        handleAuthError(error);
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    };
-
-    // Small delay before checking redirect result
-    // This helps ensure Firebase auth is fully initialized
-    setTimeout(checkRedirectResult, 500);
 
     return () => unsubscribe();
   }, [navigate]);
@@ -250,57 +205,19 @@ const AuthForm = ({ isLogin }) => {
       provider.addScope("email");
       provider.addScope("profile");
 
-      // Keep only essential parameters for Google auth
+      // Set custom parameters
       provider.setCustomParameters({
         prompt: "select_account",
       });
 
-      // Log auth domain for debugging
-      console.log(
-        `Using Firebase Auth Domain: ${
-          auth.config?.authDomain || "not available"
-        }`
-      );
-
-      // Use redirect method for all environments for consistency
-      console.log("Initiating Google Sign-In with redirect...");
-      await signInWithRedirect(auth, provider);
-
-      // This line will not execute until after returning from the redirect
-      return;
+      // Use popup for Google Sign-in
+      const result = await signInWithPopup(auth, provider);
+      await saveUserToFirestore(result.user);
+      navigate("/dashboard");
     } catch (error) {
       setIsGoogleLoading(false);
-
-      console.error("Google Auth Error (detailed):", {
-        code: error.code,
-        message: error.message,
-        fullError: error,
-      });
-
-      // Handle specific error cases
-      const errorMessages = {
-        "auth/network-request-failed":
-          "Network error. Please check your connection.",
-        "auth/popup-blocked":
-          "Popup was blocked. Please allow popups for this site.",
-        "auth/popup-closed-by-user": "Sign-in was cancelled. Please try again.",
-        "auth/cancelled-popup-request":
-          "The previous sign-in attempt was cancelled.",
-        "auth/account-exists-with-different-credential":
-          "An account already exists with the same email. Try signing in with a different method.",
-        "auth/timeout": "Authentication timed out. Please try again.",
-        "auth/internal-error":
-          "Authentication service encountered an error. Please try again.",
-      };
-
-      const errorMessage =
-        errorMessages[error.code] ||
-        (error.message.includes("message channel closed")
-          ? "Authentication was interrupted. Please try again."
-          : "An error occurred during sign in.");
-
-      setFirebaseError(errorMessage);
-      setTimeout(() => setFirebaseError(""), 5000);
+      console.error("Google Auth Error:", error);
+      setFirebaseError("Google sign-in failed. Please try again.");
     } finally {
       setIsGoogleLoading(false);
     }
@@ -317,7 +234,6 @@ const AuthForm = ({ isLogin }) => {
       return;
     }
 
-    setIsGoogleLoading(true);
     setFirebaseError("");
     await handleGoogleAuth();
   };
@@ -473,19 +389,19 @@ const AuthForm = ({ isLogin }) => {
             {isLogin ? "Login" : "Get Started"}
           </button>
 
-          {!isLogin && (
-            <div className="google-auth-section">
-              <button
-                type="button"
-                className="google-button"
-                onClick={handleGoogleClick}
-                disabled={isGoogleLoading || !formData.acceptTerms}
-              >
-                <FaGoogle />
-                {isGoogleLoading ? "Signing in..." : "Sign in with Google"}
-              </button>
-            </div>
-          )}
+          <div className="or-divider">
+            <span>or</span>
+          </div>
+
+          <button
+            type="button"
+            className="google-button"
+            onClick={handleGoogleClick}
+            disabled={isGoogleLoading || (!isLogin && !formData.acceptTerms)}
+          >
+            <FaGoogle className="google-icon" />
+            {isGoogleLoading ? "Signing in..." : "Sign in with Google"}
+          </button>
 
           <p className="login-link">
             {isLogin ? "Don't have an account? " : "Already have an account? "}

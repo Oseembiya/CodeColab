@@ -52,7 +52,6 @@ const config = {
   firebase: {
     // Admin SDK
     projectId: process.env.FIREBASE_PROJECT_ID,
-    databaseUrl: process.env.FIREBASE_DATABASE_URL,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY,
     credentialsFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,

@@ -54,7 +54,7 @@ const AuthPage = () => {
           </div>
 
           <div className="auth-content">
-            <AuthForm isLogin={activeTab === "login"} />
+            <AuthForm isLogin={activeTab === "login"} key={activeTab} />
           </div>
         </div>
 

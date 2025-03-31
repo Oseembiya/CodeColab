@@ -29,105 +29,82 @@ export function SocketProvider({ children }) {
   const connectCount = useRef(0);
   const lastConnectTime = useRef(0);
 
+  // Add ref to prevent duplicate connection logs
+  const connectionLogged = useRef(false);
+
   // Cleanup function reference
   let cleanupRef = useRef(null);
 
   // Helper to handle auth token fetch with quota management
-  const getAuthToken = async () => {
-    // If we've had too many auth errors recently, skip token fetch
+  const getAuthToken = useCallback(async () => {
+    // Check quota
     const now = Date.now();
-    if (authErrorCount.current > 5) {
-      // If it's been more than 5 minutes since our last attempt, reset the counter
-      if (now - lastAuthAttempt.current > 5 * 60 * 1000) {
-        authErrorCount.current = 0;
-      } else {
-        // Otherwise skip auth to avoid quota issues
-        console.log("Skipping auth token fetch due to previous quota errors");
-        return null;
-      }
+    const timeSinceLastAttempt = now - lastAuthAttempt.current;
+
+    // Implement exponential backoff if we've had multiple errors
+    const backoffTime = Math.min(
+      30000,
+      1000 * Math.pow(2, authErrorCount.current)
+    );
+
+    if (authErrorCount.current > 0 && timeSinceLastAttempt < backoffTime) {
+      console.warn(
+        `Skipping auth token request due to previous errors. Will retry after ${
+          (backoffTime - timeSinceLastAttempt) / 1000
+        } seconds.`
+      );
+      return null;
     }
 
+    // Update last attempt time
     lastAuthAttempt.current = now;
 
+    if (!getIdToken) {
+      console.warn("getIdToken function not available");
+      authErrorCount.current += 1;
+      return null;
+    }
+
     try {
-      const token = await getIdToken();
-      if (token) {
-        // Success - reset error counter
-        authErrorCount.current = 0;
-        return token;
-      }
-    } catch (error) {
-      // Check if this is a quota exceeded error
-      if (error.message && error.message.includes("auth/quota-exceeded")) {
-        authErrorCount.current += 1;
-        console.warn(
-          `Auth quota exceeded (count: ${authErrorCount.current}). Will skip token fetch for a while.`
-        );
-      }
-      console.error("Error getting auth token:", error);
+      const token = await getIdToken(true);
+      // Reset error count on success
+      authErrorCount.current = 0;
+      return token;
+    } catch (err) {
+      console.error("Error getting auth token:", err);
+      authErrorCount.current += 1;
+      return null;
     }
-    return null;
-  };
+  }, [getIdToken]);
 
+  // Function to connect to socket
   const connectSocket = useCallback(async () => {
-    // Guard against multiple simultaneous connection attempts
+    // Prevent multiple simultaneous connections
     if (isConnecting.current) {
-      console.log("Connection already in progress, skipping");
-      return;
+      console.log("Socket connection already in progress");
+      return () => {};
     }
 
-    // Add throttling to prevent connection storms
+    // Throttle reconnection attempts if we're connecting too frequently
     const now = Date.now();
     const timeSinceLastConnect = now - lastConnectTime.current;
-    if (timeSinceLastConnect < 2000) {
-      connectCount.current += 1;
-
-      // If we're connecting too frequently, add increasing delay
-      if (connectCount.current > 3) {
-        const backoffDelay = Math.min(
-          30000,
-          1000 * Math.pow(2, connectCount.current - 3)
-        );
-        console.warn(
-          `Too many connection attempts. Adding delay: ${backoffDelay}ms`
-        );
-
-        // Clear any pending reconnect timeout
-        if (reconnectTimeout.current) {
-          clearTimeout(reconnectTimeout.current);
-        }
-
-        reconnectTimeout.current = setTimeout(() => {
-          connectCount.current = 0;
-          isConnecting.current = false;
-          connectSocket();
-        }, backoffDelay);
-
-        return;
-      }
-    } else {
-      // Reset connection counter if it's been a while
-      connectCount.current = 0;
+    if (connectCount.current > 3 && timeSinceLastConnect < 5000) {
+      console.warn(
+        `Throttling socket connection attempts. ${Math.ceil(
+          (5000 - timeSinceLastConnect) / 1000
+        )} seconds remaining until next attempt.`
+      );
+      return () => {};
     }
 
+    connectCount.current += 1;
     lastConnectTime.current = now;
     isConnecting.current = true;
 
-    // Clear any pending reconnect timeout
-    if (reconnectTimeout.current) {
-      clearTimeout(reconnectTimeout.current);
-      reconnectTimeout.current = null;
-    }
-
-    // Close existing socket if any
+    // Disconnect existing socket if any
     if (socket && socket.connected) {
       console.log("Disconnecting existing socket connection");
       socket.disconnect();
-    }
-
-    // If previous cleanup exists, run it first
-    if (cleanupRef.current) {
-      cleanupRef.current();
     }
 
     try {
@@ -177,18 +154,23 @@ export function SocketProvider({ children }) {
       const newSocket = io(socketUrl, socketOptions);
 
       newSocket.on("connect", () => {
-        isConnecting.current = false;
-        setConnectionStatus("connected");
-        setSocket(newSocket);
-        setError(null);
-        console.log("Connected with client ID:", clientId);
-        console.log("Transport used:", newSocket.io.engine.transport.name);
+        if (!connectionLogged.current) {
+          isConnecting.current = false;
+          setConnectionStatus("connected");
+          setSocket(newSocket);
+          setError(null);
+          console.log("Connected with client ID:", clientId);
+          console.log("Transport used:", newSocket.io.engine.transport.name);
 
-        // Log authentication status
-        if (authData.token) {
-          console.log("Authenticated socket connection established");
-        } else {
-          console.log("Unauthenticated socket connection established");
+          // Log authentication status
+          if (authData.token) {
+            console.log("Authenticated socket connection established");
+          } else {
+            console.log("Unauthenticated socket connection established");
+          }
+
+          // Set the flag to prevent duplicate logs
+          connectionLogged.current = true;
         }
       });
 
@@ -267,6 +249,9 @@ export function SocketProvider({ children }) {
       newSocket.on("disconnect", (reason) => {
         console.log("Socket disconnected:", reason);
 
+        // Reset the connection logged flag
+        connectionLogged.current = false;
+
         // Only update state if this is the current socket
         if (socket === newSocket) {
           setConnectionStatus("disconnected");
@@ -300,6 +285,9 @@ export function SocketProvider({ children }) {
 
           // Make sure we're not in a connecting state during cleanup
           isConnecting.current = false;
+
+          // Reset the connection logged flag during cleanup
+          connectionLogged.current = false;
 
           if (newSocket.connected) {
             newSocket.disconnect();
