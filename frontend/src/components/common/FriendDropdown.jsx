@@ -80,7 +80,7 @@ const FriendDropdown = () => {
       });
 
       setSearchResults(filteredResults);
-    }, 300);
+    }, 1000);
 
     return () => {
       if (searchTimeoutRef.current) {
