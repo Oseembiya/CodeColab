@@ -22,7 +22,7 @@ import {
 import { db } from "../../firebaseConfig";
 import { SESSION_STATUS } from "../../config/constants";
 
-const SessionInfo = ({ session, onLeave, socket }) => {
+const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
   const [participantCount, setParticipantCount] = useState(0);
   const [isHidden, setIsHidden] = useState(true);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
@@ -255,24 +255,9 @@ const SessionInfo = ({ session, onLeave, socket }) => {
 };
 
 SessionInfo.propTypes = {
-  session: PropTypes.shape({
-    id: PropTypes.string,
-    title: PropTypes.string,
-    description: PropTypes.string,
-    startTime: PropTypes.string,
-    language: PropTypes.string,
-    maxParticipants: PropTypes.number,
-    participants: PropTypes.array,
-    isPrivate: PropTypes.bool,
-    joinCode: PropTypes.string,
-    owner: PropTypes.string,
-  }),
-  onLeave: PropTypes.func.isRequired,
-  socket: PropTypes.object.isRequired,
-};
-
-SessionInfo.defaultProps = {
-  session: null,
+  session: PropTypes.object,
+  onLeave: PropTypes.func,
+  socket: PropTypes.object,
 };
 
 export default SessionInfo;

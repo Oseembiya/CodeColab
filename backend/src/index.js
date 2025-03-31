@@ -6,26 +6,29 @@ const apiRoutes = require("./routes/api");
 const socketModule = require("./socket");
 const logger = require("./utils/logger");
 
+// Setting NODE_ENV to production
+process.env.NODE_ENV = "production";
+
 // Create Express app
 const app = configureApp();
 
 // Create HTTP server
 const httpServer = createServer(app);
 
-// Get socket.io config from environment variables
+// Socket.io config for production
 const socketConfig = {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "https://codecolab.vercel.app",
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   },
-  allowEIO3: true, // Allow Engine.IO version 3
-  transports: ["websocket", "polling"], // Allow both WebSocket and polling
+  allowEIO3: true,
+  transports: ["websocket", "polling"],
   pingTimeout: parseInt(process.env.SOCKET_PING_TIMEOUT || "60000"),
   pingInterval: parseInt(process.env.SOCKET_PING_INTERVAL || "25000"),
   maxHttpBufferSize: 1e6, // 1 MB
-  connectTimeout: 45000, // 45 seconds connection timeout
+  connectTimeout: 45000,
   compression: true,
 };
 
@@ -61,7 +64,7 @@ httpServer.listen(PORT, () => {
   logger.info(`PeerJS server running on port ${process.env.PEER_PORT || 9000}`);
   logger.info(
     `CORS configured for: ${
-      process.env.FRONTEND_URL || "http://localhost:5173"
+      process.env.FRONTEND_URL || "https://codecolab.vercel.app"
     }`
   );
 });
@@ -95,10 +98,8 @@ process.on("SIGINT", () => {
 // Handle uncaught exceptions to prevent server crash
 process.on("uncaughtException", (error) => {
   logger.error(`Uncaught Exception: ${error.message}`, { stack: error.stack });
-  // Keep the server running
 });
 
 process.on("unhandledRejection", (reason, promise) => {
   logger.error("Unhandled Promise Rejection", { reason, promise });
-  // Keep the server running
 });

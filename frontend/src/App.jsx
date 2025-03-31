@@ -12,16 +12,10 @@ import routeConfig from "./config/routes";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import LoadingFallback from "./components/common/LoadingFallback";
 
-// Dynamic import for error tracking (optional for production)
-const initErrorTracking = async () => {
-  if (import.meta.env.MODE === "production") {
-    try {
-      // This would be replaced with your actual error tracking setup
-      console.log("Error tracking initialized in production mode");
-    } catch (error) {
-      console.error("Failed to initialize error tracking:", error);
-    }
-  }
+// Initialize error tracking for production
+const initErrorTracking = () => {
+  // Production-only error tracking
+  console.log("Error tracking initialized in production mode");
 };
 
 /**
@@ -113,10 +107,11 @@ const ScrollToTop = () => {
 };
 
 const App = () => {
-  // Initialize error tracking in production
+  // Initialize error tracking for production
   useEffect(() => {
     initErrorTracking();
   }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>

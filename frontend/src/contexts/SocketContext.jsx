@@ -133,7 +133,8 @@ export function SocketProvider({ children }) {
       }
 
       // Socket.io connection URL from environment
-      const socketUrl = config.api.socketUrl || "/";
+      const socketUrl =
+        config.api.socketUrl || "https://codecolab-852p.onrender.com";
 
       // Socket.io connection options
       const socketOptions = {

@@ -76,13 +76,6 @@ export const createApiClient = (getToken = null) => {
         }
       }
 
-      // Log request in development mode
-      if (config.isDevelopment && config.debug) {
-        console.log(`API ${options.method || "GET"} ${url}`, {
-          authenticated: !!fetchOptions.headers.Authorization,
-        });
-      }
-
       // Make API call
       const response = await fetch(url, fetchOptions);
 

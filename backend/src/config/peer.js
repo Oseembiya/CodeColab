@@ -12,11 +12,12 @@ const configurePeerServer = () => {
     cleanup_out_msgs: 1000,
     alive_timeout: 60000,
     key: "peerjs",
-    ssl: false,
+    ssl: true, // Always enable SSL for production
     concurrent_limit: 5000,
     cors: {
-      origin: "*",
+      origin: process.env.FRONTEND_URL || "*",
       methods: ["GET", "POST"],
+      credentials: true,
     },
     config: {
       iceServers: [

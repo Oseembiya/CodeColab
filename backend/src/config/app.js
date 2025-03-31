@@ -5,7 +5,7 @@ const { errorHandler, notFoundHandler } = require("../middleware/errorHandler");
 require("dotenv").config();
 
 /**
- * Express application configuration
+ * Express application configuration for production
  */
 const configureApp = () => {
   const app = express();
@@ -27,8 +27,8 @@ const configureApp = () => {
             "https://*.firebase.com",
             "https://*.rapidapi.com",
             "https://judge0-ce.p.rapidapi.com",
-            process.env.FRONTEND_URL || "http://localhost:5173",
-            process.env.BACKEND_URL || "http://localhost:3000",
+            process.env.FRONTEND_URL || "https://codecolab.vercel.app",
+            process.env.BACKEND_URL || "https://codecolab-852p.onrender.com",
             "https://*.firebasestorage.app",
           ],
           frameSrc: [
@@ -53,7 +53,7 @@ const configureApp = () => {
   // Configure CORS
   app.use(
     cors({
-      origin: process.env.FRONTEND_URL || "http://localhost:5173",
+      origin: process.env.FRONTEND_URL || "https://codecolab.vercel.app",
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       credentials: true,
       allowedHeaders: [

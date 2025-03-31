@@ -218,16 +218,28 @@ const VideoChat = ({ sessionId, userId }) => {
 
         // 2. Initialize PeerJS
         const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
-          host: import.meta.env.VITE_PEER_HOST || "localhost",
-          port: Number(import.meta.env.VITE_PEER_PORT) || 9000,
+          host: (
+            import.meta.env.VITE_PEER_HOST || "codecolab-852p.onrender.com"
+          ).replace(/^https?:\/\//, ""),
+          port: 443,
           path: import.meta.env.VITE_PEER_PATH || "/peerjs",
-          secure: true, // Ensure we use secure connections
-          debug: 1, // Reduced debug level
+          secure: true, // Always use secure for production
+          debug: 0, // Minimal debug level for production
           config: {
             iceServers: [
               { urls: "stun:stun.l.google.com:19302" },
               { urls: "stun:stun1.l.google.com:19302" },
               { urls: "stun:stun2.l.google.com:19302" },
+              // Add TURN server from environment if available
+              ...(import.meta.env.VITE_TURN_SERVER_URL
+                ? [
+                    {
+                      urls: import.meta.env.VITE_TURN_SERVER_URL,
+                      username: import.meta.env.VITE_TURN_USERNAME || "",
+                      credential: import.meta.env.VITE_TURN_CREDENTIAL || "",
+                    },
+                  ]
+                : []),
             ],
             sdpTransform: (sdp) => {
               return sdp.replace(

@@ -5,10 +5,10 @@
  * provides defaults when variables are not defined.
  */
 
-// Determine the current environment
-const mode = import.meta.env.MODE || "development";
-const isDev = mode === "development";
-const isProd = mode === "production";
+// Determine the current environment - always use production settings
+const mode = "production";
+const isDev = false;
+const isProd = true;
 
 // Helper to format URLs consistently
 const formatUrl = (url) => {
@@ -17,7 +17,7 @@ const formatUrl = (url) => {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 };
 
-// Production backend URL fallback
+// Production backend URL
 const DEFAULT_PROD_BACKEND = "https://codecolab-852p.onrender.com";
 
 // API and connection settings
@@ -26,29 +26,28 @@ const config = {
   env: mode,
   isDevelopment: isDev,
   isProduction: isProd,
-  debug: parseInt(import.meta.env.VITE_LOG_LEVEL || "3") >= 3,
+  debug: parseInt(import.meta.env.VITE_LOG_LEVEL || "1"),
 
   // API endpoints
   api: {
     url: formatUrl(
-      import.meta.env.VITE_API_URL ||
-        (isDev ? "http://localhost:3001/api" : `${DEFAULT_PROD_BACKEND}/api`)
+      import.meta.env.VITE_API_URL || `${DEFAULT_PROD_BACKEND}/api`
     ),
     socketUrl: formatUrl(
-      import.meta.env.VITE_SOCKET_URL ||
-        (isDev ? "http://localhost:3001" : DEFAULT_PROD_BACKEND)
+      import.meta.env.VITE_SOCKET_URL || DEFAULT_PROD_BACKEND
     ),
   },
 
   // PeerJS configuration
   peer: {
-    host:
-      import.meta.env.VITE_PEER_HOST ||
-      (isDev ? "localhost" : DEFAULT_PROD_BACKEND.replace(/^https?:\/\//, "")),
-    port: parseInt(import.meta.env.VITE_PEER_PORT || (isDev ? "9000" : "443")),
+    host: (import.meta.env.VITE_PEER_HOST || DEFAULT_PROD_BACKEND).replace(
+      /^https?:\/\//,
+      ""
+    ),
+    port: parseInt(import.meta.env.VITE_PEER_PORT || "443"),
     path: import.meta.env.VITE_PEER_PATH || "/peerjs",
-    secure: isProd,
-    key: import.meta.env.VITE_PEER_KEY || "codecolab",
+    secure: true,
+    key: import.meta.env.VITE_PEER_KEY || "peerjs",
     debug: parseInt(import.meta.env.VITE_LOG_LEVEL || "0"),
   },
 
@@ -58,7 +57,7 @@ const config = {
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       // Include TURN servers in production
-      ...(isProd && import.meta.env.VITE_TURN_SERVER_URL
+      ...(import.meta.env.VITE_TURN_SERVER_URL
         ? [
             {
               urls: import.meta.env.VITE_TURN_SERVER_URL,
@@ -110,30 +109,15 @@ const config = {
   },
 };
 
-// Print debug information in development mode
-if (isDev && config.debug) {
-  console.log("Environment configuration loaded:", {
-    mode,
-    apiUrl: config.api.url,
-    socketUrl: config.api.socketUrl,
-  });
-}
-
 // Validation function to check required configuration
 const validateConfig = () => {
   const requiredVars = [
     ["firebase.apiKey", config.firebase.apiKey],
     ["firebase.authDomain", config.firebase.authDomain],
     ["firebase.projectId", config.firebase.projectId],
+    ["externalApis.rapidApi.key", config.externalApis.rapidApi.key],
+    ["api.url", config.api.url],
   ];
-
-  // In production, also validate external APIs
-  if (isProd) {
-    requiredVars.push(
-      ["externalApis.rapidApi.key", config.externalApis.rapidApi.key],
-      ["api.url", config.api.url]
-    );
-  }
 
   const missing = requiredVars
     .filter(([_, value]) => !value)
@@ -143,12 +127,6 @@ const validateConfig = () => {
     console.error(
       `Missing required environment variables: ${missing.join(", ")}`
     );
-    // Only throw in development to allow production to continue with defaults
-    if (isDev) {
-      throw new Error(
-        `Missing required environment variables: ${missing.join(", ")}`
-      );
-    }
   }
 };
 
