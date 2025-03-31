@@ -80,6 +80,31 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Add a PeerJS diagnostics endpoint
+app.get("/peer-status", (req, res) => {
+  const wsCount = peerServer?._clients?.size || 0;
+  const wsClients = peerServer?._clients
+    ? Array.from(peerServer._clients.keys())
+    : [];
+
+  const info = {
+    status: peerServer ? "UP" : "DOWN",
+    port: process.env.PEER_PORT || 9000,
+    path: "",
+    ssl: true,
+    connections: wsCount,
+    connectionIds: wsClients,
+    environment: process.env.NODE_ENV,
+    time: new Date().toISOString(),
+    uptime: process.uptime(),
+  };
+
+  // Log the diagnosis for server-side reference
+  logger.info("PeerJS server status:", info);
+
+  res.status(200).json(info);
+});
+
 // Graceful shutdown
 process.on("SIGINT", () => {
   logger.info("Shutting down servers...");

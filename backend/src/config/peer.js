@@ -1,12 +1,21 @@
 const { PeerServer } = require("peer");
+const logger = require("../utils/logger");
 
 /**
  * Configure and create PeerJS server
  */
 const configurePeerServer = () => {
+  // Log detailed configuration
+  logger.info("Configuring PeerJS server with settings:", {
+    port: process.env.PEER_PORT || 9000,
+    path: "", // Empty path
+    ssl: true,
+    proxied: true,
+  });
+
   const peerServer = PeerServer({
     port: process.env.PEER_PORT || 9000,
-    path: process.env.PEER_PATH || "/peerjs",
+    path: "",
     proxied: true,
     allow_discovery: true,
     cleanup_out_msgs: 1000,
@@ -36,36 +45,42 @@ const configurePeerServer = () => {
         },
       ].filter(Boolean), // Filter out undefined entries
     },
+    debug: 3, // Enable more verbose debugging
   });
 
   // PeerJS server events
   peerServer.on("connection", (client) => {
-    console.log(
-      "PeerJS client connected:",
-      client.getId(),
-      "at",
-      new Date().toISOString()
-    );
+    const clientId = client.getId();
+    const timestamp = new Date().toISOString();
+    logger.info(`PeerJS client connected: ${clientId} at ${timestamp}`);
+    console.log(`PeerJS client connected: ${clientId} at ${timestamp}`);
   });
 
   peerServer.on("disconnect", (client) => {
-    console.log(
-      "PeerJS client disconnected:",
-      client.getId(),
-      "at",
-      new Date().toISOString()
-    );
+    const clientId = client.getId();
+    const timestamp = new Date().toISOString();
+    logger.info(`PeerJS client disconnected: ${clientId} at ${timestamp}`);
+    console.log(`PeerJS client disconnected: ${clientId} at ${timestamp}`);
   });
 
   // Error handling
   peerServer.on("error", (error) => {
-    console.error(
-      "PeerJS server error:",
-      error,
-      "at",
-      new Date().toISOString()
-    );
+    const timestamp = new Date().toISOString();
+    logger.error(`PeerJS server error at ${timestamp}:`, error);
+    console.error(`PeerJS server error at ${timestamp}:`, error);
   });
+
+  // Log a success message
+  logger.info(
+    `PeerJS server initialized on port ${
+      process.env.PEER_PORT || 9000
+    } with empty path`
+  );
+  console.log(
+    `PeerJS server initialized on port ${
+      process.env.PEER_PORT || 9000
+    } with empty path`
+  );
 
   return peerServer;
 };

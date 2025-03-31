@@ -33,6 +33,10 @@ const configureApp = () => {
             process.env.FRONTEND_URL || "https://codecolab.vercel.app",
             process.env.BACKEND_URL || "https://codecolab-852p.onrender.com",
             "https://*.firebasestorage.app",
+            "wss://codecolab-852p.onrender.com",
+            "ws://codecolab-852p.onrender.com",
+            "ws://localhost:9000",
+            "wss://localhost:9000",
           ],
           frameSrc: [
             "'self'",
