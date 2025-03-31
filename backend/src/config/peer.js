@@ -8,14 +8,14 @@ const configurePeerServer = () => {
   // Log detailed configuration
   logger.info("Configuring PeerJS server with settings:", {
     port: process.env.PEER_PORT || 9000,
-    path: "", // Empty path
+    path: "/peerjs",
     ssl: true,
     proxied: true,
   });
 
   const peerServer = PeerServer({
     port: process.env.PEER_PORT || 9000,
-    path: "",
+    path: "/peerjs",
     proxied: true,
     allow_discovery: true,
     cleanup_out_msgs: 1000,
@@ -74,12 +74,12 @@ const configurePeerServer = () => {
   logger.info(
     `PeerJS server initialized on port ${
       process.env.PEER_PORT || 9000
-    } with empty path`
+    } with path /peerjs`
   );
   console.log(
     `PeerJS server initialized on port ${
       process.env.PEER_PORT || 9000
-    } with empty path`
+    } with path /peerjs`
   );
 
   return peerServer;

@@ -220,7 +220,7 @@ const VideoChat = ({ sessionId, userId }) => {
         const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
           host: "codecolab-852p.onrender.com",
           port: 443,
-          path: "",
+          path: "/peerjs",
           secure: true,
           debug: 1,
           config: {
