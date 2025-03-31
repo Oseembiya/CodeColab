@@ -66,9 +66,17 @@ export default defineConfig(({ mode }) => {
               "firebase/firestore",
               "firebase/storage",
             ],
+            // Include sessions-related files in a predictable chunk
+            sessions: [
+              "./src/pages/liveSession.jsx",
+              "./src/components/sessions",
+              "./src/contexts/SessionContext.jsx",
+            ],
           },
-          chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
-          entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+          // Remove the timestamp to make chunk names stable between deployments
+          chunkFileNames: `assets/[name]-[hash].js`,
+          entryFileNames: `assets/[name]-[hash].js`,
+          assetFileNames: `assets/[name]-[hash].[ext]`,
         },
       },
     },

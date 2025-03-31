@@ -27,7 +27,7 @@ const getUserMetrics = async (userId) => {
     const metricsDoc = await userMetricsRef.get();
 
     let metrics;
-    if (metricsDoc.exists) {
+    if (metricsDoc.exists()) {
       metrics = metricsDoc.data();
     } else {
       // Initialize metrics for new users
@@ -70,7 +70,7 @@ const incrementUserSession = async (userId, sessionId) => {
     // Start session timestamp
     const sessionStart = new Date().toISOString();
 
-    if (!metricsDoc.exists) {
+    if (!metricsDoc.exists()) {
       // Create a new document if it doesn't exist
       await userMetricsRef.set({
         totalSessions: 1,
@@ -149,7 +149,7 @@ const updateUserActiveTime = async (userId, lastActive = new Date()) => {
     const userMetricsRef = db.collection("userMetrics").doc(userId);
     const metricsDoc = await userMetricsRef.get();
 
-    if (!metricsDoc.exists) {
+    if (!metricsDoc.exists()) {
       // Create a new document with default values
       await userMetricsRef.set({
         totalSessions: 0,
@@ -206,7 +206,7 @@ const incrementLinesOfCode = async (userId, lineCount = 1) => {
     const userMetricsRef = db.collection("userMetrics").doc(userId);
     const metricsDoc = await userMetricsRef.get();
 
-    if (!metricsDoc.exists) {
+    if (!metricsDoc.exists()) {
       // Create a new document with the initial line count
       await userMetricsRef.set({
         totalSessions: 0,
