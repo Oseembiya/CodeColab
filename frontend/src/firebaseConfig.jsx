@@ -22,19 +22,10 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Override authDomain with current domain in production
-if (
-  typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  !window.location.hostname.includes("127.0.0.1")
-) {
-  // Use the current hostname for auth domain in production
-  firebaseConfig.authDomain = window.location.hostname;
-  console.log(
-    "Using current hostname for Firebase Auth:",
-    firebaseConfig.authDomain
-  );
-}
+// DO NOT override authDomain with the current hostname
+// Firebase Authentication needs its original authDomain for OAuth redirects
+// Just make sure codekolab.netlify.app is added to authorized domains in Firebase Console
+console.log("Using Firebase Auth Domain:", firebaseConfig.authDomain);
 
 // Add direct handler for auth redirect page to prevent black screen
 if (

@@ -96,6 +96,8 @@ export default defineConfig(({ mode }) => {
               "firebase/storage",
             ],
           },
+          chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+          entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
         },
       },
     },

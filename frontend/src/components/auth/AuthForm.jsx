@@ -75,21 +75,31 @@ const AuthForm = ({ isLogin }) => {
       try {
         console.log("Checking for redirect result");
         setIsGoogleLoading(true);
+
+        // Log the current URL to check for query parameters
+        console.log("Current URL:", window.location.href);
+
+        // Try to get the redirect result
         const result = await getRedirectResult(auth);
 
         if (result?.user) {
-          console.log("Successfully signed in with Google redirect");
+          console.log(
+            "Successfully signed in with Google redirect",
+            result.user.uid
+          );
           await saveUserToFirestore(result.user);
 
-          // Double check auth state before navigating
-          if (auth.currentUser) {
-            console.log("Current user confirmed, navigating to dashboard");
-            navigate("/dashboard");
-          } else {
-            console.warn("User from redirect but no currentUser?");
-          }
+          navigate("/dashboard");
         } else {
           console.log("No redirect result found");
+
+          // Check if we're on the signup page with error parameters
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.has("error")) {
+            const errorCode = urlParams.get("error");
+            console.error(`Auth error from redirect: ${errorCode}`);
+            setFirebaseError(`Authentication error: ${errorCode}`);
+          }
         }
       } catch (error) {
         console.error("Redirect auth error:", error);
@@ -240,29 +250,23 @@ const AuthForm = ({ isLogin }) => {
       provider.addScope("email");
       provider.addScope("profile");
 
-      // Set custom parameters - keep simple to avoid redirect issues
+      // Keep only essential parameters for Google auth
       provider.setCustomParameters({
         prompt: "select_account",
       });
 
-      // Always use redirect method for more reliable cross-browser experience
-      console.log("Using redirect auth method for Google Sign-In");
+      // Log auth domain for debugging
+      console.log(
+        `Using Firebase Auth Domain: ${
+          auth.config?.authDomain || "not available"
+        }`
+      );
 
-      // Make sure auth domain is properly set
-      if (
-        window.location.hostname !== "localhost" &&
-        !window.location.hostname.includes("127.0.0.1") &&
-        auth.config?.authDomain !== window.location.hostname
-      ) {
-        console.log(
-          `Auth domain mismatch. Current: ${auth.config?.authDomain}, Setting to: ${window.location.hostname}`
-        );
-      }
-
-      // Clear any previous auth state to prevent issues
+      // Use redirect method for all environments for consistency
+      console.log("Initiating Google Sign-In with redirect...");
       await signInWithRedirect(auth, provider);
 
-      // Function will return here, redirect will happen
+      // This line will not execute until after returning from the redirect
       return;
     } catch (error) {
       setIsGoogleLoading(false);
