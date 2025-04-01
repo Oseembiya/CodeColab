@@ -50,6 +50,39 @@ const VideoChat = ({ sessionId, userId }) => {
   const initialJoinCompleteRef = useRef(false); // Flag for initial join
   const processedPeersRef = useRef(new Set()); // Track processed peers
 
+  // Add this new useEffect to enumerate audio devices
+  const [audioInputDevices, setAudioInputDevices] = useState([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState([]);
+
+  useEffect(() => {
+    // Only run if browser supports the API
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+      navigator.mediaDevices
+        .enumerateDevices()
+        .then((devices) => {
+          const inputs = devices.filter(
+            (device) => device.kind === "audioinput"
+          );
+          const outputs = devices.filter(
+            (device) => device.kind === "audiooutput"
+          );
+
+          console.log("Available audio input devices:", inputs);
+          console.log("Available audio output devices:", outputs);
+
+          setAudioInputDevices(inputs);
+          setAudioOutputDevices(outputs);
+        })
+        .catch((err) => {
+          console.error("Error enumerating audio devices:", err);
+        });
+    } else {
+      console.warn(
+        "This browser does not support mediaDevices.enumerateDevices()"
+      );
+    }
+  }, []);
+
   // Suppress PeerJS console errors
   useEffect(() => {
     // Save original console.error
@@ -253,10 +286,51 @@ const VideoChat = ({ sessionId, userId }) => {
             reconnectTimer: 3000,
             peerIdentity: null,
             sdpTransform: (sdp) => {
-              return sdp.replace(
+              // Add better audio codecs configuration
+              let newSdp = sdp;
+
+              // Improve opus codec parameters
+              newSdp = newSdp.replace(
                 "useinbandfec=1",
-                "useinbandfec=1; stereo=1; maxaveragebitrate=512000"
+                "useinbandfec=1; stereo=1; maxaveragebitrate=510000; maxplaybackrate=48000"
               );
+
+              // Prioritize opus for better audio
+              if (newSdp.includes("opus/48000")) {
+                // Move opus to the top of the codec list
+                const mediaSection = newSdp.match(/m=audio.*\r\n/g);
+                if (mediaSection && mediaSection.length > 0) {
+                  const codecSection = newSdp
+                    .split(mediaSection[0])[1]
+                    .split("m=")[0];
+
+                  // Find opus
+                  const opusRTPLine = codecSection.match(
+                    /a=rtpmap:(\d+) opus\/48000.*/
+                  )[0];
+                  const opusPayloadType =
+                    opusRTPLine.match(/a=rtpmap:(\d+)/)[1];
+
+                  // Modify the media section to prioritize opus
+                  const newMediaSection = mediaSection[0].replace(
+                    /m=audio \d+ UDP\/TLS\/RTP\/SAVPF (.*)/,
+                    (match, payloadTypes) => {
+                      const types = payloadTypes.split(" ");
+                      types.splice(types.indexOf(opusPayloadType), 1);
+                      return `m=audio ${
+                        newSdp.match(/m=audio (\d+)/)[1]
+                      } UDP/TLS/RTP/SAVPF ${opusPayloadType} ${types.join(
+                        " "
+                      )}`;
+                    }
+                  );
+
+                  newSdp = newSdp.replace(mediaSection[0], newMediaSection);
+                }
+              }
+
+              console.log("Audio SDP modified to improve quality");
+              return newSdp;
             },
           },
           pingInterval: 5000,
@@ -1012,6 +1086,7 @@ const VideoChat = ({ sessionId, userId }) => {
         <select
           onChange={(e) => {
             if (streamRef.current) {
+              console.log(`Changing audio input device to: ${e.target.value}`);
               navigator.mediaDevices
                 .getUserMedia({
                   video: true,
@@ -1025,17 +1100,76 @@ const VideoChat = ({ sessionId, userId }) => {
                   },
                 })
                 .then((newStream) => {
+                  console.log(
+                    `New audio stream acquired with ${
+                      newStream.getAudioTracks().length
+                    } audio tracks`
+                  );
                   const audioTrack = newStream.getAudioTracks()[0];
                   const oldTrack = streamRef.current.getAudioTracks()[0];
-                  streamRef.current.removeTrack(oldTrack);
-                  streamRef.current.addTrack(audioTrack);
+
+                  if (oldTrack) {
+                    console.log(`Removing old audio track: ${oldTrack.label}`);
+                    streamRef.current.removeTrack(oldTrack);
+                    oldTrack.stop();
+                  }
+
+                  if (audioTrack) {
+                    console.log(`Adding new audio track: ${audioTrack.label}`);
+                    streamRef.current.addTrack(audioTrack);
+                    audioTrack.enabled = true;
+                  }
+                })
+                .catch((err) => {
+                  console.error(`Error changing audio device: ${err.message}`);
                 });
             }
           }}
         >
-          {/* Dynamically populate with available audio devices */}
+          <option value="">Select audio input device</option>
+          {audioInputDevices.map((device) => (
+            <option key={device.deviceId} value={device.deviceId}>
+              {device.label ||
+                `Microphone ${audioInputDevices.indexOf(device) + 1}`}
+            </option>
+          ))}
         </select>
       </div>
+
+      {/* Add output device selector if setSinkId is available */}
+      {audioOutputDevices.length > 0 &&
+        typeof HTMLMediaElement.prototype.setSinkId === "function" && (
+          <div className="audio-output-selector">
+            <select
+              onChange={(e) => {
+                const sinkId = e.target.value;
+                console.log(`Changing audio output to: ${sinkId}`);
+
+                // Apply to all video elements
+                document
+                  .querySelectorAll(".video-container:not(.local) video")
+                  .forEach((video) => {
+                    if (typeof video.setSinkId === "function") {
+                      video.setSinkId(sinkId).catch((err) => {
+                        console.error(
+                          `Error setting audio output: ${err.message}`
+                        );
+                      });
+                    }
+                  });
+              }}
+            >
+              <option value="">Select speaker</option>
+              {audioOutputDevices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label ||
+                    `Speaker ${audioOutputDevices.indexOf(device) + 1}`}
+                </option>
+              ))}
+            </select>
+            <span className="output-label">Speaker</span>
+          </div>
+        )}
 
       <div className="volume-control">
         <input
@@ -1047,6 +1181,7 @@ const VideoChat = ({ sessionId, userId }) => {
           onChange={(e) => {
             // Cache the volume value
             const volume = e.target.value;
+            console.log(`Setting volume for all peers to: ${volume}`);
 
             // Use requestAnimationFrame to batch DOM updates
             requestAnimationFrame(() => {
@@ -1055,10 +1190,12 @@ const VideoChat = ({ sessionId, userId }) => {
                 .querySelectorAll(".video-container:not(.local) video")
                 .forEach((video) => {
                   video.volume = volume;
+                  console.log(`Set volume for a video element to ${volume}`);
                 });
             });
           }}
         />
+        <span className="volume-label">Volume</span>
       </div>
 
       <div className="video-grid">

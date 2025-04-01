@@ -60,7 +60,11 @@ const RemoteVideo = memo(
         }
 
         // Configure audio output device
-        if (video.setSinkId && navigator.mediaDevices.enumerateDevices) {
+        if (
+          typeof video.setSinkId === "function" &&
+          navigator.mediaDevices &&
+          navigator.mediaDevices.enumerateDevices
+        ) {
           sinkIdSetRef.current = true;
           navigator.mediaDevices
             .enumerateDevices()
@@ -75,12 +79,38 @@ const RemoteVideo = memo(
                 const deviceId = defaultDevice
                   ? defaultDevice.deviceId
                   : audioOutputs[0].deviceId;
-                return video.setSinkId(deviceId);
+
+                // Try to set the sink ID with error handling
+                try {
+                  return video.setSinkId(deviceId).catch((err) => {
+                    console.warn(
+                      `Failed to set audio output device: ${err.message}`
+                    );
+                    // Ensure video isn't muted if setSinkId fails
+                    video.muted = false;
+                    video.volume = 1.0;
+                  });
+                } catch (err) {
+                  console.warn(`Error calling setSinkId: ${err.message}`);
+                  // Ensure video isn't muted if setSinkId fails
+                  video.muted = false;
+                  video.volume = 1.0;
+                }
               }
             })
-            .catch((err) =>
-              console.error("Error setting audio output device:", err)
-            );
+            .catch((err) => {
+              console.warn("Error enumerating audio devices:", err);
+              // Ensure video isn't muted if device enumeration fails
+              video.muted = false;
+              video.volume = 1.0;
+            });
+        } else {
+          // For browsers that don't support setSinkId
+          console.log(
+            `Browser doesn't support setSinkId, using default audio output for peer ${peerId}`
+          );
+          video.muted = false;
+          video.volume = 1.0;
         }
 
         // Handle autoplay
@@ -158,14 +188,36 @@ const RemoteVideo = memo(
           if (timeElapsed >= THROTTLE_MS) {
             if (video && !video.paused) {
               try {
+                // First check if video is properly set up
+                if (video.muted) {
+                  console.log(`Unmuting video for peer ${peerId}`);
+                  video.muted = false;
+                }
+
+                // Check volume level
+                if (video.volume === 0) {
+                  console.log(`Resetting volume for peer ${peerId} (was 0)`);
+                  video.volume = 1.0;
+                }
+
+                // Then check audio tracks
                 const audioTracks = peerStream.getAudioTracks();
+                console.log(
+                  `Peer ${peerId} has ${audioTracks.length} audio tracks`
+                );
+
                 if (audioTracks.length > 0) {
-                  if (!audioTracks[0].enabled) {
-                    audioTracks[0].enabled = true;
+                  const audioTrack = audioTracks[0];
+                  console.log(
+                    `Audio track state for peer ${peerId}: enabled=${audioTrack.enabled}, muted=${audioTrack.muted}, readyState=${audioTrack.readyState}`
+                  );
+
+                  if (!audioTrack.enabled) {
+                    console.log(`Enabling audio track for peer ${peerId}`);
+                    audioTrack.enabled = true;
                   }
-                  if (video.muted) {
-                    video.muted = false;
-                  }
+                } else {
+                  console.warn(`No audio tracks available for peer ${peerId}`);
                 }
               } catch (e) {
                 // If we can't access tracks, the stream might be gone
@@ -265,24 +317,47 @@ const RemoteVideo = memo(
           onClick={() => {
             const video = videoRef.current;
             if (!video) return;
+
+            // Toggle muted state
             video.muted = !video.muted;
+
+            // If unmuting, ensure volume is non-zero
+            if (!video.muted && video.volume === 0) {
+              video.volume = 1.0;
+            }
+
+            // Also ensure audio tracks are enabled
+            if (!video.muted && peerStream) {
+              try {
+                const audioTracks = peerStream.getAudioTracks();
+                if (audioTracks.length > 0) {
+                  audioTracks[0].enabled = true;
+                }
+              } catch (e) {
+                console.warn(
+                  `Error toggling audio tracks for peer ${peerId}:`,
+                  e
+                );
+              }
+            }
           }}
           style={{
             position: "absolute",
             bottom: "10px",
             right: "10px",
-            background: "rgba(0,0,0,0.5)",
+            background: "rgba(0,0,0,0.7)",
             color: "white",
             border: "none",
             borderRadius: "50%",
-            width: "30px",
-            height: "30px",
+            width: "35px",
+            height: "35px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
             zIndex: "5",
           }}
+          title="Click to toggle audio"
         >
           <FaMicrophone />
         </button>
