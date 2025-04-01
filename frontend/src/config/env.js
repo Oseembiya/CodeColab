@@ -40,14 +40,11 @@ const config = {
 
   // PeerJS configuration
   peer: {
-    host: (import.meta.env.VITE_PEER_HOST || DEFAULT_PROD_BACKEND).replace(
-      /^https?:\/\//,
-      ""
-    ),
-    port: parseInt(import.meta.env.VITE_PEER_PORT || "9000"),
-    path: "/",
-    secure: true,
-    key: import.meta.env.VITE_PEER_KEY || "peerjs",
+    host: "0.peerjs.com", // Use PeerJS's free public server
+    port: 443, // HTTPS port
+    path: "/", // Default path
+    secure: true, // Use HTTPS
+    key: "peerjs", // Default key for public server
     debug: parseInt(import.meta.env.VITE_LOG_LEVEL || "1"),
   },
 

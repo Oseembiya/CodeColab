@@ -200,6 +200,7 @@ const VideoChat = ({ sessionId, userId }) => {
         sessionStorage.setItem(initializationKey, Date.now().toString());
 
         // 1. Get user media stream
+        console.log("Attempting to get user media stream...");
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: {
@@ -213,12 +214,19 @@ const VideoChat = ({ sessionId, userId }) => {
             volume: 1.0,
           },
         });
+        console.log("User media stream acquired successfully");
 
         streamRef.current = mediaStream;
         setStream(mediaStream);
 
         // 2. Initialize PeerJS
-        const peer = new Peer(`${sessionId}-${userId}-${Date.now()}`, {
+        const peerId = `${sessionId}-${userId}-${Date.now()}`;
+        console.log(`Initializing PeerJS with ID: ${peerId}`);
+        console.log(
+          `Connecting to PeerJS server: ${config.peer.host}:${config.peer.port}`
+        );
+
+        const peer = new Peer(peerId, {
           host: config.peer.host,
           port: config.peer.port,
           path: config.peer.path,
@@ -266,6 +274,9 @@ const VideoChat = ({ sessionId, userId }) => {
             );
             // Don't display this error to users
             setError(null);
+          } else if (err.type === "server-error") {
+            console.error("PeerJS server error:", err);
+            setError("Server communication error. Please refresh the page.");
           } else if (err.type === "network" || err.type === "disconnected") {
             setError(`Peer error: ${err.type}`);
             console.log("Attempting to reconnect due to network error");
@@ -277,6 +288,7 @@ const VideoChat = ({ sessionId, userId }) => {
                   setReconnectCount((prev) => prev + 1);
                   try {
                     // First try to reconnect to the existing peer
+                    console.log("Attempting to reconnect to PeerJS server...");
                     peerRef.current.reconnect();
 
                     // If we have too many reconnection attempts, try to destroy and recreate
@@ -287,7 +299,13 @@ const VideoChat = ({ sessionId, userId }) => {
                       setTimeout(() => {
                         try {
                           if (peerRef.current) {
+                            console.log("Destroying peer and recreating...");
                             peerRef.current.destroy();
+
+                            // Clear the initialization key to allow recreation
+                            sessionStorage.removeItem(initializationKey);
+
+                            // Setup again
                             setupPeerAndSocket();
                           }
                         } catch (e) {
@@ -387,6 +405,9 @@ const VideoChat = ({ sessionId, userId }) => {
         sessionStorage.removeItem(initializationKey);
       }
     };
+
+    // Make setupPeerAndSocket accessible for retry
+    window.setupPeerForSession = setupPeerAndSocket;
 
     // Socket event handlers
     const handleUserJoined = ({
@@ -720,6 +741,9 @@ const VideoChat = ({ sessionId, userId }) => {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
+
+      // Remove setupPeerAndSocket from window
+      window.setupPeerForSession = null;
     };
   }, [sessionId, userId, socket, user?.displayName]);
 
@@ -741,6 +765,44 @@ const VideoChat = ({ sessionId, userId }) => {
         setAudioEnabled(!audioEnabled);
       }
     }
+  };
+
+  // Add a retry function to reconnect
+  const retryConnection = () => {
+    console.log("Manually retrying connection...");
+    setError(null);
+
+    // Clear any existing timeouts
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    // Destroy existing peer if any
+    if (peerRef.current) {
+      try {
+        peerRef.current.destroy();
+      } catch (e) {
+        console.error("Error destroying peer during retry:", e);
+      }
+    }
+
+    // Clear the session storage to allow reinitialization
+    sessionStorage.removeItem(`${sessionId}_${userId}_init`);
+
+    // Reset all state
+    setPeers(new Map());
+    setReconnectCount(0);
+    knownStaleIdsRef.current.clear();
+    peerTimestampsRef.current.clear();
+    processedPeersRef.current.clear();
+    initialJoinCompleteRef.current = false;
+
+    // Restart the peer setup process
+    setTimeout(() => {
+      if (window.setupPeerForSession) {
+        window.setupPeerForSession();
+      }
+    }, 1000);
   };
 
   const handleMouseDown = (e) => {
@@ -963,7 +1025,20 @@ const VideoChat = ({ sessionId, userId }) => {
         </div>
       </div>
 
-      {error && <div className="video-error">Error: {error}</div>}
+      {error && (
+        <div className="video-error">
+          Error: {error}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              retryConnection();
+            }}
+            className="retry-button"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
 
       {!isCollapsed && (
         <button
