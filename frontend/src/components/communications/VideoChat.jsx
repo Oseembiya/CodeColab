@@ -223,9 +223,16 @@ const VideoChat = ({ sessionId, userId }) => {
           port: config.peer.port,
           path: config.peer.path,
           secure: config.peer.secure,
-          debug: config.peer.debug,
+          debug: config.peer.debug ? 3 : 0, // Increase debug level
           config: {
             iceServers: config.webrtc.iceServers,
+            iceTransportPolicy: "all",
+            iceCandidatePoolSize: 10,
+            bundlePolicy: "max-bundle",
+            rtcpMuxPolicy: "require",
+            sdpSemantics: "unified-plan",
+            reconnectTimer: 3000,
+            peerIdentity: null,
             sdpTransform: (sdp) => {
               return sdp.replace(
                 "useinbandfec=1",
@@ -242,7 +249,7 @@ const VideoChat = ({ sessionId, userId }) => {
 
         // Error handling
         peer.on("error", (err) => {
-          console.error("Peer error:", err.type);
+          console.error("Peer error:", err.type, err);
 
           // Track stale peer IDs
           if (err.type === "peer-unavailable") {
@@ -258,20 +265,44 @@ const VideoChat = ({ sessionId, userId }) => {
               "Attempted to connect to unavailable peer, this is normal if users reconnected"
             );
             // Don't display this error to users
-          } else if (err.type !== "peer-unavailable") {
+            setError(null);
+          } else if (err.type === "network" || err.type === "disconnected") {
             setError(`Peer error: ${err.type}`);
-          }
+            console.log("Attempting to reconnect due to network error");
 
-          if (err.type === "network" || err.type === "disconnected") {
             clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = setTimeout(() => {
               if (!isUnmountingRef.current && peerRef.current) {
                 if (peerRef.current.disconnected) {
                   setReconnectCount((prev) => prev + 1);
-                  peerRef.current.reconnect();
+                  try {
+                    // First try to reconnect to the existing peer
+                    peerRef.current.reconnect();
+
+                    // If we have too many reconnection attempts, try to destroy and recreate
+                    if (reconnectCount > 3) {
+                      console.log(
+                        "Multiple reconnect attempts failed, recreating peer"
+                      );
+                      setTimeout(() => {
+                        try {
+                          if (peerRef.current) {
+                            peerRef.current.destroy();
+                            setupPeerAndSocket();
+                          }
+                        } catch (e) {
+                          console.error("Error recreating peer:", e);
+                        }
+                      }, 1000);
+                    }
+                  } catch (e) {
+                    console.error("Error during reconnection:", e);
+                  }
                 }
               }
-            }, 3000);
+            }, 2000);
+          } else {
+            setError(`Peer error: ${err.type}`);
           }
         });
 
