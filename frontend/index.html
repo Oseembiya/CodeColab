@@ -1,10 +1,18 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content="CodeColab - A collaborative coding platform for real-time pair programming, code sharing, brain storming and learning. Join us to enhance your coding skills." />
+    <meta
+      name="description"
+      content="CodeColab - A collaborative coding platform for real-time pair programming, code sharing, brain storming and learning. Join us to enhance your coding skills."
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/logo.ico" />
+    <!-- Temporary CSP for development - will be overridden by netlify.toml in production -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * wss://* 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';"
+    />
     <title>CodeColab</title>
   </head>
   <body>

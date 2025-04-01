@@ -226,6 +226,8 @@ const VideoChat = ({ sessionId, userId }) => {
           `Connecting to PeerJS server: ${config.peer.host}:${config.peer.port}`
         );
 
+        // If connection fails with CSP error, the Content-Security-Policy in netlify.toml
+        // might need updating to include 'https://0.peerjs.com wss://0.peerjs.com'
         const peer = new Peer(peerId, {
           host: config.peer.host,
           port: config.peer.port,
