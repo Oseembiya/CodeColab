@@ -11,7 +11,7 @@
     <!-- Temporary CSP for development - will be overridden by netlify.toml in production -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * wss://* 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';"
+      content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src * wss://* 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline'; media-src * blob:; worker-src blob: 'self';"
     />
     <title>CodeColab</title>
   </head>

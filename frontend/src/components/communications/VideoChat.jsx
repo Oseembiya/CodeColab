@@ -215,6 +215,15 @@ const VideoChat = ({ sessionId, userId }) => {
           },
         });
         console.log("User media stream acquired successfully");
+        console.log(
+          "Media stream tracks:",
+          mediaStream
+            .getTracks()
+            .map(
+              (track) =>
+                `${track.kind}: ${track.label} (enabled: ${track.enabled}, muted: ${track.muted})`
+            )
+        );
 
         streamRef.current = mediaStream;
         setStream(mediaStream);
@@ -379,11 +388,34 @@ const VideoChat = ({ sessionId, userId }) => {
 
         // Handle incoming calls
         peer.on("call", (call) => {
+          console.log(`Received incoming call from ${call.peer}`);
           if (streamRef.current) {
+            console.log(
+              `Answering call with local stream (${
+                streamRef.current.getTracks().length
+              } tracks)`
+            );
             call.answer(streamRef.current);
+          } else {
+            console.error("Cannot answer call - no local stream available");
           }
 
           call.on("stream", (remoteStream) => {
+            console.log(
+              `Received remote stream from ${call.peer} with ${
+                remoteStream.getTracks().length
+              } tracks`
+            );
+            console.log(
+              "Remote tracks:",
+              remoteStream
+                .getTracks()
+                .map(
+                  (track) =>
+                    `${track.kind}: ${track.readyState} (enabled: ${track.enabled})`
+                )
+            );
+
             const peerIdParts = call.peer.split("-");
             const remoteUserId =
               peerIdParts.length > 1 ? peerIdParts[1] : "unknown";
@@ -412,7 +444,7 @@ const VideoChat = ({ sessionId, userId }) => {
     window.setupPeerForSession = setupPeerAndSocket;
 
     // Socket event handlers
-    const handleUserJoined = ({
+    const handleUserJoined = async ({
       peerId: newPeerId,
       userId: remoteUserId,
       name,
@@ -447,6 +479,40 @@ const VideoChat = ({ sessionId, userId }) => {
         // Use a try-catch to handle any potential errors
         try {
           console.debug(`Attempting to call peer: ${newPeerId}`);
+
+          // Check if we have permission to access the camera/microphone
+          if (
+            streamRef.current
+              .getTracks()
+              .some((track) => track.readyState === "ended")
+          ) {
+            console.error(
+              "Media tracks have ended. Attempting to recreate media stream..."
+            );
+
+            // Try to refresh the media stream
+            try {
+              const freshMediaStream =
+                await navigator.mediaDevices.getUserMedia({
+                  video: true,
+                  audio: true,
+                });
+
+              // Replace the old stream
+              streamRef.current.getTracks().forEach((track) => track.stop());
+              streamRef.current = freshMediaStream;
+              setStream(freshMediaStream);
+
+              console.log("Media stream refreshed successfully");
+            } catch (mediaErr) {
+              console.error("Failed to refresh media stream:", mediaErr);
+              setError(
+                "Camera/microphone access error. Please check permissions and try again."
+              );
+              return;
+            }
+          }
+
           const call = peerRef.current.call(newPeerId, streamRef.current);
 
           call.on("error", (err) => {
