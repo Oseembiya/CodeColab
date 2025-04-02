@@ -89,8 +89,26 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
   };
 
   const handleConfirmLeave = () => {
-    setShowLeaveAlert(false);
-    onLeave();
+    try {
+      setShowLeaveAlert(false);
+
+      // Notify socket server that user is leaving
+      if (socket) {
+        socket.emit("leave-session", {
+          sessionId: session.id,
+          userId: user?.uid,
+        });
+
+        console.log(`Sent leave-session event for session ${session.id}`);
+      }
+
+      // Call the parent component's onLeave handler
+      onLeave();
+    } catch (error) {
+      console.error("Error leaving session:", error);
+      // Still call onLeave to ensure UI state is cleared
+      onLeave();
+    }
   };
 
   const handleCancelLeave = () => {
@@ -108,15 +126,16 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
 
       // First, get the historical metrics for this session to count all participants
       // who ever joined this session, even if they left before it ended
-      const userMetricsRef = collection(db, "userMetrics");
-      const metricsQuery = query(
-        userMetricsRef,
-        where("sessionsJoined", "array-contains", session.id)
-      );
-
       let totalHistoricalParticipants = 0;
+
       try {
+        const userMetricsRef = collection(db, "userMetrics");
+        const metricsQuery = query(
+          userMetricsRef,
+          where("sessionsJoined", "array-contains", session.id)
+        );
         const metricsSnapshot = await getDocs(metricsQuery);
+
         // Count the unique users who joined this session based on metrics
         const uniqueParticipantIds = new Set();
 
@@ -141,6 +160,7 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
         currentParticipants
       );
 
+      // Update Firestore document
       await updateDoc(sessionRef, {
         status: SESSION_STATUS.ENDED,
         endedAt: new Date().toISOString(),
@@ -149,6 +169,8 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
         participants: [], // Clear active participants list when session is completed
       });
 
+      console.log(`Updated Firestore session ${session.id} to ENDED status`);
+
       // Notify other participants the session has ended
       if (socket) {
         socket.emit("session-ended", {
@@ -156,11 +178,24 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
           userId: user.uid,
           totalParticipants: totalParticipants,
         });
+
+        console.log(`Sent session-ended event for session ${session.id}`);
       }
 
-      onLeave(); // Navigate away after ending
+      // Navigate away after ending
+      onLeave();
     } catch (err) {
       console.error("Error ending session:", err);
+      // Still try to exit the session even if there was an error
+      if (socket) {
+        socket.emit("session-ended", {
+          sessionId: session.id,
+          userId: user.uid,
+        });
+      }
+
+      // Always navigate away from the session page
+      onLeave();
     }
   };
 

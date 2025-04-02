@@ -170,17 +170,30 @@ export function SessionProvider({ children }) {
     localStorage.removeItem("activeSession");
   }, []);
 
-  const leaveSession = () => {
+  const leaveSession = useCallback(() => {
     if (currentSession && socket) {
-      // Simplify to one clear event
-      socket.emit("leave-session", {
-        sessionId: currentSession.id,
-        userId: user?.uid,
-      });
+      try {
+        console.log(`Leaving session ${currentSession.id}`);
 
-      setCurrentSession(null);
+        // Emit leave event to socket server
+        socket.emit("leave-session", {
+          sessionId: currentSession.id,
+          userId: user?.uid,
+        });
+
+        // Clear UI state
+        setCurrentSession(null);
+        localStorage.removeItem("activeSession");
+
+        console.log("Session context cleared successfully");
+      } catch (error) {
+        console.error("Error leaving session:", error);
+        // Still clear local state even if there was an error
+        setCurrentSession(null);
+        localStorage.removeItem("activeSession");
+      }
     }
-  };
+  }, [currentSession, socket, user?.uid]);
 
   useEffect(() => {
     if (socket) {

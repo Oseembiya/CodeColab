@@ -62,6 +62,24 @@ const CallPanel = ({ sessionId, userId }) => {
   // Setup PeerJS connection
   const setupPeerConnection = useCallback(async () => {
     try {
+      if (peerRef.current) {
+        console.log("Using existing peer connection");
+        // If we already have a peer, just reinitialize media
+        initializeMedia();
+        return () => {
+          if (peerRef.current) {
+            peerRef.current.destroy();
+          }
+        };
+      }
+
+      console.log("Setting up new peer connection with config:", {
+        host: config.peer?.host || "0.peerjs.com",
+        port: config.peer?.port || 443,
+        path: config.peer?.path || "/",
+        secure: config.peer?.secure !== false,
+      });
+
       // Create a new peer with the configured options
       const peer = new Peer(userId, {
         host: config.peer?.host || "0.peerjs.com",
@@ -91,8 +109,11 @@ const CallPanel = ({ sessionId, userId }) => {
         console.log(`Receiving call from: ${call.peer}`);
 
         try {
+          // Create a default empty stream if we don't have one
+          const streamToAnswer = localStreamRef.current || new MediaStream();
+
           // Answer the call with our stream
-          call.answer(localStreamRef.current || new MediaStream());
+          call.answer(streamToAnswer);
 
           // Handle incoming stream
           call.on("stream", (remoteStream) => {
@@ -127,6 +148,7 @@ const CallPanel = ({ sessionId, userId }) => {
         if (err.type === "disconnected" || err.type === "network") {
           setTimeout(() => {
             if (peerRef.current) {
+              console.log("Attempting to reconnect peer...");
               peerRef.current.reconnect();
             }
           }, 2000);
@@ -148,11 +170,17 @@ const CallPanel = ({ sessionId, userId }) => {
 
       // Return cleanup function
       return () => {
-        peer.destroy();
+        if (peer) {
+          console.log("Cleaning up peer connection");
+          peer.destroy();
+        }
       };
     } catch (err) {
       console.error("Error setting up PeerJS connection:", err);
       setError(`Failed to establish connection: ${err.message}`);
+
+      // Return empty cleanup function on error
+      return () => {};
     }
   }, [userId]);
 
@@ -178,11 +206,29 @@ const CallPanel = ({ sessionId, userId }) => {
 
       console.log(`Requesting media with constraints:`, constraints);
 
+      // Add debug logging for available devices before requesting stream
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      console.log(
+        "Available devices:",
+        devices.map((d) => ({
+          kind: d.kind,
+          label: d.label,
+          deviceId: d.deviceId,
+        }))
+      );
+      const audioDevices = devices.filter((d) => d.kind === "audioinput");
+      console.log(`Found ${audioDevices.length} audio input devices`);
+
       // Request media
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log(
         "Got local stream with tracks:",
-        stream.getTracks().map((t) => t.kind)
+        stream.getTracks().map((t) => ({
+          kind: t.kind,
+          enabled: t.enabled,
+          muted: t.muted,
+          id: t.id,
+        }))
       );
 
       // Store stream references
@@ -199,6 +245,19 @@ const CallPanel = ({ sessionId, userId }) => {
         stream.getAudioTracks().forEach((track) => {
           track.enabled = false;
         });
+        console.log(
+          "Audio tracks muted:",
+          stream.getAudioTracks().map((t) => t.enabled)
+        );
+      } else if (stream.getAudioTracks().length > 0) {
+        // Ensure audio tracks are explicitly enabled
+        stream.getAudioTracks().forEach((track) => {
+          track.enabled = true;
+        });
+        console.log(
+          "Audio tracks enabled:",
+          stream.getAudioTracks().map((t) => t.enabled)
+        );
       }
 
       // Set initial video state based on user preference
@@ -355,33 +414,55 @@ const CallPanel = ({ sessionId, userId }) => {
   // Call a peer when we discover them
   const callPeer = useCallback(
     (peerId) => {
-      if (!peerRef.current || !localStreamRef.current) {
-        console.warn("Cannot call peer: connection or stream not ready");
+      if (!peerRef.current) {
+        console.warn("Cannot call peer: peer connection not ready");
         return;
       }
 
       try {
-        console.log(`Calling peer: ${peerId}`);
+        // Check if we already have a call with this peer
+        if (peersRef.current.has(peerId)) {
+          console.log(`Already connected to peer: ${peerId}`);
+          return;
+        }
 
-        // Make the call
-        const call = peerRef.current.call(peerId, localStreamRef.current);
+        // Check if we have a local stream
+        const streamToSend = localStreamRef.current || new MediaStream();
 
-        call.on("stream", (remoteStream) => {
-          console.log(`Received stream from ${peerId}`);
-          addPeer(peerId, call, remoteStream);
-        });
+        console.log(
+          `Calling peer: ${peerId} with stream tracks:`,
+          streamToSend.getTracks().map((t) => t.kind)
+        );
 
-        call.on("close", () => {
-          console.log(`Call with ${peerId} closed`);
-          removePeer(peerId);
-        });
+        // Make the call with proper error handling
+        try {
+          const call = peerRef.current.call(peerId, streamToSend);
 
-        call.on("error", (err) => {
-          console.error(`Call error with ${peerId}:`, err);
-          removePeer(peerId);
-        });
+          if (!call) {
+            console.error(`Failed to create call to peer: ${peerId}`);
+            return;
+          }
+
+          // Set up event handlers safely
+          call.on("stream", (remoteStream) => {
+            console.log(`Received stream from ${peerId}`);
+            addPeer(peerId, call, remoteStream);
+          });
+
+          call.on("close", () => {
+            console.log(`Call with ${peerId} closed`);
+            removePeer(peerId);
+          });
+
+          call.on("error", (err) => {
+            console.error(`Call error with ${peerId}:`, err);
+            removePeer(peerId);
+          });
+        } catch (callErr) {
+          console.error(`Error initiating call to peer ${peerId}:`, callErr);
+        }
       } catch (err) {
-        console.error(`Error calling peer ${peerId}:`, err);
+        console.error(`Error in callPeer ${peerId}:`, err);
       }
     },
     [addPeer, removePeer]
@@ -401,17 +482,15 @@ const CallPanel = ({ sessionId, userId }) => {
       });
     };
 
-    // Handle new participant joining
+    // Handle new participant joining - don't update count here
+    // The count will be updated when the peer connection is established
     const handleParticipantJoined = (data) => {
-      console.log("New participant joined:", data);
-
-      // Update UI with participant count
-      setParticipantCount((prevCount) => prevCount + 1);
+      console.log("New participant joined media room:", data);
     };
 
     // Handle participant leaving
     const handleParticipantLeft = (data) => {
-      console.log("Participant left:", data);
+      console.log("Participant left media room:", data);
       removePeer(data.peerId);
     };
 
@@ -624,7 +703,7 @@ const CallPanel = ({ sessionId, userId }) => {
   const renderParticipantCounter = () => (
     <div className="participant-counter">
       <FaUsers />
-      <span>{participantCount}</span>
+      <span>In Call: {participantCount}</span>
     </div>
   );
 
@@ -697,7 +776,10 @@ const CallPanel = ({ sessionId, userId }) => {
       {isCollapsed ? (
         <div className="collapsed-content" onClick={toggleCollapse}>
           {isAudioMode ? <FaMicrophone /> : <FaVideo />}
-          {renderParticipantCounter()}
+          <div className="call-badge">
+            <FaUsers />
+            <span>{participantCount}</span>
+          </div>
         </div>
       ) : (
         <div className="call-content">

@@ -37,6 +37,45 @@ const config = {
       import.meta.env.VITE_SOCKET_URL || DEFAULT_PROD_BACKEND
     ),
   },
+  
+  // PeerJS configuration
+  peer: {
+    host: import.meta.env.VITE_PEER_HOST || "codecolab-852p.onrender.com",
+    port: parseInt(import.meta.env.VITE_PEER_PORT || "443"),
+    path: import.meta.env.VITE_PEER_PATH || "/peerjs",
+    secure: true,
+    key: import.meta.env.VITE_PEER_KEY || "peerjs",
+  },
+
+  // WebRTC configuration
+  webrtc: {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
+      // Add TURN servers for better connectivity
+      {
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443?transport=tcp",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      }
+    ],
+    maxConnections: parseInt(import.meta.env.VITE_MAX_PEER_CONNECTIONS || "10"),
+    reconnectionAttempts: parseInt(import.meta.env.VITE_MAX_RECONNECTION_ATTEMPTS || "3"),
+    reconnectionDelay: parseInt(import.meta.env.VITE_RECONNECTION_DELAY || "2000"),
+  },
 
   // Socket.io configuration
   socket: {

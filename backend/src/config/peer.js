@@ -40,6 +40,22 @@ const configurePeerServer = () => {
         { urls: "stun:stun4.l.google.com:19302" },
         { urls: "stun:stun.cloudflare.com:3478" },
         { urls: "stun:stun.stunprotocol.org:3478" },
+        // Public TURN servers - add these for better connectivity
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
         // Add TURN server configuration if available in environment variables
         process.env.TURN_SERVER_URL && {
           urls: process.env.TURN_SERVER_URL,
