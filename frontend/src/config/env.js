@@ -46,6 +46,8 @@ const config = {
     secure: true, // Use HTTPS
     key: "peerjs", // Default key for public server
     debug: parseInt(import.meta.env.VITE_LOG_LEVEL || "1"),
+    pingInterval: 10000, // Increased from 5000 to maintain more regular connection
+    reconnectAttempts: 10, // Increased from 5 to try harder to reconnect
   },
 
   // WebRTC configuration

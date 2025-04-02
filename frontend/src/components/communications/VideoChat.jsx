@@ -181,12 +181,15 @@ const VideoChat = ({ sessionId, userId }) => {
 
   // Helper function to remove peer from state
   const removePeerFromState = (peerId) => {
-    if (isUnmountingRef.current) return;
-    setPeers((prev) => {
-      const newPeers = new Map(prev);
+    console.log(`Removing peer from state: ${peerId}`);
+    setPeers((prevPeers) => {
+      const newPeers = new Map(prevPeers);
       newPeers.delete(peerId);
       return newPeers;
     });
+
+    // Remove from processed peers list to allow reconnection
+    processedPeersRef.current.delete(peerId);
   };
 
   // Update to track when a peer ID was last seen active
@@ -214,6 +217,77 @@ const VideoChat = ({ sessionId, userId }) => {
     knownStaleIdsRef.current.add(peerId);
     peerTimestampsRef.current.delete(peerId);
   };
+
+  // Handle connection issues reported by RemoteVideo component
+  const handleConnectionIssue = useCallback(
+    (peerId, issueType = "general") => {
+      console.log(`Connection issue detected for peer ${peerId}: ${issueType}`);
+
+      // Skip if peer is already being processed or is known to be stale
+      if (knownStaleIdsRef.current.has(peerId)) {
+        console.log(`Skipping recovery for known stale peer: ${peerId}`);
+        return;
+      }
+
+      // Try to recover the connection by reinitializing the call
+      if (peerRef.current && streamRef.current && !isUnmountingRef.current) {
+        setTimeout(() => {
+          try {
+            // Get peer info from current state
+            const peerInfo = peers.get(peerId);
+            if (!peerInfo) {
+              console.log(`No peer info found for ${peerId}, cannot recover`);
+              return;
+            }
+
+            console.log(`Attempting to recover connection with peer ${peerId}`);
+
+            // End existing call if any
+            const existingCall =
+              peerRef.current._mediaConnections &&
+              peerRef.current._mediaConnections[peerId];
+
+            if (existingCall) {
+              try {
+                console.log(`Closing existing call to ${peerId}`);
+                existingCall.close();
+              } catch (e) {
+                console.warn(`Error closing existing call: ${e.message}`);
+              }
+            }
+
+            // Create a new call after a short delay
+            setTimeout(() => {
+              if (peerRef.current && streamRef.current) {
+                console.log(`Initiating new call to ${peerId}`);
+                const newCall = peerRef.current.call(peerId, streamRef.current);
+
+                newCall.on("stream", (remoteStream) => {
+                  console.log(`Received stream from recovered peer ${peerId}`);
+                  addPeerToState(peerId, remoteStream, peerInfo.name);
+                });
+
+                newCall.on("error", (callErr) => {
+                  console.error(`Recovery call error for ${peerId}:`, callErr);
+                  if (callErr.type === "peer-unavailable") {
+                    // Mark as stale if truly unavailable after recovery attempt
+                    markPeerAsStale(peerId);
+                    removePeerFromState(peerId);
+                  }
+                });
+              }
+            }, 500);
+          } catch (err) {
+            console.error(
+              `Error during connection recovery for ${peerId}:`,
+              err
+            );
+          }
+        }, 1000);
+      }
+    },
+    [peers]
+  );
 
   useEffect(() => {
     isUnmountingRef.current = false;
@@ -275,7 +349,7 @@ const VideoChat = ({ sessionId, userId }) => {
           port: config.peer.port,
           path: config.peer.path,
           secure: config.peer.secure,
-          debug: config.peer.debug ? 3 : 0, // Increase debug level
+          debug: 3, // Enable full debugging
           config: {
             iceServers: config.webrtc.iceServers,
             iceTransportPolicy: "all",
@@ -333,9 +407,10 @@ const VideoChat = ({ sessionId, userId }) => {
               return newSdp;
             },
           },
-          pingInterval: 5000,
-          retryAttempts: 5,
+          pingInterval: config.peer.pingInterval || 10000, // Use config value or default to 10s
+          retryAttempts: config.peer.reconnectAttempts || 10, // More reconnection attempts
           iceTransportPolicy: "all",
+          reliable: true,
         });
 
         peerRef.current = peer;
@@ -377,7 +452,10 @@ const VideoChat = ({ sessionId, userId }) => {
                     peerRef.current.reconnect();
 
                     // If we have too many reconnection attempts, try to destroy and recreate
-                    if (reconnectCount > 3) {
+                    if (
+                      reconnectCount > config.webrtc.reconnectionAttempts ||
+                      reconnectCount > 3
+                    ) {
                       console.log(
                         "Multiple reconnect attempts failed, recreating peer"
                       );
@@ -390,8 +468,10 @@ const VideoChat = ({ sessionId, userId }) => {
                             // Clear the initialization key to allow recreation
                             sessionStorage.removeItem(initializationKey);
 
-                            // Setup again
-                            setupPeerAndSocket();
+                            // Setup again with slight delay to ensure clean slate
+                            setTimeout(() => {
+                              setupPeerAndSocket();
+                            }, 1000);
                           }
                         } catch (e) {
                           console.error("Error recreating peer:", e);
@@ -1223,8 +1303,9 @@ const VideoChat = ({ sessionId, userId }) => {
               key={peerId}
               peerId={peerId}
               peerStream={peerStream}
-              isInitialSetup={!initialSetupDone && !isDragging}
+              isInitialSetup={initialSetupDone}
               participantName={participantName}
+              onConnectionIssue={handleConnectionIssue}
             />
           ))}
         </div>

@@ -4,7 +4,13 @@ import { FaMicrophone, FaExclamationTriangle } from "react-icons/fa";
 
 // RemoteVideo component to handle video playback of remote peers
 const RemoteVideo = memo(
-  ({ peerId, peerStream, isInitialSetup, participantName }) => {
+  ({
+    peerId,
+    peerStream,
+    isInitialSetup,
+    participantName,
+    onConnectionIssue,
+  }) => {
     const videoRef = useRef(null);
     const intervalRef = useRef(null);
     const sinkIdSetRef = useRef(false);
@@ -216,8 +222,23 @@ const RemoteVideo = memo(
                     console.log(`Enabling audio track for peer ${peerId}`);
                     audioTrack.enabled = true;
                   }
+
+                  // Check if track is ended and try to recover
+                  if (audioTrack.readyState === "ended") {
+                    console.log(
+                      `Audio track ended for peer ${peerId}, attempting to recover`
+                    );
+                    // Signal to parent component that this peer connection needs recovery
+                    if (typeof onConnectionIssue === "function") {
+                      onConnectionIssue(peerId);
+                    }
+                  }
                 } else {
                   console.warn(`No audio tracks available for peer ${peerId}`);
+                  // Signal missing audio tracks to parent
+                  if (typeof onConnectionIssue === "function") {
+                    onConnectionIssue(peerId, "no-audio-tracks");
+                  }
                 }
               } catch (e) {
                 // If we can't access tracks, the stream might be gone
@@ -287,7 +308,7 @@ const RemoteVideo = memo(
           errorTimeoutRef.current = null;
         }
       };
-    }, [peerId, peerStream]);
+    }, [peerId, peerStream, onConnectionIssue]);
 
     // Clean up when component unmounts
     useEffect(() => {
@@ -374,6 +395,7 @@ RemoteVideo.propTypes = {
   peerStream: PropTypes.object.isRequired,
   isInitialSetup: PropTypes.bool.isRequired,
   participantName: PropTypes.string,
+  onConnectionIssue: PropTypes.func,
 };
 
 export default RemoteVideo;
