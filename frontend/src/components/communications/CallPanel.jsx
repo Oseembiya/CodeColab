@@ -200,27 +200,68 @@ const CallPanel = ({ sessionId, userId }) => {
 
       // Determine which devices to request based on mode
       const constraints = {
-        audio: true,
-        video: !isAudioMode,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: !isAudioMode
+          ? {
+              width: { ideal: 320 },
+              height: { ideal: 240 },
+              frameRate: { ideal: 24 },
+            }
+          : false,
       };
 
       console.log(`Requesting media with constraints:`, constraints);
 
-      // Add debug logging for available devices before requesting stream
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      console.log(
-        "Available devices:",
-        devices.map((d) => ({
-          kind: d.kind,
-          label: d.label,
-          deviceId: d.deviceId,
-        }))
-      );
-      const audioDevices = devices.filter((d) => d.kind === "audioinput");
-      console.log(`Found ${audioDevices.length} audio input devices`);
+      // Check for permission state if available
+      try {
+        const permissions = await navigator.permissions.query({
+          name: "microphone",
+        });
+        console.log(`Microphone permission status: ${permissions.state}`);
 
-      // Request media
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (permissions.state === "denied") {
+          throw new Error("Microphone access denied in browser permissions");
+        }
+      } catch (permError) {
+        // Not all browsers support permissions API, so ignore this error
+        console.log("Cannot check permissions API:", permError.message);
+      }
+
+      // First try to enumerate devices to see what's available
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioDevices = devices.filter((d) => d.kind === "audioinput");
+        const videoDevices = devices.filter((d) => d.kind === "videoinput");
+
+        console.log(
+          `Found ${audioDevices.length} audio input devices and ${videoDevices.length} video devices`
+        );
+
+        if (audioDevices.length === 0) {
+          console.warn("No audio input devices found");
+        }
+      } catch (enumError) {
+        console.warn("Could not enumerate devices:", enumError);
+      }
+
+      // Request media with timeout to prevent hanging
+      const mediaPromise = navigator.mediaDevices.getUserMedia(constraints);
+
+      // Set a timeout in case getUserMedia hangs
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(
+          () => reject(new Error("Media request timeout after 10 seconds")),
+          10000
+        );
+      });
+
+      // Race between media request and timeout
+      const stream = await Promise.race([mediaPromise, timeoutPromise]);
+
       console.log(
         "Got local stream with tracks:",
         stream.getTracks().map((t) => ({
@@ -228,8 +269,15 @@ const CallPanel = ({ sessionId, userId }) => {
           enabled: t.enabled,
           muted: t.muted,
           id: t.id,
+          label: t.label,
         }))
       );
+
+      // Verify we actually got audio tracks
+      const hasMicrophoneAccess = stream.getAudioTracks().length > 0;
+      if (!hasMicrophoneAccess) {
+        console.warn("No audio tracks in media stream");
+      }
 
       // Store stream references
       localStreamRef.current = stream;
@@ -238,6 +286,14 @@ const CallPanel = ({ sessionId, userId }) => {
       // Connect local stream to video element if in video mode
       if (localVideoRef.current && !isAudioMode) {
         localVideoRef.current.srcObject = stream;
+
+        // Add playback detection
+        localVideoRef.current.onloadedmetadata = () => {
+          console.log("Local video metadata loaded");
+          localVideoRef.current.play().catch((e) => {
+            console.error("Error playing local video:", e);
+          });
+        };
       }
 
       // Set initial mute state based on user preference
@@ -276,8 +332,15 @@ const CallPanel = ({ sessionId, userId }) => {
     } catch (err) {
       console.error("Error getting user media:", err);
 
-      // Handle specific errors
-      if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+      // More detailed error handling
+      if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        setError(
+          "Could not access camera/microphone (in use by another application)"
+        );
+      } else if (
+        err.name === "NotFoundError" ||
+        err.name === "DevicesNotFoundError"
+      ) {
         setError("No camera or microphone found. Try audio-only mode.");
         setIsAudioMode(true);
 
@@ -285,7 +348,11 @@ const CallPanel = ({ sessionId, userId }) => {
         if (!isAudioMode) {
           try {
             const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
-              audio: true,
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              },
               video: false,
             });
             localStreamRef.current = audioOnlyStream;
@@ -310,7 +377,13 @@ const CallPanel = ({ sessionId, userId }) => {
         err.name === "NotAllowedError" ||
         err.name === "PermissionDeniedError"
       ) {
-        setError("Permission denied. Please allow camera/microphone access.");
+        setError(
+          "Permission denied. Please allow camera/microphone access in your browser settings and refresh the page."
+        );
+      } else if (err.message && err.message.includes("timeout")) {
+        setError(
+          "Media request timed out. Please check your camera/microphone connection and refresh."
+        );
       } else {
         setError(`Media error: ${err.message}`);
 

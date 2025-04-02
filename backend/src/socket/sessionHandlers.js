@@ -5,6 +5,8 @@ const {
   updateUserStatus,
   notifyFriendsAboutStatus,
 } = require("../utils/userStatus");
+// Import the checkExists helper to handle document existence checks
+const { checkExists } = require("../utils/userMetrics");
 
 // Define a default avatar data URL for fallback
 const DEFAULT_AVATAR_SVG =
@@ -203,6 +205,37 @@ module.exports = (io, socket) => {
     username,
     photoURL,
   }) => {
+    if (!sessionId) {
+      console.warn("Invalid sessionId in join-session event");
+      return;
+    }
+
+    // Check if the user is already in the session (to prevent duplicates)
+    const existingParticipants = sessionStore.getSessionUsers(sessionId);
+    const alreadyJoined = existingParticipants.some(
+      (p) => p.userId === userId || p.userId === socket.clientId
+    );
+
+    if (alreadyJoined) {
+      console.log(
+        `User ${
+          username || userId
+        } already in session ${sessionId}, not adding again`
+      );
+
+      // Still re-join the socket room
+      socket.join(sessionId);
+
+      // Emit current participants without adding a duplicate
+      io.to(sessionId).to(`observe:${sessionId}`).emit("participants-update", {
+        sessionId,
+        participants: existingParticipants,
+        count: existingParticipants.length,
+      });
+
+      return;
+    }
+
     socket.join(sessionId);
 
     // Add user to session with socket data
@@ -220,6 +253,15 @@ module.exports = (io, socket) => {
       sessionId,
       socket.clientId,
       userData
+    );
+
+    // Log participant details to debug counting issues
+    console.log(
+      `Current participants in session ${sessionId}:`,
+      participants.map((p) => ({
+        userId: p.userId,
+        socketId: p.socketId,
+      }))
     );
 
     // Emit to both participants and observers
@@ -271,7 +313,7 @@ module.exports = (io, socket) => {
       const sessionRef = db.collection("sessions").doc(sessionId);
       const sessionSnapshot = await sessionRef.get();
 
-      if (sessionSnapshot.exists()) {
+      if (checkExists(sessionSnapshot)) {
         const sessionData = sessionSnapshot.data();
 
         if (sessionData.scheduledEndTime) {

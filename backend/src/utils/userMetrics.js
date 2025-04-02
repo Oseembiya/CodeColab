@@ -12,6 +12,18 @@ const admin = require("firebase-admin");
 const metricsCache = new Map();
 
 /**
+ * Helper function to check if a document exists
+ * Handles both old and new Firestore SDK versions
+ * @param {Object} doc - Firestore document reference
+ * @returns {boolean} - Whether the document exists
+ */
+const checkExists = (doc) => {
+  // Handle both old and new Firestore SDK versions
+  if (!doc) return false;
+  return typeof doc.exists === "function" ? doc.exists() : doc.exists;
+};
+
+/**
  * Initialize or get metrics for a user
  * @param {string} userId - The user's ID
  * @returns {Promise<Object>} - User metrics
@@ -27,7 +39,7 @@ const getUserMetrics = async (userId) => {
     const metricsDoc = await userMetricsRef.get();
 
     let metrics;
-    if (metricsDoc.exists()) {
+    if (checkExists(metricsDoc)) {
       metrics = metricsDoc.data();
     } else {
       // Initialize metrics for new users
@@ -70,7 +82,7 @@ const incrementUserSession = async (userId, sessionId) => {
     // Start session timestamp
     const sessionStart = new Date().toISOString();
 
-    if (!metricsDoc.exists()) {
+    if (!checkExists(metricsDoc)) {
       // Create a new document if it doesn't exist
       await userMetricsRef.set({
         totalSessions: 1,
@@ -149,7 +161,7 @@ const updateUserActiveTime = async (userId, lastActive = new Date()) => {
     const userMetricsRef = db.collection("userMetrics").doc(userId);
     const metricsDoc = await userMetricsRef.get();
 
-    if (!metricsDoc.exists()) {
+    if (!checkExists(metricsDoc)) {
       // Create a new document with default values
       await userMetricsRef.set({
         totalSessions: 0,
@@ -206,7 +218,7 @@ const incrementLinesOfCode = async (userId, lineCount = 1) => {
     const userMetricsRef = db.collection("userMetrics").doc(userId);
     const metricsDoc = await userMetricsRef.get();
 
-    if (!metricsDoc.exists()) {
+    if (!checkExists(metricsDoc)) {
       // Create a new document with the initial line count
       await userMetricsRef.set({
         totalSessions: 0,
@@ -251,7 +263,7 @@ const trackCollaboration = async (userId, collaboratorId, sessionId) => {
     const userMetricsRef = db.collection("userMetrics").doc(userId);
     const metricsDoc = await userMetricsRef.get();
 
-    if (!metricsDoc.exists()) {
+    if (!checkExists(metricsDoc)) {
       // Create a new document with default values
       await userMetricsRef.set({
         totalSessions: 0,
@@ -314,7 +326,7 @@ const trackCompletedSession = async (userId, sessionId) => {
     const userMetricsRef = db.collection("userMetrics").doc(userId);
     const metricsDoc = await userMetricsRef.get();
 
-    if (!metricsDoc.exists()) {
+    if (!checkExists(metricsDoc)) {
       // Create a new document with default values
       await userMetricsRef.set({
         totalSessions: 0,
@@ -372,4 +384,5 @@ module.exports = {
   incrementLinesOfCode,
   trackCollaboration,
   trackCompletedSession,
+  checkExists, // Export the helper function for other modules
 };

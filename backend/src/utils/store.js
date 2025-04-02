@@ -39,20 +39,56 @@ class SessionStore {
    * Remove a user from a session
    */
   removeUserFromSession(sessionId, clientId) {
-    const sessionUsers = this.getSession(sessionId);
-    const userRemoved = sessionUsers.delete(clientId);
-
-    if (sessionUsers.size === 0) {
-      this.activeSessions.delete(sessionId);
-      this.sessionStates.delete(sessionId);
+    if (!sessionId || !clientId) {
+      console.warn(
+        `Invalid sessionId or clientId in removeUserFromSession: ${sessionId}, ${clientId}`
+      );
+      return null;
     }
 
-    return userRemoved
-      ? Array.from(sessionUsers.entries()).map(([id, user]) => ({
-          userId: id,
-          ...user,
-        }))
-      : null;
+    const sessionUsers = this.activeSessions.get(sessionId);
+
+    if (!sessionUsers) {
+      console.warn(
+        `Session ${sessionId} not found when removing user ${clientId}`
+      );
+      return null;
+    }
+
+    // Log before removal for debugging
+    console.log(
+      `Removing user ${clientId} from session ${sessionId}. Current users:`,
+      Array.from(sessionUsers.keys())
+    );
+
+    const userRemoved = sessionUsers.delete(clientId);
+
+    // Check if we should clean up empty sessions
+    if (sessionUsers.size === 0) {
+      console.log(`Removing empty session ${sessionId} from activeSessions`);
+      this.activeSessions.delete(sessionId);
+
+      // Don't delete session state as it contains the code which should persist
+      // even when all users leave
+    }
+
+    if (!userRemoved) {
+      console.warn(`User ${clientId} not found in session ${sessionId}`);
+      return Array.from(sessionUsers.entries()).map(([id, user]) => ({
+        userId: id,
+        ...user,
+      }));
+    }
+
+    console.log(
+      `User ${clientId} removed from session ${sessionId}. Remaining: ${sessionUsers.size}`
+    );
+
+    // Return the updated participant list
+    return Array.from(sessionUsers.entries()).map(([id, user]) => ({
+      userId: id,
+      ...user,
+    }));
   }
 
   /**

@@ -36,21 +36,38 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
     // Set initial count from session
     setParticipantCount(session.participants?.length || 0);
 
+    // Request accurate participant count from server on mount
+    socket.emit("request-participant-count", { sessionId: session.id });
+
     // Listen for participant count updates
     const handleParticipantUpdate = ({ sessionId, participants, count }) => {
       // Add sessionId check to ensure we only update for the current session
       if (sessionId === session.id) {
         console.log("Received participant update:", { count, participants });
-        setParticipantCount(count);
+        // Validate count (prevent negative or unreasonably large values)
+        const validCount =
+          typeof count === "number"
+            ? Math.min(Math.max(0, count), session.maxParticipants)
+            : participants?.length || 0;
+
+        setParticipantCount(validCount);
       }
     };
 
     socket.on("participants-update", handleParticipantUpdate);
 
+    // Set up a periodic refresh of the participant count
+    const refreshInterval = setInterval(() => {
+      if (socket.connected) {
+        socket.emit("request-participant-count", { sessionId: session.id });
+      }
+    }, 10000); // Check every 10 seconds
+
     return () => {
       socket.off("participants-update", handleParticipantUpdate);
+      clearInterval(refreshInterval);
     };
-  }, [socket, session?.id]);
+  }, [socket, session?.id, session?.maxParticipants]);
 
   useEffect(() => {
     // If we have a session already, clear any timeout
