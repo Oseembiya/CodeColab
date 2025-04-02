@@ -7,10 +7,7 @@ import { db, auth } from "../firebaseConfig";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import SessionInfo from "../components/sessions/SessionInfo";
 import CollaborativeEditor from "../components/editor/CollaborativeEditor";
-import VideoChat from "../components/communications/VideoChat";
-import AudioChat from "../components/communications/AudioChat";
 import Toast from "../components/common/Alert";
-import { FaMicrophone, FaVideo } from "react-icons/fa";
 
 const CollaborativeSession = () => {
   const { sessionId } = useParams();
@@ -22,44 +19,6 @@ const CollaborativeSession = () => {
   const [error, setError] = useState(null);
   const userId = auth.currentUser?.uid;
   const [sessionEndedMessage, setSessionEndedMessage] = useState(null);
-  const [communicationMode, setCommunicationMode] = useState("video"); // "video" or "audio"
-
-  // Auto-select a communication mode based on device capabilities
-  useEffect(() => {
-    // Try to auto-detect available devices on component mount
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-      navigator.mediaDevices
-        .enumerateDevices()
-        .then((devices) => {
-          const hasVideo = devices.some(
-            (device) => device.kind === "videoinput"
-          );
-          const hasAudio = devices.some(
-            (device) => device.kind === "audioinput"
-          );
-
-          // If no video but has audio, auto-select audio mode
-          if (!hasVideo && hasAudio) {
-            setCommunicationMode("audio");
-          }
-          // If no devices available, default to audio mode as it has lighter requirements
-          else if (!hasVideo && !hasAudio) {
-            setCommunicationMode("audio");
-          }
-          // Otherwise keep video mode (default)
-        })
-        .catch((err) => {
-          console.warn("Error detecting media devices:", err);
-          // Default to audio mode if detection fails
-          setCommunicationMode("audio");
-        });
-    }
-  }, []);
-
-  // Toggle between audio and video modes
-  const toggleCommunicationMode = () => {
-    setCommunicationMode((prev) => (prev === "video" ? "audio" : "video"));
-  };
 
   useEffect(() => {
     // Redirect if not authenticated
@@ -67,16 +26,6 @@ const CollaborativeSession = () => {
       navigate("/login");
       return;
     }
-
-    // No need to emit join-session here, it's already handled in joinSession() function
-    // if (socket) {
-    //   socket.emit("join-session", {
-    //     sessionId,
-    //     userId,
-    //     username: auth.currentUser?.displayName || "Anonymous",
-    //     photoURL: auth.currentUser?.photoURL,
-    //   });
-    // }
 
     return () => {
       if (socket) {
@@ -176,12 +125,6 @@ const CollaborativeSession = () => {
       const leavePromise = new Promise((resolve) => {
         // First leave the session
         socket.emit("leave-session", {
-          sessionId,
-          userId,
-        });
-
-        // Then leave video chat
-        socket.emit("leave-video", {
           sessionId,
           userId,
         });
@@ -379,25 +322,12 @@ const CollaborativeSession = () => {
             >
               Whiteboard
             </Link>
-            <button
-              className="communication-toggle"
-              onClick={toggleCommunicationMode}
-              title={`Switch to ${
-                communicationMode === "video" ? "audio-only" : "video"
-              } mode`}
-            >
-              {communicationMode === "video" ? <FaMicrophone /> : <FaVideo />}
-            </button>
           </div>
 
           <div className="session-content">
             <div className="editor-section">
               <CollaborativeEditor sessionId={sessionId} userId={userId} />
-              {communicationMode === "video" ? (
-                <VideoChat sessionId={sessionId} userId={userId} />
-              ) : (
-                <AudioChat sessionId={sessionId} userId={userId} />
-              )}
+              {/* Communication components will be re-implemented here */}
             </div>
           </div>
         </div>

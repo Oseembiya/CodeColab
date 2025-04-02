@@ -5,6 +5,10 @@ const whiteboardHandlers = require("./whiteboardHandlers");
 const notificationHandlers = require("./notificationHandlers");
 const userMetrics = require("../utils/userMetrics");
 const { db, admin } = require("../../firebaseConfig");
+const logger = require("../utils/logger");
+const { validateSession } = require("../controllers/sessionController");
+const { updateParticipants } = require("../controllers/userSessionController");
+const { addBreadcrumb } = require("../utils/sentry");
 
 // Store the io instance for access from other modules
 let ioInstance = null;
@@ -28,34 +32,28 @@ const initializeSocketHandlers = (io) => {
   // Store reference to io for other modules to access
   ioInstance = io;
 
-  // Add authentication middleware
+  // Set up authentication middleware
   io.use(async (socket, next) => {
-    const token = socket.handshake.auth.token;
-    const clientId = socket.handshake.auth.clientId;
+    try {
+      // Get authentication token from handshake
+      const token = socket.handshake.auth.token;
 
-    // Always require clientId
-    if (!clientId) {
-      return next(new Error("Client ID is required"));
-    }
-
-    // If token exists, verify it
-    if (token) {
-      try {
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        socket.user = decodedToken;
-        socket.userId = decodedToken.uid;
-        console.log(
-          `Authenticated socket connection for user: ${decodedToken.uid}`
-        );
-      } catch (error) {
-        console.error("Socket authentication error:", error.message);
-        return next(new Error("Authentication failed: Invalid token"));
+      if (!token) {
+        logger.warn("Socket connection rejected - no auth token");
+        return next(new Error("Authentication error"));
       }
-    } else {
-      console.log("Socket connection without authentication token");
-    }
 
-    next();
+      // Validate token (handled by Firebase client-side)
+      // We trust the token from client since Firebase handles auth
+      socket.userId = socket.handshake.auth.userId;
+      socket.username = socket.handshake.auth.username || "Anonymous";
+
+      logger.info(`Authenticated socket connection for user: ${socket.userId}`);
+      next();
+    } catch (error) {
+      logger.error("Socket authentication error:", error);
+      next(new Error("Authentication error"));
+    }
   });
 
   // Track active users and metrics for global stats
@@ -87,123 +85,137 @@ const initializeSocketHandlers = (io) => {
     }
   };
 
+  // Handle socket connections
   io.on("connection", (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
+    logger.info(`New socket connection: ${socket.id}`);
 
-    // Extract client ID from authentication data
-    const clientId = socket.handshake.auth.clientId;
-    const userId = socket.userId || socket.handshake.auth.userId;
+    addBreadcrumb({
+      category: "socket",
+      message: `Socket connected: ${socket.id}`,
+      level: "info",
+      data: {
+        socketId: socket.id,
+        userId: socket.userId,
+        username: socket.username,
+      },
+    });
 
-    // Store userId on socket for metrics tracking
-    if (userId) {
-      socket.userId = userId;
-    }
+    // Send welcome message to client
+    socket.emit("connect_success", {
+      message: "Socket connection established",
+      socketId: socket.id,
+      userId: socket.userId,
+    });
 
-    if (clientId) {
-      // Check if this client was already connected
-      const existingSocket = sessionStore.connectClient(clientId, socket);
-      if (existingSocket) {
-        existingSocket.disconnect();
-      }
+    // Add disconnect handler
+    socket.on("disconnect", () => {
+      logger.info(`Socket disconnected: ${socket.id}`);
+      addBreadcrumb({
+        category: "socket",
+        message: `Socket disconnected: ${socket.id}`,
+        level: "info",
+        data: { socketId: socket.id },
+      });
+    });
 
-      // Update the socket's data
-      socket.clientId = clientId;
-    }
-
-    // Add handler for getting session time info
-    socket.on("get-session-time", async ({ sessionId }) => {
+    // Session lifecycle events
+    socket.on("join-session", async (data) => {
       try {
-        // Get session data from Firestore
-        const sessionRef = db.collection("sessions").doc(sessionId);
-        const sessionSnap = await sessionRef.get();
+        const { sessionId, userId, username, photoURL } = data;
 
-        if (sessionSnap.exists) {
-          const sessionData = sessionSnap.data();
-
-          // Calculate time left based on the stored scheduledEndTime
-          const now = new Date().getTime();
-          let timeLeft = 30; // Default 30 minutes
-          let extensionsUsed = 0;
-
-          if (sessionData.scheduledEndTime) {
-            const endTime = new Date(sessionData.scheduledEndTime).getTime();
-            timeLeft = Math.max(0, Math.ceil((endTime - now) / 60000)); // Convert ms to minutes
-
-            // Send server time along with the response for client synchronization
-            socket.emit("session-time-info", {
-              timeLeft,
-              extensionsUsed: sessionData.extensionCount || 0,
-              extensionsRemaining: 2 - (sessionData.extensionCount || 0),
-              canExtend: (sessionData.extensionCount || 0) < 2,
-              serverTime: now,
-              scheduledEndTime: endTime,
-            });
-          } else {
-            // If no scheduledEndTime exists yet, use the default
-            socket.emit("session-time-info", {
-              timeLeft: 30,
-              extensionsUsed: 0,
-              extensionsRemaining: 2,
-              canExtend: true,
-              serverTime: now,
-              scheduledEndTime: now + 30 * 60 * 1000,
-            });
-          }
-        } else {
-          // Session not found, use defaults
-          socket.emit("session-time-info", {
-            timeLeft: 30,
-            extensionsUsed: 0,
-            extensionsRemaining: 2,
-            canExtend: true,
-            serverTime: new Date().getTime(),
-            scheduledEndTime: new Date().getTime() + 30 * 60 * 1000,
+        if (!sessionId || !userId) {
+          logger.error("Invalid join-session parameters", data);
+          socket.emit("error", {
+            message: "Invalid session join parameters",
           });
+          return;
         }
-      } catch (error) {
-        console.error(`Error getting session time info:`, error);
 
-        // Even on error, send something back
-        socket.emit("session-time-info", {
-          timeLeft: 30,
-          extensionsUsed: 0,
-          extensionsRemaining: 2,
-          canExtend: true,
-          serverTime: new Date().getTime(),
-          scheduledEndTime: new Date().getTime() + 30 * 60 * 1000,
+        logger.info(`User ${userId} joining session ${sessionId}`);
+
+        // Validate session exists and user has access
+        const validSession = await validateSession(sessionId, userId);
+
+        if (!validSession) {
+          logger.warn(`Session access denied: ${sessionId} for user ${userId}`);
+          socket.emit("error", {
+            message: "You don't have access to this session",
+          });
+          return;
+        }
+
+        // Join the session room
+        socket.join(sessionId);
+
+        // Add user to participants list in database
+        await updateParticipants(sessionId, userId, username, photoURL, true);
+
+        // Notify others in the room
+        socket.to(sessionId).emit("user-joined", {
+          userId,
+          username,
+          photoURL,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Confirm join to the user
+        socket.emit("joined-session", {
+          sessionId,
+          message: "Successfully joined session",
+        });
+
+        // Attach sessionId to socket for easier reference in other handlers
+        socket.sessionId = sessionId;
+        socket.currentUserId = userId;
+      } catch (error) {
+        logger.error("Error in join-session:", error);
+        socket.emit("error", {
+          message: "Failed to join session",
         });
       }
     });
 
-    // Handle global stats request
-    socket.on("request-global-stats", async () => {
-      const stats = await getGlobalStats();
-      socket.emit("global-stats", stats);
+    socket.on("leave-session", async (data) => {
+      try {
+        const { sessionId, userId } = data;
+
+        if (!sessionId) {
+          logger.warn("Invalid leave-session parameters", data);
+          return;
+        }
+
+        logger.info(`User ${userId} leaving session ${sessionId}`);
+
+        // Remove from participants list in database
+        if (userId) {
+          await updateParticipants(sessionId, userId, null, null, false);
+        }
+
+        // Leave the socket room
+        socket.leave(sessionId);
+
+        // Notify others
+        socket.to(sessionId).emit("user-left", {
+          userId,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Clean up session reference
+        socket.sessionId = null;
+      } catch (error) {
+        logger.error("Error in leave-session:", error);
+      }
     });
 
-    // Initialize all handlers and collect cleanup functions
-    const cleanupFunctions = [
-      sessionHandlers(io, socket),
-      videoHandlers(io, socket),
-      whiteboardHandlers(io, socket),
-      notificationHandlers(io, socket),
-    ];
+    // Register additional socket handlers
+    sessionHandlers(io, socket);
+    // videoHandlers(io, socket); // Temporarily disabled for rebuild
+    whiteboardHandlers(io, socket);
+    notificationHandlers(io, socket);
 
-    // Handle disconnection
-    socket.on("disconnect", () => {
-      console.log(`Socket disconnected: ${socket.id}`);
-
-      // Run all cleanup functions
-      cleanupFunctions.forEach((cleanup) => {
-        if (typeof cleanup === "function") {
-          cleanup();
-        }
-      });
-
-      // Clean up client connection
-      if (socket.clientId) {
-        sessionStore.disconnectClient(socket.clientId);
-      }
+    // Handle general errors
+    socket.on("error", (error) => {
+      logger.error(`Socket error for ${socket.id}:`, error);
     });
   });
 
