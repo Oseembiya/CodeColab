@@ -138,7 +138,7 @@ export function SocketProvider({ children }) {
 
       // Socket.io connection options
       const socketOptions = {
-        transports: ["websocket", "polling"],
+        transports: ["polling", "websocket"],
         reconnection: true,
         reconnectionAttempts: config.socket.reconnectionAttempts,
         reconnectionDelay: config.socket.reconnectionDelay,
@@ -150,7 +150,11 @@ export function SocketProvider({ children }) {
         auth: authData,
       };
 
-      console.log(`Connecting to socket server at ${socketUrl}`);
+      console.log(
+        `Connecting to socket server at ${socketUrl} with transports: ${socketOptions.transports.join(
+          ", "
+        )}`
+      );
 
       // Create new socket connection
       const newSocket = io(socketUrl, socketOptions);

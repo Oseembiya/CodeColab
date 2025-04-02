@@ -15,16 +15,28 @@ const app = configureApp();
 // Create HTTP server
 const httpServer = createServer(app);
 
+// Add explicit WebSocket handling for Socket.io
+app.use((req, res, next) => {
+  if (
+    req.headers.upgrade &&
+    req.headers.upgrade.toLowerCase() === "websocket"
+  ) {
+    res.setHeader("Connection", "Upgrade");
+    res.setHeader("Upgrade", "websocket");
+  }
+  return next();
+});
+
 // Socket.io config for production
 const socketConfig = {
   cors: {
-    origin: process.env.FRONTEND_URL || "https://codekolab.netlify.app",
+    origin: process.env.SOCKET_CORS_ORIGIN || "https://codekolab.netlify.app",
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   },
   allowEIO3: true,
-  transports: ["websocket", "polling"],
+  transports: (process.env.SOCKET_TRANSPORTS || "polling,websocket").split(","),
   pingTimeout: parseInt(process.env.SOCKET_PING_TIMEOUT || "60000"),
   pingInterval: parseInt(process.env.SOCKET_PING_INTERVAL || "25000"),
   maxHttpBufferSize: 1e6, // 1 MB
@@ -39,6 +51,13 @@ const socketConfig = {
   serveClient: false,
   cookie: false,
 };
+
+// Log Socket.io configuration
+console.log("Socket.io configuration:", {
+  transports: socketConfig.transports,
+  cors: socketConfig.cors,
+  path: socketConfig.path,
+});
 
 // Initialize Socket.IO
 const io = new Server(httpServer, socketConfig);

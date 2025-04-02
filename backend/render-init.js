@@ -7,6 +7,11 @@ const fs = require("fs");
 
 console.log("Backend initialization script running...");
 
+// Set Socket.io environment variables for better compatibility with Render
+process.env.SOCKET_TRANSPORTS = "polling,websocket";
+process.env.SOCKET_CORS_ORIGIN = "https://codekolab.netlify.app";
+console.log("Set Socket.io environment variables for Render compatibility");
+
 // Create a credentials file from the environment variable if it exists
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   try {
