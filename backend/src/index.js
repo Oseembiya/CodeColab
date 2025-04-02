@@ -18,7 +18,7 @@ const httpServer = createServer(app);
 // Socket.io config for production
 const socketConfig = {
   cors: {
-    origin: process.env.FRONTEND_URL || "https://codecolab.vercel.app",
+    origin: process.env.FRONTEND_URL || "https://codekolab.netlify.app",
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -30,6 +30,14 @@ const socketConfig = {
   maxHttpBufferSize: 1e6, // 1 MB
   connectTimeout: 45000,
   compression: true,
+  path: "/socket.io/",
+  perMessageDeflate: {
+    threshold: 32768,
+  },
+  // Handle being behind Render proxy
+  allowUpgrades: true,
+  serveClient: false,
+  cookie: false,
 };
 
 // Initialize Socket.IO

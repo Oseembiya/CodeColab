@@ -146,6 +146,7 @@ export function SocketProvider({ children }) {
         timeout: 60000,
         forceNew: true,
         autoConnect: true,
+        path: "/socket.io/",
         auth: authData,
       };
 

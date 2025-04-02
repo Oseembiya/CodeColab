@@ -510,8 +510,19 @@ const CallPanel = ({ sessionId, userId }) => {
       const uniquePeerId = `${userId}-${Date.now().toString(36)}-${Math.random()
         .toString(36)
         .substr(2, 5)}`;
+
+      console.log(
+        `Attempting to connect to PeerJS server with ID: ${uniquePeerId}`
+      );
+
       const peer = new Peer(uniquePeerId, peerOptions);
       peerRef.current = peer;
+
+      // Add connection event to confirm successful connection
+      peer.on("open", (id) => {
+        console.log(`PeerJS connection established with ID: ${id}`);
+        setConnected(true);
+      });
 
       // Log all peer events for diagnostics
       peer.on("iceStateChanged", (state) => {
