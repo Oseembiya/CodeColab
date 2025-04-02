@@ -8,9 +8,14 @@ const configurePeerServer = () => {
   // Explicitly define the path to avoid any duplication issues
   const peerPath = "/peerjs";
 
+  // For production, always use port 443 which is the standard HTTPS port
+  // This helps with firewall traversal issues
+  const isProduction = process.env.NODE_ENV === "production";
+  const port = isProduction ? 443 : process.env.PEER_PORT || 9000;
+
   // Log detailed configuration
   logger.info("Configuring PeerJS server with settings:", {
-    port: process.env.PEER_PORT || 9000,
+    port: port,
     path: peerPath,
     ssl: true,
     proxied: true,
@@ -18,7 +23,7 @@ const configurePeerServer = () => {
   });
 
   const peerServer = PeerServer({
-    port: process.env.PEER_PORT || 9000,
+    port: port,
     path: peerPath,
     proxied: true,
     allow_discovery: true,
@@ -113,14 +118,10 @@ const configurePeerServer = () => {
 
   // Log a success message
   logger.info(
-    `PeerJS server initialized on port ${
-      process.env.PEER_PORT || 9000
-    } with path ${peerPath}`
+    `PeerJS server initialized on port ${port} with path ${peerPath}`
   );
   console.log(
-    `PeerJS server initialized on port ${
-      process.env.PEER_PORT || 9000
-    } with path ${peerPath}`
+    `PeerJS server initialized on port ${port} with path ${peerPath}`
   );
 
   return peerServer;
