@@ -104,7 +104,383 @@ const CallPanel = ({ sessionId, userId }) => {
     });
   }, [peers]);
 
-  // Setup PeerJS connection
+  // Helper to add a peer to state
+  const addPeer = useCallback((peerId, call, stream, mediaType) => {
+    const newPeer = {
+      call,
+      stream,
+      userId: peerId.split("-")[0], // Assume peerId might be formatted as userId-random
+      mediaType,
+    };
+
+    peersRef.current.set(peerId, newPeer);
+    setPeers(new Map(peersRef.current));
+    setParticipantCount(peersRef.current.size + 1); // +1 for local user
+  }, []);
+
+  // Helper to remove a peer
+  const removePeer = useCallback((peerId) => {
+    if (peersRef.current.has(peerId)) {
+      peersRef.current.delete(peerId);
+      setPeers(new Map(peersRef.current));
+      setParticipantCount(peersRef.current.size + 1); // +1 for local user
+    }
+  }, []);
+
+  // Join media room
+  const joinMediaRoom = useCallback(() => {
+    if (!socket || !peerRef.current) {
+      console.warn("Cannot join media room: socket or peer not ready");
+      return;
+    }
+
+    socket.emit("join-media", {
+      sessionId,
+      userId,
+      peerId: peerRef.current.id,
+      userName: user?.displayName || "User",
+      mediaType: isAudioMode ? "audio" : "video",
+    });
+
+    console.log(
+      `Joined media room for session ${sessionId} as ${
+        isAudioMode ? "audio" : "video"
+      } participant`
+    );
+  }, [socket, sessionId, userId, user, isAudioMode]);
+
+  // Leave the media room
+  const leaveMediaRoom = useCallback(() => {
+    if (!socket) return;
+
+    console.log("Leaving media room...");
+
+    // Emit leave event
+    socket.emit("leave-media", {
+      sessionId,
+      userId,
+      peerId: peerRef.current?.id,
+    });
+
+    // Close all peer connections
+    peersRef.current.forEach((peerData, peerId) => {
+      if (peerData.call) {
+        peerData.call.close();
+      }
+    });
+
+    // Clear peers
+    peersRef.current.clear();
+    setPeers(new Map());
+
+    // Stop local tracks
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
+      localStreamRef.current = null;
+      setLocalStream(null);
+    }
+
+    // Destroy peer connection
+    if (peerRef.current) {
+      peerRef.current.destroy();
+      peerRef.current = null;
+    }
+
+    setConnected(false);
+  }, [socket, sessionId, userId]);
+
+  // Initialize media stream (audio/video)
+  const initializeMedia = async () => {
+    if (!peerRef.current) {
+      console.warn("Attempted to initialize media before peer connection");
+      return;
+    }
+
+    // Print out all WebRTC configuration for debugging
+    console.log("=== WebRTC Configuration ===");
+    console.log("PeerJS Config:", {
+      host: config.peer?.host,
+      port: config.peer?.port,
+      path: config.peer?.path,
+      secure: true,
+      debug: config.debug,
+    });
+    console.log("ICE Servers:", config.webrtc?.iceServers);
+    console.log("Audio Constraints:", config.webrtc?.audioConstraints);
+    console.log("Video Constraints:", config.webrtc?.videoConstraints);
+    console.log("==========================");
+
+    // Track retry attempts to prevent endless retry loops
+    const maxRetries = 2;
+    let retryCount = 0;
+    let retryTimer = null;
+
+    const attemptMediaConnect = async (isRetry = false) => {
+      try {
+        // Check if we already have an active stream
+        if (localStreamRef.current && localStreamRef.current.active) {
+          console.log("Using existing media stream");
+          // Verify tracks are in good state
+          console.log(
+            "Local stream tracks:",
+            localStreamRef.current.getTracks().map((t) => ({
+              kind: t.kind,
+              enabled: t.enabled,
+              muted: t.muted,
+              readyState: t.readyState,
+            }))
+          );
+          return true;
+        }
+
+        // Clear any existing retry timer
+        if (retryTimer) {
+          clearTimeout(retryTimer);
+          retryTimer = null;
+        }
+
+        // Show retry status to user
+        if (isRetry) {
+          setError(`Retrying media connection... (Attempt ${retryCount})`);
+        }
+
+        // Determine which devices to request based on mode
+        const constraints = {
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: !isAudioMode
+            ? {
+                width: { ideal: 320 },
+                height: { ideal: 240 },
+                frameRate: { ideal: 24 },
+              }
+            : false,
+        };
+
+        console.log(`Requesting media with constraints:`, constraints);
+
+        // Check for permission state if available
+        try {
+          const permissions = await navigator.permissions.query({
+            name: "microphone",
+          });
+          console.log(`Microphone permission status: ${permissions.state}`);
+
+          if (permissions.state === "denied") {
+            throw new Error("Microphone access denied in browser permissions");
+          }
+        } catch (permError) {
+          // Not all browsers support permissions API, so ignore this error
+          console.log("Cannot check permissions API:", permError.message);
+        }
+
+        // First try to enumerate devices to see what's available
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const audioDevices = devices.filter((d) => d.kind === "audioinput");
+          const videoDevices = devices.filter((d) => d.kind === "videoinput");
+
+          console.log(
+            `Found ${audioDevices.length} audio input devices and ${videoDevices.length} video devices`
+          );
+
+          if (audioDevices.length === 0) {
+            console.warn("No audio input devices found");
+          }
+        } catch (enumError) {
+          console.warn("Could not enumerate devices:", enumError);
+        }
+
+        // Request media with timeout to prevent hanging
+        const mediaPromise = navigator.mediaDevices.getUserMedia(constraints);
+
+        // Set a timeout in case getUserMedia hangs
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () => reject(new Error("Media request timeout after 10 seconds")),
+            10000
+          );
+        });
+
+        // Race between media request and timeout
+        const stream = await Promise.race([mediaPromise, timeoutPromise]);
+
+        console.log(
+          "Got local stream with tracks:",
+          stream.getTracks().map((t) => ({
+            kind: t.kind,
+            enabled: t.enabled,
+            muted: t.muted,
+            id: t.id,
+            label: t.label,
+          }))
+        );
+
+        // Verify we actually got audio tracks
+        const hasMicrophoneAccess = stream.getAudioTracks().length > 0;
+        if (!hasMicrophoneAccess) {
+          console.warn("No audio tracks in media stream");
+        }
+
+        // Store stream references
+        localStreamRef.current = stream;
+        setLocalStream(stream);
+
+        // Connect local stream to video element if in video mode
+        if (localVideoRef.current && !isAudioMode) {
+          localVideoRef.current.srcObject = stream;
+
+          // Add playback detection
+          localVideoRef.current.onloadedmetadata = () => {
+            console.log("Local video metadata loaded");
+            localVideoRef.current.play().catch((e) => {
+              console.error("Error playing local video:", e);
+            });
+          };
+        }
+
+        // Set initial mute state based on user preference
+        if (isMuted && stream.getAudioTracks().length > 0) {
+          stream.getAudioTracks().forEach((track) => {
+            track.enabled = false;
+          });
+          console.log(
+            "Audio tracks muted:",
+            stream.getAudioTracks().map((t) => t.enabled)
+          );
+        } else if (stream.getAudioTracks().length > 0) {
+          // Ensure audio tracks are explicitly enabled
+          stream.getAudioTracks().forEach((track) => {
+            track.enabled = true;
+          });
+          console.log(
+            "Audio tracks enabled:",
+            stream.getAudioTracks().map((t) => t.enabled)
+          );
+        }
+
+        // Set initial video state based on user preference
+        if (!isVideoEnabled && stream.getVideoTracks().length > 0) {
+          stream.getVideoTracks().forEach((track) => {
+            track.enabled = false;
+          });
+        }
+
+        // Now join the session's media room
+        joinMediaRoom();
+
+        // Successfully connected
+        setConnected(true);
+        setError(null);
+        return true;
+      } catch (err) {
+        console.error("Error getting user media:", err);
+
+        // Specific error handling with detailed user messaging
+        let errorMessage = "";
+        let shouldRetry = false;
+        let fallbackToAudio = false;
+
+        if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          errorMessage =
+            "Could not access camera/microphone (in use by another application)";
+          shouldRetry = true;
+        } else if (
+          err.name === "NotFoundError" ||
+          err.name === "DevicesNotFoundError"
+        ) {
+          errorMessage =
+            "No camera or microphone found. Trying audio-only mode.";
+          fallbackToAudio = true;
+        } else if (
+          err.name === "NotAllowedError" ||
+          err.name === "PermissionDeniedError"
+        ) {
+          errorMessage =
+            "Permission denied. Please allow camera/microphone access in your browser settings and refresh.";
+          // Don't retry permission issues - user action needed
+        } else if (err.message && err.message.includes("timeout")) {
+          errorMessage = "Media request timed out. Retrying...";
+          shouldRetry = true;
+        } else {
+          errorMessage = `Media error: ${err.message}`;
+          shouldRetry = true;
+        }
+
+        // Set error message with retry info
+        setError(
+          errorMessage +
+            (shouldRetry && retryCount < maxRetries
+              ? ` Retrying (${retryCount + 1}/${maxRetries})...`
+              : "")
+        );
+
+        // Handle fallback to audio
+        if (fallbackToAudio && !isAudioMode) {
+          console.log("Falling back to audio-only mode");
+          setIsAudioMode(true);
+
+          // Try again with audio-only immediately
+          try {
+            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              },
+              video: false,
+            });
+            localStreamRef.current = audioOnlyStream;
+            setLocalStream(audioOnlyStream);
+            joinMediaRoom();
+            setConnected(true);
+            setError(null);
+            return true;
+          } catch (audioErr) {
+            console.error("Failed to get audio-only stream:", audioErr);
+          }
+        }
+
+        // Try to fallback to empty stream as a last resort
+        if (!shouldRetry || retryCount >= maxRetries) {
+          console.log("Creating empty fallback media stream");
+          const emptyStream = new MediaStream();
+          localStreamRef.current = emptyStream;
+          setLocalStream(emptyStream);
+          joinMediaRoom();
+
+          if (fallbackToAudio) {
+            setError(
+              "No microphone available. You can hear others but cannot speak."
+            );
+          }
+          return false;
+        }
+
+        // Schedule retry if we should retry
+        if (shouldRetry && retryCount < maxRetries) {
+          retryCount++;
+          console.log(
+            `Scheduling media connection retry #${retryCount} in 2 seconds`
+          );
+          retryTimer = setTimeout(() => attemptMediaConnect(true), 2000);
+          return false;
+        }
+
+        return false;
+      }
+    };
+
+    // Start the media connection process
+    return attemptMediaConnect();
+  };
+
+  // PeerJS connection setup
   const setupPeerConnection = useCallback(async () => {
     console.log("Setting up PeerJS connection...");
 
@@ -444,383 +820,6 @@ const CallPanel = ({ sessionId, userId }) => {
       return () => {};
     }
   }, [userId, addPeer, removePeer, initializeMedia]);
-
-  // Initialize media stream (audio/video)
-  const initializeMedia = async () => {
-    if (!peerRef.current) {
-      console.warn("Attempted to initialize media before peer connection");
-      return;
-    }
-
-    // Print out all WebRTC configuration for debugging
-    console.log("=== WebRTC Configuration ===");
-    console.log("PeerJS Config:", {
-      host: config.peer?.host,
-      port: config.peer?.port,
-      path: config.peer?.path,
-      secure: true,
-      debug: config.debug,
-    });
-    console.log("ICE Servers:", config.webrtc?.iceServers);
-    console.log("Audio Constraints:", config.webrtc?.audioConstraints);
-    console.log("Video Constraints:", config.webrtc?.videoConstraints);
-    console.log("==========================");
-
-    // Track retry attempts to prevent endless retry loops
-    const maxRetries = 2;
-    let retryCount = 0;
-    let retryTimer = null;
-
-    const attemptMediaConnect = async (isRetry = false) => {
-      try {
-        // Check if we already have an active stream
-        if (localStreamRef.current && localStreamRef.current.active) {
-          console.log("Using existing media stream");
-          // Verify tracks are in good state
-          console.log(
-            "Local stream tracks:",
-            localStreamRef.current.getTracks().map((t) => ({
-              kind: t.kind,
-              enabled: t.enabled,
-              muted: t.muted,
-              readyState: t.readyState,
-            }))
-          );
-          return true;
-        }
-
-        // Clear any existing retry timer
-        if (retryTimer) {
-          clearTimeout(retryTimer);
-          retryTimer = null;
-        }
-
-        // Show retry status to user
-        if (isRetry) {
-          setError(`Retrying media connection... (Attempt ${retryCount})`);
-        }
-
-        // Determine which devices to request based on mode
-        const constraints = {
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-          video: !isAudioMode
-            ? {
-                width: { ideal: 320 },
-                height: { ideal: 240 },
-                frameRate: { ideal: 24 },
-              }
-            : false,
-        };
-
-        console.log(`Requesting media with constraints:`, constraints);
-
-        // Check for permission state if available
-        try {
-          const permissions = await navigator.permissions.query({
-            name: "microphone",
-          });
-          console.log(`Microphone permission status: ${permissions.state}`);
-
-          if (permissions.state === "denied") {
-            throw new Error("Microphone access denied in browser permissions");
-          }
-        } catch (permError) {
-          // Not all browsers support permissions API, so ignore this error
-          console.log("Cannot check permissions API:", permError.message);
-        }
-
-        // First try to enumerate devices to see what's available
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const audioDevices = devices.filter((d) => d.kind === "audioinput");
-          const videoDevices = devices.filter((d) => d.kind === "videoinput");
-
-          console.log(
-            `Found ${audioDevices.length} audio input devices and ${videoDevices.length} video devices`
-          );
-
-          if (audioDevices.length === 0) {
-            console.warn("No audio input devices found");
-          }
-        } catch (enumError) {
-          console.warn("Could not enumerate devices:", enumError);
-        }
-
-        // Request media with timeout to prevent hanging
-        const mediaPromise = navigator.mediaDevices.getUserMedia(constraints);
-
-        // Set a timeout in case getUserMedia hangs
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(
-            () => reject(new Error("Media request timeout after 10 seconds")),
-            10000
-          );
-        });
-
-        // Race between media request and timeout
-        const stream = await Promise.race([mediaPromise, timeoutPromise]);
-
-        console.log(
-          "Got local stream with tracks:",
-          stream.getTracks().map((t) => ({
-            kind: t.kind,
-            enabled: t.enabled,
-            muted: t.muted,
-            id: t.id,
-            label: t.label,
-          }))
-        );
-
-        // Verify we actually got audio tracks
-        const hasMicrophoneAccess = stream.getAudioTracks().length > 0;
-        if (!hasMicrophoneAccess) {
-          console.warn("No audio tracks in media stream");
-        }
-
-        // Store stream references
-        localStreamRef.current = stream;
-        setLocalStream(stream);
-
-        // Connect local stream to video element if in video mode
-        if (localVideoRef.current && !isAudioMode) {
-          localVideoRef.current.srcObject = stream;
-
-          // Add playback detection
-          localVideoRef.current.onloadedmetadata = () => {
-            console.log("Local video metadata loaded");
-            localVideoRef.current.play().catch((e) => {
-              console.error("Error playing local video:", e);
-            });
-          };
-        }
-
-        // Set initial mute state based on user preference
-        if (isMuted && stream.getAudioTracks().length > 0) {
-          stream.getAudioTracks().forEach((track) => {
-            track.enabled = false;
-          });
-          console.log(
-            "Audio tracks muted:",
-            stream.getAudioTracks().map((t) => t.enabled)
-          );
-        } else if (stream.getAudioTracks().length > 0) {
-          // Ensure audio tracks are explicitly enabled
-          stream.getAudioTracks().forEach((track) => {
-            track.enabled = true;
-          });
-          console.log(
-            "Audio tracks enabled:",
-            stream.getAudioTracks().map((t) => t.enabled)
-          );
-        }
-
-        // Set initial video state based on user preference
-        if (!isVideoEnabled && stream.getVideoTracks().length > 0) {
-          stream.getVideoTracks().forEach((track) => {
-            track.enabled = false;
-          });
-        }
-
-        // Now join the session's media room
-        joinMediaRoom();
-
-        // Successfully connected
-        setConnected(true);
-        setError(null);
-        return true;
-      } catch (err) {
-        console.error("Error getting user media:", err);
-
-        // Specific error handling with detailed user messaging
-        let errorMessage = "";
-        let shouldRetry = false;
-        let fallbackToAudio = false;
-
-        if (err.name === "NotReadableError" || err.name === "TrackStartError") {
-          errorMessage =
-            "Could not access camera/microphone (in use by another application)";
-          shouldRetry = true;
-        } else if (
-          err.name === "NotFoundError" ||
-          err.name === "DevicesNotFoundError"
-        ) {
-          errorMessage =
-            "No camera or microphone found. Trying audio-only mode.";
-          fallbackToAudio = true;
-        } else if (
-          err.name === "NotAllowedError" ||
-          err.name === "PermissionDeniedError"
-        ) {
-          errorMessage =
-            "Permission denied. Please allow camera/microphone access in your browser settings and refresh.";
-          // Don't retry permission issues - user action needed
-        } else if (err.message && err.message.includes("timeout")) {
-          errorMessage = "Media request timed out. Retrying...";
-          shouldRetry = true;
-        } else {
-          errorMessage = `Media error: ${err.message}`;
-          shouldRetry = true;
-        }
-
-        // Set error message with retry info
-        setError(
-          errorMessage +
-            (shouldRetry && retryCount < maxRetries
-              ? ` Retrying (${retryCount + 1}/${maxRetries})...`
-              : "")
-        );
-
-        // Handle fallback to audio
-        if (fallbackToAudio && !isAudioMode) {
-          console.log("Falling back to audio-only mode");
-          setIsAudioMode(true);
-
-          // Try again with audio-only immediately
-          try {
-            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-              },
-              video: false,
-            });
-            localStreamRef.current = audioOnlyStream;
-            setLocalStream(audioOnlyStream);
-            joinMediaRoom();
-            setConnected(true);
-            setError(null);
-            return true;
-          } catch (audioErr) {
-            console.error("Failed to get audio-only stream:", audioErr);
-          }
-        }
-
-        // Try to fallback to empty stream as a last resort
-        if (!shouldRetry || retryCount >= maxRetries) {
-          console.log("Creating empty fallback media stream");
-          const emptyStream = new MediaStream();
-          localStreamRef.current = emptyStream;
-          setLocalStream(emptyStream);
-          joinMediaRoom();
-
-          if (fallbackToAudio) {
-            setError(
-              "No microphone available. You can hear others but cannot speak."
-            );
-          }
-          return false;
-        }
-
-        // Schedule retry if we should retry
-        if (shouldRetry && retryCount < maxRetries) {
-          retryCount++;
-          console.log(
-            `Scheduling media connection retry #${retryCount} in 2 seconds`
-          );
-          retryTimer = setTimeout(() => attemptMediaConnect(true), 2000);
-          return false;
-        }
-
-        return false;
-      }
-    };
-
-    // Start the media connection process
-    return attemptMediaConnect();
-  };
-
-  // Join the session's media room
-  const joinMediaRoom = useCallback(() => {
-    if (!socket || !peerRef.current) {
-      console.warn("Cannot join media room: socket or peer not ready");
-      return;
-    }
-
-    // Emit join event to inform other participants
-    socket.emit("join-media", {
-      sessionId,
-      userId,
-      peerId: peerRef.current.id,
-      userName: user?.displayName || "User",
-      mediaType: isAudioMode ? "audio" : "video",
-    });
-
-    console.log(
-      `Joined media room for session ${sessionId} as ${
-        isAudioMode ? "audio" : "video"
-      } participant`
-    );
-  }, [socket, sessionId, userId, user, isAudioMode]);
-
-  // Leave the media room
-  const leaveMediaRoom = useCallback(() => {
-    if (!socket) return;
-
-    console.log("Leaving media room...");
-
-    // Emit leave event
-    socket.emit("leave-media", {
-      sessionId,
-      userId,
-      peerId: peerRef.current?.id,
-    });
-
-    // Close all peer connections
-    peersRef.current.forEach((peerData, peerId) => {
-      if (peerData.call) {
-        peerData.call.close();
-      }
-    });
-
-    // Clear peers
-    peersRef.current.clear();
-    setPeers(new Map());
-
-    // Stop local tracks
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => {
-        track.stop();
-      });
-      localStreamRef.current = null;
-      setLocalStream(null);
-    }
-
-    // Destroy peer connection
-    if (peerRef.current) {
-      peerRef.current.destroy();
-      peerRef.current = null;
-    }
-
-    setConnected(false);
-  }, [socket, sessionId, userId]);
-
-  // Helper to add a peer to state
-  const addPeer = useCallback((peerId, call, stream, mediaType) => {
-    const newPeer = {
-      call,
-      stream,
-      userId: peerId.split("-")[0], // Assume peerId might be formatted as userId-random
-      mediaType,
-    };
-
-    peersRef.current.set(peerId, newPeer);
-    setPeers(new Map(peersRef.current));
-    setParticipantCount(peersRef.current.size + 1); // +1 for local user
-  }, []);
-
-  // Helper to remove a peer
-  const removePeer = useCallback((peerId) => {
-    if (peersRef.current.has(peerId)) {
-      peersRef.current.delete(peerId);
-      setPeers(new Map(peersRef.current));
-      setParticipantCount(peersRef.current.size + 1); // +1 for local user
-    }
-  }, []);
 
   // Call a peer when we discover them
   const callPeer = useCallback(
