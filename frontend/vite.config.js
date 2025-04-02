@@ -53,37 +53,57 @@ export default defineConfig(({ mode }) => {
       sourcemap: false, // Disable sourcemaps in production
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: [
-              "react",
-              "react-dom",
-              "react-router-dom",
-              "socket.io-client",
-            ],
-            firebase: [
-              "firebase/app",
-              "firebase/auth",
-              "firebase/firestore",
-              "firebase/storage",
-            ],
-            // Include core app components that should load immediately
-            core: [
-              "./src/App.jsx",
-              "./src/pages/protectedRoute.jsx",
-              "./src/error/ErrorBoundary.jsx",
-              "./src/components/layouts/mainContent.jsx",
-            ],
-            // Include sessions-related files in a predictable chunk
-            sessions: [
-              "./src/pages/liveSession.jsx",
-              "./src/components/sessions/SessionInfo.jsx",
-              "./src/components/sessions/SessionTimer.jsx",
-              "./src/components/sessions/SessionFilters.jsx",
-              "./src/components/sessions/SessionCard.jsx",
-              "./src/components/sessions/JoinSessionModal.jsx",
-              "./src/components/sessions/CreateSessionModal.jsx",
-              "./src/contexts/SessionContext.jsx",
-            ],
+          manualChunks: (id) => {
+            // Base modules that should always be in the main chunk
+            if (id.includes("node_modules")) {
+              if (
+                id.includes("react") ||
+                id.includes("react-dom") ||
+                id.includes("react-router-dom") ||
+                id.includes("socket.io-client")
+              ) {
+                return "vendor";
+              }
+
+              if (id.includes("firebase")) {
+                return "firebase";
+              }
+
+              return "vendor-deps";
+            }
+
+            // Core app modules
+            if (
+              id.includes("/src/App.jsx") ||
+              id.includes("/src/pages/protectedRoute.jsx") ||
+              id.includes("/src/error/ErrorBoundary.jsx") ||
+              id.includes("/src/components/layouts/mainContent.jsx")
+            ) {
+              return "core";
+            }
+
+            // Sessions related modules
+            if (
+              id.includes("/src/pages/liveSession.jsx") ||
+              id.includes("/src/pages/sessions.jsx") ||
+              id.includes("/src/components/sessions/") ||
+              id.includes("/src/contexts/SessionContext.jsx")
+            ) {
+              return "sessions";
+            }
+
+            // Editor related modules
+            if (id.includes("/src/components/editor/")) {
+              return "editor";
+            }
+
+            // Communication related modules
+            if (id.includes("/src/components/communications/")) {
+              return "communications";
+            }
+
+            // Default is to include in index.js
+            return "index";
           },
           // Remove the timestamp to make chunk names stable between deployments
           chunkFileNames: `assets/[name]-[hash].js`,
