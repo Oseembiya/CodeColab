@@ -19,6 +19,12 @@ export const useSessions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Helper function to combine date and time
+  const combineDateTime = (date, time) => {
+    if (!date || !time) return new Date().toISOString();
+    return new Date(`${date}T${time}`).toISOString();
+  };
+
   // Fetch sessions once instead of real-time updates
   const fetchSessions = async () => {
     try {
