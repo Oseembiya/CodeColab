@@ -35,8 +35,9 @@ const socketConfig = {
 // Initialize Socket.IO
 const io = new Server(httpServer, socketConfig);
 
-// Initialize PeerJS server
-const peerServer = configurePeerServer();
+// Initialize PeerJS server and mount it to Express app
+const peerServer = configurePeerServer(httpServer);
+app.use("/peerjs", peerServer);
 
 // Register API routes
 app.use("/api", apiRoutes);

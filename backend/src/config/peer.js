@@ -1,29 +1,23 @@
-const { PeerServer } = require("peer");
+const { ExpressPeerServer } = require("peer");
 const logger = require("../utils/logger");
 
 /**
  * Configure and create PeerJS server
+ * @param {object} server - HTTP server instance to attach PeerJS to
  */
-const configurePeerServer = () => {
+const configurePeerServer = (server) => {
   // Explicitly define the path to avoid any duplication issues
   const peerPath = "/peerjs";
 
-  // For production, always use port 443 which is the standard HTTPS port
-  // This helps with firewall traversal issues
-  const isProduction = process.env.NODE_ENV === "production";
-  const port = isProduction ? 443 : process.env.PEER_PORT || 9000;
-
   // Log detailed configuration
   logger.info("Configuring PeerJS server with settings:", {
-    port: port,
     path: peerPath,
-    ssl: true,
     proxied: true,
     allow_discovery: true,
   });
 
-  const peerServer = PeerServer({
-    port: port,
+  // Create PeerJS server attached to the existing HTTP server
+  const peerServer = ExpressPeerServer(server, {
     path: peerPath,
     proxied: true,
     allow_discovery: true,
@@ -44,43 +38,6 @@ const configurePeerServer = () => {
         "X-Requested-With",
         "X-Forwarded-For",
       ],
-    },
-    config: {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" },
-        { urls: "stun:stun3.l.google.com:19302" },
-        { urls: "stun:stun4.l.google.com:19302" },
-        { urls: "stun:stun.cloudflare.com:3478" },
-        { urls: "stun:stun.stunprotocol.org:3478" },
-        // Public TURN servers - add these for better connectivity
-        {
-          urls: "turn:openrelay.metered.ca:80",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-        {
-          urls: "turn:openrelay.metered.ca:443",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-        {
-          urls: "turn:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-        // Add TURN server configuration if available in environment variables
-        process.env.TURN_SERVER_URL && {
-          urls: process.env.TURN_SERVER_URL,
-          username: process.env.TURN_USERNAME || "",
-          credential: process.env.TURN_CREDENTIAL || "",
-        },
-      ].filter(Boolean),
-      sdpSemantics: "unified-plan",
-      iceTransportPolicy: "all",
-      bundlePolicy: "max-bundle",
-      rtcpMuxPolicy: "require",
     },
     debug: 3,
   });
@@ -117,12 +74,8 @@ const configurePeerServer = () => {
   });
 
   // Log a success message
-  logger.info(
-    `PeerJS server initialized on port ${port} with path ${peerPath}`
-  );
-  console.log(
-    `PeerJS server initialized on port ${port} with path ${peerPath}`
-  );
+  logger.info(`PeerJS server initialized with path ${peerPath}`);
+  console.log(`PeerJS server initialized with path ${peerPath}`);
 
   return peerServer;
 };
