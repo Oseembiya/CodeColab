@@ -1,7 +1,14 @@
-import { useState, useCallback, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { FaTimes } from "react-icons/fa";
 import { formatDateTime, getCurrentTimestamp } from "../../utils/dateUtils";
+
+// Define propTypes outside the component
+const createSessionModalPropTypes = {
+  onClose: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  isQuickStart: PropTypes.bool,
+};
 
 const generateJoinCode = () => {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -42,7 +49,6 @@ const CreateSessionModal = ({ onClose, onSubmit, isQuickStart = false }) => {
         description: "A quick session for real-time collaboration",
         isPrivate: false,
         startNow: true,
-        // Use a language default
         language: "javascript",
       }));
     }
@@ -316,10 +322,7 @@ const CreateSessionModal = ({ onClose, onSubmit, isQuickStart = false }) => {
   );
 };
 
-CreateSessionModal.propTypes = {
-  onClose: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-  isQuickStart: PropTypes.bool,
-};
+// Assign propTypes to component
+CreateSessionModal.propTypes = createSessionModalPropTypes;
 
 export default CreateSessionModal;

@@ -1,8 +1,14 @@
-import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
+import { useState, useEffect, useRef } from "react";
 import { useSocket } from "../../contexts/SocketContext";
 import { useAuth } from "../../hooks/useAuth";
 import { FaClock, FaHourglassHalf, FaPlus } from "react-icons/fa";
+
+// Define propTypes outside the component
+const sessionTimerPropTypes = {
+  sessionId: PropTypes.string.isRequired,
+  className: PropTypes.string,
+};
 
 const SessionTimer = ({ sessionId, className = "" }) => {
   const { socket } = useSocket();
@@ -237,9 +243,7 @@ const SessionTimer = ({ sessionId, className = "" }) => {
   );
 };
 
-SessionTimer.propTypes = {
-  sessionId: PropTypes.string.isRequired,
-  className: PropTypes.string,
-};
+// Assign propTypes to component
+SessionTimer.propTypes = sessionTimerPropTypes;
 
 export default SessionTimer;

@@ -51,10 +51,26 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       sourcemap: false, // Disable sourcemaps in production
+      // Configure Esbuild to handle temporal dead zone issues
+      minify: "esbuild",
+      target: "es2015",
+      cssTarget: "chrome61",
+      // Configure Esbuild options to avoid TDZ issues
+      esbuildOptions: {
+        // Use lower-level optimizations that are safer for variable references
+        keepNames: true,
+        treeShaking: false,
+      },
       rollupOptions: {
         output: {
+          // Preserve var names to avoid TDZ issues
+          preserveModules: false,
+          inlineDynamicImports: false,
+          experimentalMinChunkSize: 10000,
+          // Control hoisting behavior to avoid TDZ
+          hoistTransitiveImports: false,
           manualChunks: (id) => {
-            // Base modules that should always be in the main chunk
+            // External dependencies
             if (id.includes("node_modules")) {
               if (
                 id.includes("react") ||
@@ -69,6 +85,11 @@ export default defineConfig(({ mode }) => {
                 return "firebase";
               }
 
+              if (id.includes("prop-types")) {
+                // Put PropTypes in main vendor chunk to ensure it's loaded first
+                return "vendor";
+              }
+
               return "vendor-deps";
             }
 
@@ -80,6 +101,11 @@ export default defineConfig(({ mode }) => {
               id.includes("/src/components/layouts/mainContent.jsx")
             ) {
               return "core";
+            }
+
+            // Utils should be bundled early to avoid TDZ
+            if (id.includes("/src/utils/")) {
+              return "utils";
             }
 
             // Sessions related modules
