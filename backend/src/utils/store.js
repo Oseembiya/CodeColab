@@ -6,7 +6,7 @@ class SessionStore {
     // Main data structures
     this.activeSessions = new Map();
     this.sessionStates = new Map();
-    this.videoParticipants = new Map();
+    this.mediaParticipants = new Map(); // Renamed from videoParticipants to mediaParticipants
     this.connectedClients = new Map();
     this.sessionObservers = new Map();
     this.whiteboardStates = new Map();
@@ -140,25 +140,26 @@ class SessionStore {
   }
 
   /**
-   * Video participants tracking
+   * Media participants tracking (both audio and video)
+   * Replaces the older videoParticipants functions
    */
-  addVideoParticipant(sessionId, peerId, userData = {}) {
-    if (!this.videoParticipants.has(sessionId)) {
-      this.videoParticipants.set(sessionId, new Map());
+  addMediaParticipant(sessionId, peerId, userData = {}) {
+    if (!this.mediaParticipants.has(sessionId)) {
+      this.mediaParticipants.set(sessionId, new Map());
     }
-    const participants = this.videoParticipants.get(sessionId);
+    const participants = this.mediaParticipants.get(sessionId);
     participants.set(peerId, userData);
     return Array.from(participants.keys());
   }
 
-  removeVideoParticipant(sessionId, peerId) {
-    if (!this.videoParticipants.has(sessionId)) return [];
+  removeMediaParticipant(sessionId, peerId) {
+    if (!this.mediaParticipants.has(sessionId)) return [];
 
-    const participants = this.videoParticipants.get(sessionId);
+    const participants = this.mediaParticipants.get(sessionId);
     participants.delete(peerId);
 
     if (participants.size === 0) {
-      this.videoParticipants.delete(sessionId);
+      this.mediaParticipants.delete(sessionId);
       return [];
     }
 
@@ -166,12 +167,60 @@ class SessionStore {
   }
 
   /**
-   * Get video participant data
+   * Get media participant data
    */
-  getVideoParticipantData(sessionId, peerId) {
-    if (!this.videoParticipants.has(sessionId)) return null;
-    const participants = this.videoParticipants.get(sessionId);
+  getMediaParticipantData(sessionId, peerId) {
+    if (!this.mediaParticipants.has(sessionId)) return null;
+    const participants = this.mediaParticipants.get(sessionId);
     return participants.get(peerId) || null;
+  }
+
+  /**
+   * Update media participant data
+   */
+  updateMediaParticipant(sessionId, peerId, updates) {
+    if (!this.mediaParticipants.has(sessionId)) return false;
+
+    const participants = this.mediaParticipants.get(sessionId);
+    const userData = participants.get(peerId);
+
+    if (!userData) return false;
+
+    participants.set(peerId, {
+      ...userData,
+      ...updates,
+      updatedAt: Date.now(),
+    });
+    return true;
+  }
+
+  /**
+   * Get all media participants for a session
+   */
+  getAllMediaParticipants(sessionId) {
+    if (!this.mediaParticipants.has(sessionId)) return [];
+
+    const participants = this.mediaParticipants.get(sessionId);
+    return Array.from(participants.entries()).map(([peerId, data]) => ({
+      peerId,
+      ...data,
+    }));
+  }
+
+  // Legacy support for older video functions
+  addVideoParticipant(sessionId, peerId, userData = {}) {
+    return this.addMediaParticipant(sessionId, peerId, {
+      ...userData,
+      mediaType: "video",
+    });
+  }
+
+  removeVideoParticipant(sessionId, peerId) {
+    return this.removeMediaParticipant(sessionId, peerId);
+  }
+
+  getVideoParticipantData(sessionId, peerId) {
+    return this.getMediaParticipantData(sessionId, peerId);
   }
 
   // Add this method to count active users
@@ -218,6 +267,11 @@ class SessionStore {
 
       // Clear participants
       this.activeSessions.set(sessionId, new Map());
+
+      // Also clear any media participants
+      if (this.mediaParticipants.has(sessionId)) {
+        this.mediaParticipants.delete(sessionId);
+      }
 
       console.log(`Cleared ${count} participants from session ${sessionId}`);
       return true;

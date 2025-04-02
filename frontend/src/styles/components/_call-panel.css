@@ -1,0 +1,308 @@
+/* Call Panel Styles */
+.call-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  transform: translate(var(--x, 0px), var(--y, 0px));
+  background: var(--background-color);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line-color);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  resize: none;
+  will-change: transform;
+  transform-origin: bottom right;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: move;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Size variations based on mode */
+.call-panel.video-mode {
+  width: 320px;
+  height: 350px;
+}
+
+.call-panel.audio-mode {
+  width: 280px;
+  height: 300px;
+}
+
+/* Collapsed state */
+.call-panel.collapsed {
+  width: 180px !important;
+  height: 50px !important;
+  border-radius: var(--radius-md);
+  opacity: 0.9;
+}
+
+.call-panel.collapsed:hover {
+  opacity: 1;
+}
+
+/* Header styles */
+.call-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--primary-color);
+  color: white;
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+  user-select: none;
+}
+
+.call-title {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Controls */
+.call-controls {
+  display: flex;
+  gap: 5px;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
+}
+
+.control-btn.active {
+  background: #f44336;
+}
+
+.control-btn.end-call {
+  background: #f44336;
+}
+
+.control-btn.end-call:hover {
+  background: #d32f2f;
+}
+
+.mode-toggle {
+  background: #4caf50;
+}
+
+.mode-toggle:hover {
+  background: #43a047;
+}
+
+/* Collapsed content */
+.collapsed-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  height: 100%;
+  cursor: pointer;
+}
+
+.collapsed-content svg {
+  font-size: 18px;
+}
+
+/* Call content */
+.call-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 10px;
+  background: var(--background-color);
+  gap: 10px;
+  overflow: auto;
+}
+
+/* Local video */
+.local-video-container {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background: #1a1a1a;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.local-video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror effect for self-view */
+}
+
+.local-video-container video.video-off {
+  display: none;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #333;
+  color: white;
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.muted-indicator {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 5px;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+/* Remote participants */
+.remote-participants {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.remote-participant {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background: #1a1a1a;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.remote-participant video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.audio-participant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  background: #2a2a2a;
+  border-radius: var(--radius-md);
+  position: relative;
+}
+
+.audio-participant .avatar-placeholder {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 20px;
+}
+
+/* Audio visualization (pulsing effect) */
+.audio-participant::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--primary-color);
+  opacity: 0.6;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.6;
+  }
+}
+
+/* Error state */
+.call-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  text-align: center;
+}
+
+.call-error p {
+  margin-bottom: 15px;
+  color: #f44336;
+}
+
+.call-error button {
+  padding: 8px 16px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+/* Participant counter */
+.participant-counter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.participant-counter svg {
+  font-size: 12px;
+}
+
+/* Dragging state */
+.call-panel.dragging {
+  opacity: 0.8;
+}
+
+/* Audio-only mode specific styles */
+.call-panel.audio-mode .local-video-container,
+.call-panel.audio-mode .remote-participant {
+  height: 80px;
+}

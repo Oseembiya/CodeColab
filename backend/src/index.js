@@ -35,8 +35,8 @@ const socketConfig = {
 // Initialize Socket.IO
 const io = new Server(httpServer, socketConfig);
 
-// Initialize PeerJS server - temporarily commenting out to start fresh
-// const peerServer = configurePeerServer();
+// Initialize PeerJS server
+const peerServer = configurePeerServer();
 
 // Register API routes
 app.use("/api", apiRoutes);
@@ -84,6 +84,13 @@ const handleExit = () => {
     logger.info("Socket.IO server closed");
   });
 
+  // Close the PeerJS server
+  if (peerServer) {
+    peerServer.close(() => {
+      logger.info("PeerJS server closed");
+    });
+  }
+
   // Close the HTTP server
   httpServer.close(() => {
     logger.info("HTTP server closed");
@@ -114,14 +121,18 @@ app.get("/health", (req, res) => {
 
 // Add a PeerJS diagnostics endpoint
 app.get("/peer-status", (req, res) => {
-  // Temporarily modified to show PeerJS as disabled
+  const wsCount = peerServer?._clients?.size || 0;
+  const wsClients = peerServer?._clients
+    ? Array.from(peerServer._clients.keys())
+    : [];
+
   const info = {
-    status: "DISABLED", // Changed from "UP" to "DISABLED"
+    status: peerServer ? "UP" : "DOWN",
     port: process.env.PEER_PORT || 9000,
     path: process.env.PEER_PATH || "/peerjs",
     ssl: true,
-    connections: 0,
-    connectionIds: [],
+    connections: wsCount,
+    connectionIds: wsClients,
     environment: process.env.NODE_ENV,
     time: new Date().toISOString(),
     uptime: process.uptime(),

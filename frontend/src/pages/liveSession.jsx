@@ -7,6 +7,7 @@ import { db, auth } from "../firebaseConfig";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import SessionInfo from "../components/sessions/SessionInfo";
 import CollaborativeEditor from "../components/editor/CollaborativeEditor";
+import CallPanel from "../components/communications/CallPanel";
 import Toast from "../components/common/Alert";
 
 const CollaborativeSession = () => {
@@ -327,7 +328,7 @@ const CollaborativeSession = () => {
           <div className="session-content">
             <div className="editor-section">
               <CollaborativeEditor sessionId={sessionId} userId={userId} />
-              {/* Communication components will be re-implemented here */}
+              <CallPanel sessionId={sessionId} userId={userId} />
             </div>
           </div>
         </div>

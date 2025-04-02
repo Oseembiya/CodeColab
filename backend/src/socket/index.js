@@ -6,9 +6,6 @@ const notificationHandlers = require("./notificationHandlers");
 const userMetrics = require("../utils/userMetrics");
 const { db, admin } = require("../../firebaseConfig");
 const logger = require("../utils/logger");
-const { validateSession } = require("../controllers/sessionController");
-const { updateParticipants } = require("../controllers/userSessionController");
-const { addBreadcrumb } = require("../utils/sentry");
 
 // Store the io instance for access from other modules
 let ioInstance = null;
@@ -89,17 +86,6 @@ const initializeSocketHandlers = (io) => {
   io.on("connection", (socket) => {
     logger.info(`New socket connection: ${socket.id}`);
 
-    addBreadcrumb({
-      category: "socket",
-      message: `Socket connected: ${socket.id}`,
-      level: "info",
-      data: {
-        socketId: socket.id,
-        userId: socket.userId,
-        username: socket.username,
-      },
-    });
-
     // Send welcome message to client
     socket.emit("connect_success", {
       message: "Socket connection established",
@@ -110,12 +96,6 @@ const initializeSocketHandlers = (io) => {
     // Add disconnect handler
     socket.on("disconnect", () => {
       logger.info(`Socket disconnected: ${socket.id}`);
-      addBreadcrumb({
-        category: "socket",
-        message: `Socket disconnected: ${socket.id}`,
-        level: "info",
-        data: { socketId: socket.id },
-      });
     });
 
     // Session lifecycle events
@@ -133,22 +113,15 @@ const initializeSocketHandlers = (io) => {
 
         logger.info(`User ${userId} joining session ${sessionId}`);
 
-        // Validate session exists and user has access
-        const validSession = await validateSession(sessionId, userId);
-
-        if (!validSession) {
-          logger.warn(`Session access denied: ${sessionId} for user ${userId}`);
-          socket.emit("error", {
-            message: "You don't have access to this session",
-          });
-          return;
-        }
-
         // Join the session room
         socket.join(sessionId);
 
-        // Add user to participants list in database
-        await updateParticipants(sessionId, userId, username, photoURL, true);
+        // Track the participant in the session store
+        sessionStore.addUserToSession(sessionId, userId, {
+          username,
+          photoURL,
+          joinedAt: new Date().toISOString(),
+        });
 
         // Notify others in the room
         socket.to(sessionId).emit("user-joined", {
@@ -186,9 +159,9 @@ const initializeSocketHandlers = (io) => {
 
         logger.info(`User ${userId} leaving session ${sessionId}`);
 
-        // Remove from participants list in database
+        // Remove from session store
         if (userId) {
-          await updateParticipants(sessionId, userId, null, null, false);
+          sessionStore.removeUserFromSession(sessionId, userId);
         }
 
         // Leave the socket room
@@ -209,7 +182,7 @@ const initializeSocketHandlers = (io) => {
 
     // Register additional socket handlers
     sessionHandlers(io, socket);
-    // videoHandlers(io, socket); // Temporarily disabled for rebuild
+    videoHandlers(io, socket);
     whiteboardHandlers(io, socket);
     notificationHandlers(io, socket);
 
