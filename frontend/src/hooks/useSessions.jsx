@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { auth } from "../firebaseConfig";
+import { formatDateTime, getCurrentTimestamp } from "../utils/dateUtils";
 
 export const useSessions = () => {
   const [sessions, setSessions] = useState([]);
@@ -32,7 +33,7 @@ export const useSessions = () => {
           ...data,
           language: data.language || "javascript",
           maxParticipants: Number(data.maxParticipants),
-          createdAt: data.createdAt?.toString() || new Date().toISOString(),
+          createdAt: data.createdAt?.toString() || getCurrentTimestamp(),
           startTime: data.startTime?.toString() || data.createdAt?.toString(),
           isPrivate: Boolean(data.isPrivate),
         };
@@ -54,31 +55,57 @@ export const useSessions = () => {
 
   const createSession = async (sessionData) => {
     try {
-      // Determine if we should add the creator to participants based on status
+      if (!sessionData) {
+        throw new Error("Session data is required");
+      }
+
+      // Initialize timestamps now to avoid potential timing issues
+      const now = getCurrentTimestamp();
+      let startTime = now;
+      let status = "active";
+
+      // Determine if this is a scheduled session
       const isScheduled =
         sessionData.status === "scheduled" ||
         (!sessionData.startNow && sessionData.scheduledDate);
 
-      const participants = isScheduled ? [] : [auth.currentUser?.uid];
+      // Calculate startTime early
+      if (
+        isScheduled &&
+        sessionData.scheduledDate &&
+        sessionData.scheduledTime
+      ) {
+        startTime = formatDateTime(
+          sessionData.scheduledDate,
+          sessionData.scheduledTime
+        );
+        status = "scheduled";
+      }
 
+      // Create participant array with proper fallbacks
+      const currentUserId = auth.currentUser?.uid || null;
+      const participants = isScheduled
+        ? []
+        : currentUserId
+        ? [currentUserId]
+        : [];
+
+      // Create a complete session object with all properties initialized
       const sessionToCreate = {
-        ...sessionData,
-        maxParticipants: Number(sessionData.maxParticipants),
-        createdAt: new Date().toISOString(),
-        startTime:
-          sessionData.startTime ||
-          (sessionData.startNow
-            ? new Date().toISOString()
-            : combineDateTime(
-                sessionData.scheduledDate,
-                sessionData.scheduledTime
-              )),
-        status: sessionData.status || (isScheduled ? "scheduled" : "active"),
+        title: sessionData.title || "Untitled Session",
+        description: sessionData.description || "",
+        language: sessionData.language || "javascript",
+        maxParticipants: Number(sessionData.maxParticipants || 10),
+        isPrivate: Boolean(sessionData.isPrivate),
+        joinCode: sessionData.joinCode || "",
+        createdAt: now,
+        startTime: startTime,
+        status: status,
         participants: participants,
-        owner: auth.currentUser?.uid,
+        owner: currentUserId,
       };
 
-      console.log("Creating session with data:", sessionToCreate);
+      console.log("Session data: ", sessionToCreate);
 
       const docRef = await addDoc(collection(db, "sessions"), sessionToCreate);
 
@@ -96,12 +123,6 @@ export const useSessions = () => {
       console.error("Error creating session:", err);
       throw err;
     }
-  };
-
-  // Helper function to combine date and time
-  const combineDateTime = (date, time) => {
-    if (!date || !time) return new Date().toISOString();
-    return new Date(`${date}T${time}`).toISOString();
   };
 
   const updateSession = async (sessionId, updateData) => {

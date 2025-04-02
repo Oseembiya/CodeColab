@@ -7,7 +7,7 @@ import { db, auth } from "../firebaseConfig";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import SessionInfo from "../components/sessions/SessionInfo";
 import CollaborativeEditor from "../components/editor/CollaborativeEditor";
-import VideoChat from "../components/communications/VideoChat";
+import CallPanel from "../components/communications/CallPanel";
 import Toast from "../components/common/Alert";
 
 const CollaborativeSession = () => {
@@ -27,16 +27,6 @@ const CollaborativeSession = () => {
       navigate("/login");
       return;
     }
-
-    // No need to emit join-session here, it's already handled in joinSession() function
-    // if (socket) {
-    //   socket.emit("join-session", {
-    //     sessionId,
-    //     userId,
-    //     username: auth.currentUser?.displayName || "Anonymous",
-    //     photoURL: auth.currentUser?.photoURL,
-    //   });
-    // }
 
     return () => {
       if (socket) {
@@ -136,12 +126,6 @@ const CollaborativeSession = () => {
       const leavePromise = new Promise((resolve) => {
         // First leave the session
         socket.emit("leave-session", {
-          sessionId,
-          userId,
-        });
-
-        // Then leave video chat
-        socket.emit("leave-video", {
           sessionId,
           userId,
         });
@@ -344,7 +328,7 @@ const CollaborativeSession = () => {
           <div className="session-content">
             <div className="editor-section">
               <CollaborativeEditor sessionId={sessionId} userId={userId} />
-              <VideoChat sessionId={sessionId} userId={userId} />
+              <CallPanel sessionId={sessionId} userId={userId} />
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 import { FaTimes } from "react-icons/fa";
+import { formatDateTime, getCurrentTimestamp } from "../../utils/dateUtils";
 
 const generateJoinCode = () => {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -84,31 +85,33 @@ const CreateSessionModal = ({ onClose, onSubmit, isQuickStart = false }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Create a copy of the form data to modify
-    const sessionToCreate = { ...formData };
+    // Create a safe copy with all required fields
+    const now = getCurrentTimestamp();
+    const sessionToCreate = {
+      ...formData,
+      startTime: now, // Default to now
+      status: "active", // Default to active
+    };
 
     // Set the correct status and time based on scheduling choice
-    if (!sessionToCreate.startNow) {
-      // Format the scheduled date and time properly
-      if (sessionToCreate.scheduledDate && sessionToCreate.scheduledTime) {
-        const scheduledDateTime = `${sessionToCreate.scheduledDate}T${sessionToCreate.scheduledTime}`;
-        sessionToCreate.startTime = new Date(scheduledDateTime).toISOString();
-        sessionToCreate.status = "scheduled";
-        console.log(
-          "Creating scheduled session for:",
-          sessionToCreate.startTime
-        );
-      } else {
-        // If missing date/time, default to active now
-        sessionToCreate.startTime = new Date().toISOString();
-        sessionToCreate.status = "active";
-      }
-    } else {
-      // Starting now
-      sessionToCreate.startTime = new Date().toISOString();
-      sessionToCreate.status = "active";
+    if (
+      !sessionToCreate.startNow &&
+      sessionToCreate.scheduledDate &&
+      sessionToCreate.scheduledTime
+    ) {
+      // Use the utility function for date formatting
+      sessionToCreate.startTime = formatDateTime(
+        sessionToCreate.scheduledDate,
+        sessionToCreate.scheduledTime
+      );
+      sessionToCreate.status = "scheduled";
+      console.log("Creating scheduled session for:", sessionToCreate.startTime);
     }
 
+    // Log data for debugging
+    console.log("Session data: ", sessionToCreate);
+
+    // Submit the prepared data
     onSubmit(sessionToCreate);
   };
 

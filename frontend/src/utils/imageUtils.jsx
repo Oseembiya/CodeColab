@@ -40,9 +40,17 @@ const shouldUseProxy = (url) => {
   // Always use proxy for rate-limited domains, even in development
   if (!url) return false;
 
+  // For Google images in production, we should NOT use proxy due to CSP restrictions
+  if (
+    config.isProduction &&
+    (url.includes("googleusercontent.com") || url.includes("ggpht.com"))
+  ) {
+    return false; // Don't use proxy for Google images in production due to CSP
+  }
+
   // Check if it's a domain that might rate limit
   return (
-    url.includes("googleusercontent.com") ||
+    (url.includes("googleusercontent.com") && !config.isProduction) ||
     url.includes("ggpht.com") ||
     url.includes("gravatar.com")
   );
@@ -54,6 +62,21 @@ const shouldUseProxy = (url) => {
  * @returns {string} - Proxy URL
  */
 const getProxyUrl = (url) => {
+  // If it's a Google user image, try to handle it directly to avoid CSP issues
+  if (url.includes("googleusercontent.com")) {
+    try {
+      // Attempt to extract and format the URL in a way that complies with the CSP
+      const encodedUrl = url.split("=")[0]; // Strip any sizing parameters
+      if (encodedUrl) {
+        // Return the direct Google URL with appropriate size parameter
+        return `${encodedUrl}=s96-c`;
+      }
+    } catch (e) {
+      console.warn("Error parsing Google image URL, falling back to proxy", e);
+    }
+  }
+
+  // For other images, use the proxy
   const encodedUrl = encodeURIComponent(url);
   const apiBaseUrl = config.api.url || "";
 
@@ -210,19 +233,33 @@ export const getAvatarUrl = (url, size = 96) => {
 
   // For Google profile photos, ensure correct size
   if (url.includes("googleusercontent.com") || url.includes("ggpht.com")) {
-    // Handle different Google URL formats
+    try {
+      // Handle different Google URL formats
 
-    // Format 1: URLs with size parameter (=s...)
-    const sizeMatch = url.match(/=s(\d+)(?:-c)?/);
-    if (sizeMatch) {
-      return url.replace(/=s\d+(-c)?/, `=s${size}-c`);
-    }
+      // First try to get the base URL without parameters
+      const baseUrl = url.split("?")[0].split("=")[0];
 
-    // Format 2: URLs without size parameter
-    if (url.includes("?")) {
-      return `${url}&s=${size}-c`;
-    } else {
-      return `${url}=s${size}-c`;
+      // If we have a base URL, use it with proper sizing
+      if (baseUrl) {
+        return `${baseUrl}=s${size}-c`;
+      }
+
+      // Fallback to older methods
+      // Format 1: URLs with size parameter (=s...)
+      const sizeMatch = url.match(/=s(\d+)(?:-c)?/);
+      if (sizeMatch) {
+        return url.replace(/=s\d+(-c)?/, `=s${size}-c`);
+      }
+
+      // Format 2: URLs without size parameter
+      if (url.includes("?")) {
+        return `${url}&s=${size}-c`;
+      } else {
+        return `${url}=s${size}-c`;
+      }
+    } catch (e) {
+      console.warn("Error formatting Google avatar URL:", e);
+      return url; // Return original as fallback
     }
   }
 

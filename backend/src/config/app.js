@@ -11,7 +11,7 @@ const configureApp = () => {
   const app = express();
 
   // Add trust proxy setting for render.com deployment
-  app.set("trust proxy", true);
+  app.set("trust proxy", ["loopback", "linklocal", "uniquelocal"]);
 
   // Security middleware with customized Content-Security-Policy
   app.use(

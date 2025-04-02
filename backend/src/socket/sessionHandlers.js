@@ -5,6 +5,8 @@ const {
   updateUserStatus,
   notifyFriendsAboutStatus,
 } = require("../utils/userStatus");
+// Import the checkExists helper to handle document existence checks
+const { checkExists } = require("../utils/userMetrics");
 
 // Define a default avatar data URL for fallback
 const DEFAULT_AVATAR_SVG =
@@ -203,6 +205,37 @@ module.exports = (io, socket) => {
     username,
     photoURL,
   }) => {
+    if (!sessionId) {
+      console.warn("Invalid sessionId in join-session event");
+      return;
+    }
+
+    // Check if the user is already in the session (to prevent duplicates)
+    const existingParticipants = sessionStore.getSessionUsers(sessionId);
+    const alreadyJoined = existingParticipants.some(
+      (p) => p.userId === userId || p.userId === socket.clientId
+    );
+
+    if (alreadyJoined) {
+      console.log(
+        `User ${
+          username || userId
+        } already in session ${sessionId}, not adding again`
+      );
+
+      // Still re-join the socket room
+      socket.join(sessionId);
+
+      // Emit current participants without adding a duplicate
+      io.to(sessionId).to(`observe:${sessionId}`).emit("participants-update", {
+        sessionId,
+        participants: existingParticipants,
+        count: existingParticipants.length,
+      });
+
+      return;
+    }
+
     socket.join(sessionId);
 
     // Add user to session with socket data
@@ -220,6 +253,15 @@ module.exports = (io, socket) => {
       sessionId,
       socket.clientId,
       userData
+    );
+
+    // Log participant details to debug counting issues
+    console.log(
+      `Current participants in session ${sessionId}:`,
+      participants.map((p) => ({
+        userId: p.userId,
+        socketId: p.socketId,
+      }))
     );
 
     // Emit to both participants and observers
@@ -271,7 +313,7 @@ module.exports = (io, socket) => {
       const sessionRef = db.collection("sessions").doc(sessionId);
       const sessionSnapshot = await sessionRef.get();
 
-      if (sessionSnapshot.exists()) {
+      if (checkExists(sessionSnapshot)) {
         const sessionData = sessionSnapshot.data();
 
         if (sessionData.scheduledEndTime) {
@@ -527,33 +569,49 @@ module.exports = (io, socket) => {
 
   // Handle leaving a session
   const handleLeaveSession = ({ sessionId, userId }) => {
-    socket.leave(sessionId);
-    const participants = sessionStore.removeUserFromSession(
-      sessionId,
-      socket.clientId
-    );
+    if (!sessionId) {
+      console.warn("Invalid sessionId in leave-session event");
+      return;
+    }
 
-    // Check if participants is null or undefined before accessing length
-    if (participants) {
-      // Emit to both participants and observers
-      io.to(sessionId).to(`observe:${sessionId}`).emit("participants-update", {
+    try {
+      socket.leave(sessionId);
+      const participants = sessionStore.removeUserFromSession(
         sessionId,
-        participants,
-        count: participants.length,
-      });
+        socket.clientId
+      );
 
-      // Final update of active time when leaving session
-      if (userId) {
-        userMetrics.updateUserActiveTime(userId);
+      // Check if participants is null or undefined before accessing length
+      if (participants) {
+        // Emit to both participants and observers
+        io.to(sessionId)
+          .to(`observe:${sessionId}`)
+          .emit("participants-update", {
+            sessionId,
+            participants,
+            count: participants.length,
+          });
+
+        // Final update of active time when leaving session
+        if (userId) {
+          userMetrics.updateUserActiveTime(userId);
+        }
+
+        console.log(
+          `User left session ${sessionId}. Remaining participants: ${participants.length}`
+        );
+      } else {
+        console.log(
+          `User left session ${sessionId}. No participants remaining or session not found.`
+        );
       }
-
-      console.log(
-        `User left session ${sessionId}. Remaining participants: ${participants.length}`
+    } catch (error) {
+      console.error(
+        `Error in handleLeaveSession for session ${sessionId}:`,
+        error
       );
-    } else {
-      console.log(
-        `User left session ${sessionId}. No participants remaining or session not found.`
-      );
+      // Still try to leave the socket room even if there was an error
+      socket.leave(sessionId);
     }
   };
 
@@ -620,49 +678,83 @@ module.exports = (io, socket) => {
     userId,
     totalParticipants,
   }) => {
-    if (!sessionId) return;
-
-    console.log(`Session ${sessionId} ended by user ${userId}`);
-
-    // Get all participants in the session before clearing them
-    const participants = sessionStore.getSessionUsers(sessionId);
-
-    // Track completed session for the user ending it
-    if (userId) {
-      userMetrics.trackCompletedSession(userId, sessionId);
+    if (!sessionId) {
+      console.warn("Invalid sessionId in session-ended event");
+      return;
     }
 
-    // Track the session as completed for all active participants
-    participants.forEach((participant) => {
-      if (participant.userId && participant.userId !== userId) {
-        userMetrics.trackCompletedSession(participant.userId, sessionId);
+    try {
+      console.log(`Session ${sessionId} ended by user ${userId}`);
+
+      // Get all participants in the session before clearing them
+      const participants = sessionStore.getSessionUsers(sessionId);
+
+      // Track completed session for the user ending it
+      if (userId) {
+        userMetrics.trackCompletedSession(userId, sessionId);
       }
-    });
 
-    // If totalParticipants was calculated in the frontend and passed,
-    // use that value which includes historical participants.
-    // Otherwise we'll leave it to Firestore to count from userMetrics
-    const participantDetails =
-      totalParticipants !== undefined ? { totalParticipants } : {};
+      // Track the session as completed for all active participants
+      if (Array.isArray(participants)) {
+        participants.forEach((participant) => {
+          if (participant.userId && participant.userId !== userId) {
+            userMetrics.trackCompletedSession(participant.userId, sessionId);
+          }
+        });
+      }
 
-    // Clear all participants from the session in the backend store
-    sessionStore.clearSessionParticipants(sessionId);
+      // If totalParticipants was calculated in the frontend and passed,
+      // use that value which includes historical participants.
+      // Otherwise we'll leave it to Firestore to count from userMetrics
+      const participantDetails =
+        totalParticipants !== undefined ? { totalParticipants } : {};
 
-    // Broadcast the session ended event to all participants and observers
-    io.to(sessionId)
-      .to(`observe:${sessionId}`)
-      .emit("session-ended", {
-        sessionId,
-        endedBy: userId,
-        endedAt: new Date().toISOString(),
-        participantsCleared: true,
-        ...participantDetails,
-      });
+      // Clear all participants from the session in the backend store
+      sessionStore.clearSessionParticipants(sessionId);
 
-    // Clear the timeout if session is manually ended
-    if (sessionTimeouts.has(sessionId)) {
-      clearTimeout(sessionTimeouts.get(sessionId));
-      sessionTimeouts.delete(sessionId);
+      // Broadcast the session ended event to all participants and observers
+      io.to(sessionId)
+        .to(`observe:${sessionId}`)
+        .emit("session-ended", {
+          sessionId,
+          endedBy: userId,
+          endedAt: new Date().toISOString(),
+          participantsCleared: true,
+          ...participantDetails,
+        });
+
+      // Update Firestore status
+      try {
+        const sessionRef = db.collection("sessions").doc(sessionId);
+        await sessionRef.update({
+          status: "ended",
+          endedAt: new Date().toISOString(),
+          completedBy: userId,
+          participants: [], // Clear participants
+        });
+      } catch (dbError) {
+        console.error(
+          `Error updating Firestore for ended session ${sessionId}:`,
+          dbError
+        );
+      }
+
+      // Clear the timeout if session is manually ended
+      if (sessionTimeouts.has(sessionId)) {
+        clearTimeout(sessionTimeouts.get(sessionId));
+        sessionTimeouts.delete(sessionId);
+      }
+
+      // Also clear any idle timeout
+      if (sessionIdleTimeouts.has(sessionId)) {
+        clearTimeout(sessionIdleTimeouts.get(sessionId));
+        sessionIdleTimeouts.delete(sessionId);
+      }
+    } catch (error) {
+      console.error(
+        `Error in handleSessionEnded for session ${sessionId}:`,
+        error
+      );
     }
   };
 

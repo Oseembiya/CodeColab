@@ -53,6 +53,9 @@ const Avatar = ({
         className={`rounded-full ${className}`}
         style={{ width: size, height: size, objectFit: "cover" }}
         onError={handleError}
+        crossOrigin="anonymous"
+        loading="lazy"
+        referrerPolicy="no-referrer"
       />
 
       {showStatus && <span className={statusClasses} title={status} />}

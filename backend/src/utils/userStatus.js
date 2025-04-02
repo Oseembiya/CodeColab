@@ -1,5 +1,6 @@
 const { db } = require("../../firebaseConfig");
-const socketModule = require("../socket");
+// Remove direct require at the top to break circular dependency
+// const socketModule = require("../socket");
 
 // Update user status in Firestore
 const updateUserStatus = async (userId, status) => {
@@ -65,9 +66,11 @@ const getFriendsList = async (userId) => {
 // Notify friends about status change
 const notifyFriendsAboutStatus = async (userId, status) => {
   try {
-    // Get the Socket.IO instance safely
+    // Get the Socket.IO instance safely - lazy load the module only when needed
     let io;
     try {
+      // Lazy-load the socket module to avoid circular dependency
+      const socketModule = require("../socket");
       io = socketModule.getIO();
     } catch (error) {
       console.warn(

@@ -1,0 +1,35 @@
+# SPA redirect for client-side routing
+from = "/*"
+to = "/index.html"
+status = 200
+
+# Proxy for API requests
+[[redirects]]
+  from = "/api/*"
+  to = "https://codecolab-852p.onrender.com/api/:splat"
+  status = 200
+  force = true
+  headers = {X-Proxied-By = "Netlify"}
+
+# Proxy for Socket.IO
+[[redirects]]
+  from = "/socket.io/*"
+  to = "https://codecolab-852p.onrender.com/socket.io/:splat"
+  status = 200
+  force = true
+  headers = {X-Proxied-By = "Netlify"}
+
+# Proxy for PeerJS
+[[redirects]]
+  from = "/peerjs/*"
+  to = "https://codecolab-852p.onrender.com/peerjs/:splat"
+  status = 200
+  force = true
+  headers = {X-Proxied-By = "Netlify"}
+
+# Support WebSocket connections for PeerJS
+[[redirects]]
+  from = "/peerjs/*"
+  to = "wss://codecolab-852p.onrender.com/peerjs/:splat"
+  status = 101
+  force = true 

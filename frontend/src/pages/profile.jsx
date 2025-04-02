@@ -347,6 +347,7 @@ const Profile = () => {
           }}
           loading="lazy"
           crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
         />
       ) : (
         <FaUserCircle className="default-avatar-icon" size={150} />
