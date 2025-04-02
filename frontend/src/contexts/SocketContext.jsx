@@ -33,7 +33,7 @@ export function SocketProvider({ children }) {
   const connectionLogged = useRef(false);
 
   // Cleanup function reference
-  let cleanupRef = useRef(null);
+  const cleanupRef = useRef(null);
 
   // Helper to handle auth token fetch with quota management
   const getAuthToken = useCallback(async () => {
@@ -308,16 +308,14 @@ export function SocketProvider({ children }) {
       isConnecting.current = false;
       setError(`Socket initialization error: ${err.message}`);
       console.error("Socket initialization error:", err);
+      return () => {}; // Return empty cleanup function in case of error
     }
-  }, [user?.uid, getIdToken, isAuthenticated]); // Reduced dependencies
+  }, [socket, user?.uid, getAuthToken, isAuthenticated]);
 
-  // Stabilize the connectSocket reference
-  const stableConnectSocket = useCallback(connectSocket, [connectSocket]);
-
-  // Connect when auth state changes - with stable dependencies
+  // Connect when auth state changes
   useEffect(() => {
     console.log("Auth state changed, reconnecting socket");
-    const cleanup = stableConnectSocket();
+    const cleanup = connectSocket();
 
     return () => {
       if (typeof cleanup === "function") {
@@ -330,7 +328,7 @@ export function SocketProvider({ children }) {
         clearTimeout(reconnectTimeout.current);
       }
     };
-  }, [stableConnectSocket]);
+  }, [connectSocket]);
 
   const reconnect = useCallback(() => {
     console.log("Manual reconnection requested");
