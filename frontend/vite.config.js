@@ -66,6 +66,13 @@ export default defineConfig(({ mode }) => {
               "firebase/firestore",
               "firebase/storage",
             ],
+            // Include core app components that should load immediately
+            core: [
+              "./src/App.jsx",
+              "./src/pages/protectedRoute.jsx",
+              "./src/error/ErrorBoundary.jsx",
+              "./src/components/layouts/mainContent.jsx",
+            ],
             // Include sessions-related files in a predictable chunk
             sessions: [
               "./src/pages/liveSession.jsx",

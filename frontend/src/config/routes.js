@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import { ROUTES } from "./constants";
+import ProtectedRoute from "../pages/protectedRoute";
 
 // Lazy-load all route components for better code splitting
 const AuthPage = lazy(() => import("../pages/auth"));
@@ -9,7 +10,6 @@ const CodeEditor = lazy(() => import("../pages/CodeEditorPage"));
 const Sessions = lazy(() => import("../pages/sessions"));
 const LiveSession = lazy(() => import("../pages/liveSession"));
 const Whiteboard = lazy(() => import("../components/whiteboard/Whiteboard"));
-const ProtectedRoute = lazy(() => import("../pages/protectedRoute"));
 
 /**
  * Route configuration for the application
