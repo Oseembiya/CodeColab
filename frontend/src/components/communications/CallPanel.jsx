@@ -20,6 +20,9 @@ import {
 import config from "../../config/env";
 import "../../styles/components/_call-panel.css";
 
+// Default position coordinates - defined outside the component to avoid TDZ issues
+const DEFAULT_POSITION = { x: 20, y: 20 };
+
 const CallPanel = ({ sessionId, userId }) => {
   // State for media and UI
   const [peers, setPeers] = useState(new Map());
@@ -29,7 +32,7 @@ const CallPanel = ({ sessionId, userId }) => {
   const [isAudioMode, setIsAudioMode] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [error, setError] = useState(null);
-  const [position, setPosition] = useState({ x: 20, y: 20 });
+  const [position, setPosition] = useState(DEFAULT_POSITION);
   const [isDragging, setIsDragging] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);
   const [connected, setConnected] = useState(false);
@@ -43,10 +46,16 @@ const CallPanel = ({ sessionId, userId }) => {
   const localStreamRef = useRef(null);
   const localVideoRef = useRef(null);
   const peersRef = useRef(new Map());
-  const dragStartRef = useRef(null);
+  const dragStartRef = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
   const remoteVideoRefs = useRef({});
   const remoteAudioRefs = useRef({});
+  const positionRef = useRef(DEFAULT_POSITION);
+
+  // Update position ref when state changes to ensure consistency
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
 
   // Connect streams to video/audio elements using refs instead of srcObject
   useEffect(() => {
@@ -1146,7 +1155,7 @@ const CallPanel = ({ sessionId, userId }) => {
     setIsCollapsed((prev) => !prev);
   };
 
-  // Mouse event handlers for dragging
+  // Mouse event handlers for dragging - updated to use refs for safety
   const handleMouseDown = (e) => {
     if (
       e.target.closest(".call-controls") ||
@@ -1155,11 +1164,14 @@ const CallPanel = ({ sessionId, userId }) => {
       return;
     }
 
+    // Use the ref value for current position to avoid TDZ issues
+    const currentPosition = positionRef.current;
     setIsDragging(true);
     isDraggingRef.current = true;
+
     dragStartRef.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
+      x: e.clientX - currentPosition.x,
+      y: e.clientY - currentPosition.y,
     };
 
     e.preventDefault();
@@ -1169,13 +1181,18 @@ const CallPanel = ({ sessionId, userId }) => {
     if (!isDraggingRef.current) return;
 
     requestAnimationFrame(() => {
-      const newX = e.clientX - dragStartRef.current.x;
-      const newY = e.clientY - dragStartRef.current.y;
+      const dragStart = dragStartRef.current || { x: 0, y: 0 };
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
 
-      setPosition({
+      const updatedPosition = {
         x: Math.max(0, newX),
         y: Math.max(0, newY),
-      });
+      };
+
+      // Update both state and ref
+      setPosition(updatedPosition);
+      positionRef.current = updatedPosition;
     });
   }, []);
 
@@ -1379,9 +1396,12 @@ const CallPanel = ({ sessionId, userId }) => {
   );
 };
 
-CallPanel.propTypes = {
+// Define prop types outside of component to prevent temporal dead zone issues
+const callPanelPropTypes = {
   sessionId: PropTypes.string.isRequired,
   userId: PropTypes.string.isRequired,
 };
+
+CallPanel.propTypes = callPanelPropTypes;
 
 export default CallPanel;
