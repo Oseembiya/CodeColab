@@ -1,10 +1,10 @@
-.video-chat-container {
+.audio-chat-container {
   position: fixed;
   top: 0;
   left: 0;
   transform: translate(var(--x, 0px), var(--y, 0px));
-  width: 330px;
-  height: 400px;
+  width: 280px;
+  height: 300px;
   background: var(--background-color);
   border-radius: var(--radius-lg);
   border: 1px solid var(--line-color);
@@ -26,13 +26,13 @@
 }
 
 /* Collapsed state */
-.video-chat-container.collapsed {
-  width: 60px;
-  height: 60px;
+.audio-chat-container.collapsed {
+  width: 55px;
+  height: 55px;
   border-radius: 50%;
   cursor: pointer;
   transform: translate(var(--x, 0px), var(--y, 0px)) scale(1);
-  background: var(--secondary-color);
+  background: var(--primary-color);
   border: none;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -41,20 +41,20 @@
 }
 
 /* Hover effect for collapsed state */
-.video-chat-container.collapsed:hover {
+.audio-chat-container.collapsed:hover {
   transform: translate(var(--x, 0px), var(--y, 0px)) scale(1.1);
-  box-shadow: 0 0 20px rgba(var(--secondary-rgb), 0.3);
+  box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
 }
 
 /* Hide content when collapsed */
-.video-chat-container.collapsed .video-grid,
-.video-chat-container.collapsed .video-controls {
+.audio-chat-container.collapsed .audio-participants,
+.audio-chat-container.collapsed .audio-controls {
   opacity: 0;
   visibility: hidden;
 }
 
 /* Show participant count when collapsed */
-.video-chat-container.collapsed::after {
+.audio-chat-container.collapsed::after {
   content: attr(data-count);
   position: absolute;
   top: 50%;
@@ -65,22 +65,22 @@
   font-size: 1.2rem;
 }
 
-/* Add camera icon when collapsed */
-.video-chat-container.collapsed::before {
+/* Add microphone icon when collapsed */
+.audio-chat-container.collapsed::before {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M15 8v8H5V8h10m1-2H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4V7c0-.55-.45-1-1-1z'/%3E%3C/svg%3E")
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z'/%3E%3C/svg%3E")
     no-repeat center center;
   background-size: 24px;
   opacity: 0.9;
 }
 
 /* Show number of participants */
-.video-chat-container.collapsed[data-count]:not([data-count="0"])::before {
+.audio-chat-container.collapsed[data-count]:not([data-count="0"])::before {
   content: attr(data-count);
   position: absolute;
   top: 50%;
@@ -94,51 +94,67 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
   border: none;
 }
 
-.video-grid {
+.audio-participants {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm);
-  height: calc(100% - 110px);
+  height: calc(100% - 60px);
   overflow-y: auto;
 }
 
-.video-container {
+.participant {
   position: relative;
-  aspect-ratio: 16/9;
+  padding: 10px;
   background: var(--background-secondary);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 50px;
 }
 
-.video-container video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.participant.local {
+  border-left: 3px solid var(--primary-color);
 }
 
-.video-container.local {
-  height: 200px;
-  min-height: 200px;
-  border: 2px solid var(--secondary-color);
-}
-
-.video-label {
-  position: absolute;
-  bottom: var(--spacing-xs);
-  left: var(--spacing-xs);
-  background: rgba(0, 0, 0, 0.7);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
+.participant-name {
   font-size: var(--text-sm);
+  font-weight: 500;
+  flex: 1;
 }
 
-.video-controls {
+.microphone-indicator {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  background: var(--background-tertiary);
+  transition: background-color 0.2s ease;
+}
+
+.microphone-indicator.active {
+  background: var(--success-color);
+  color: white;
+  animation: pulse-audio 1.5s infinite;
+}
+
+.microphone-indicator.muted,
+.microphone-indicator.inactive {
+  background: var(--error-light-color);
+  color: var(--error-color);
+}
+
+.audio-controls {
   display: flex;
   justify-content: center;
   gap: var(--spacing-sm);
@@ -169,41 +185,72 @@
   color: white;
 }
 
-.video-error {
+.audio-error {
   padding: var(--spacing-sm);
   color: var(--error-color);
   text-align: center;
   font-size: var(--text-sm);
 }
 
-/* Adjust position when output panel is open */
-.output-panel:not(.collapsed) ~ .video-chat-container {
-  bottom: calc(350px + 20px);
+.stream-error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  gap: 4px;
+  border-radius: var(--radius-md);
 }
 
-/* Dragging state - remove transitions for smoother dragging */
-.video-chat-container.dragging {
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* No transition for transform while dragging */
+.stream-error-overlay svg {
+  font-size: 20px;
+  color: var(--error-color);
+}
+
+.manual-audio-toggle {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-light-color);
+  color: var(--primary-color);
+  border: none;
+  cursor: pointer;
+  margin-left: 5px;
+}
+
+/* Add pulsing animation for active audio */
+@keyframes pulse-audio {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(var(--success-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--success-rgb), 0);
+  }
 }
 
 /* Add pulsing animation for collapsed state */
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0.4);
+    box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4);
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(var(--secondary-rgb), 0);
+    box-shadow: 0 0 0 10px rgba(var(--primary-rgb), 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(var(--secondary-rgb), 0);
+    box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0);
   }
 }
 
-.video-chat-container.collapsed:not(:hover) {
+.audio-chat-container.collapsed:not(:hover) {
   animation: pulse 2s infinite;
 }
 
@@ -212,8 +259,8 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.5);
   border: none;
@@ -234,77 +281,17 @@
 }
 
 /* Hide collapse button when container is collapsed */
-.video-chat-container.collapsed .collapse-button {
+.audio-chat-container.collapsed .collapse-button {
   display: none;
-}
-
-/* Drag handle improvements */
-.video-drag-handle {
-  cursor: grab;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-  transition: background-color 0.2s ease;
-}
-
-.video-drag-handle:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.video-chat-container.dragging .video-drag-handle {
-  cursor: grabbing;
-  background: rgba(var(--secondary-rgb), 0.2);
-}
-
-/* Volume control for video component only */
-.volume-control {
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid var(--line-color);
-}
-
-.volume-control input {
-  width: 100%;
-  padding: 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-color);
-}
-
-/* Hide volume control when collapsed */
-.video-chat-container.collapsed .volume-control {
-  display: none;
-}
-
-/* Stream error styles for video only */
-.stream-error-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  z-index: 10;
-}
-
-.stream-error-overlay svg {
-  margin-bottom: 8px;
-  color: var(--error-color);
 }
 
 .retry-button {
-  margin-top: 8px;
-  padding: 6px 12px;
+  margin-top: 5px;
+  padding: 4px 8px;
   background: var(--primary-color);
   color: white;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  font-size: 12px;
 }
