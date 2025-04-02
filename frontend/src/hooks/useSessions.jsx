@@ -67,15 +67,27 @@ export const useSessions = () => {
 
       // Initialize timestamps now to avoid potential timing issues
       const now = getCurrentTimestamp();
-      let startTime = now;
-      let status = "active";
 
       // Determine if this is a scheduled session
       const isScheduled =
         sessionData.status === "scheduled" ||
         (!sessionData.startNow && sessionData.scheduledDate);
 
-      // Calculate startTime early
+      // Get current user ID
+      const currentUserId = auth.currentUser?.uid || null;
+
+      // Calculate participants array
+      const participants = isScheduled
+        ? []
+        : currentUserId
+        ? [currentUserId]
+        : [];
+
+      // Calculate startTime
+      let startTime = now;
+      let status = "active";
+
+      // Calculate startTime for scheduled sessions
       if (
         isScheduled &&
         sessionData.scheduledDate &&
@@ -87,14 +99,6 @@ export const useSessions = () => {
         );
         status = "scheduled";
       }
-
-      // Create participant array with proper fallbacks
-      const currentUserId = auth.currentUser?.uid || null;
-      const participants = isScheduled
-        ? []
-        : currentUserId
-        ? [currentUserId]
-        : [];
 
       // Create a complete session object with all properties initialized
       const sessionToCreate = {
