@@ -51,56 +51,179 @@ const CallPanel = ({ sessionId, userId }) => {
   // Connect streams to video/audio elements using refs instead of srcObject
   useEffect(() => {
     peers.forEach((peerData, peerId) => {
-      if (peerData.mediaType !== "audio" && remoteVideoRefs.current[peerId]) {
-        remoteVideoRefs.current[peerId].srcObject = peerData.stream;
-      } else if (remoteAudioRefs.current[peerId]) {
-        remoteAudioRefs.current[peerId].srcObject = peerData.stream;
+      try {
+        if (peerData.mediaType !== "audio" && remoteVideoRefs.current[peerId]) {
+          // For video participants, connect to video element
+          const videoEl = remoteVideoRefs.current[peerId];
+          if (videoEl && videoEl.srcObject !== peerData.stream) {
+            console.log(`Connecting video stream for peer ${peerId}`);
+            videoEl.srcObject = peerData.stream;
+
+            // Ensure autoplay works
+            videoEl.onloadedmetadata = () => {
+              console.log(`Remote video metadata loaded for peer ${peerId}`);
+              videoEl.play().catch((e) => {
+                console.error(
+                  `Error playing remote video for peer ${peerId}:`,
+                  e
+                );
+              });
+            };
+          }
+        } else if (remoteAudioRefs.current[peerId]) {
+          // For audio-only participants, connect to audio element
+          const audioEl = remoteAudioRefs.current[peerId];
+          if (audioEl && audioEl.srcObject !== peerData.stream) {
+            console.log(`Connecting audio stream for peer ${peerId}`);
+            audioEl.srcObject = peerData.stream;
+
+            // Ensure autoplay works
+            audioEl.onloadedmetadata = () => {
+              console.log(`Remote audio metadata loaded for peer ${peerId}`);
+              audioEl.play().catch((e) => {
+                console.error(
+                  `Error playing remote audio for peer ${peerId}:`,
+                  e
+                );
+              });
+            };
+          }
+        }
+      } catch (err) {
+        console.error(`Error connecting stream for peer ${peerId}:`, err);
       }
     });
   }, [peers]);
 
   // Setup PeerJS connection
   const setupPeerConnection = useCallback(async () => {
+    console.log("Setting up PeerJS connection...");
+
     try {
-      if (peerRef.current) {
-        console.log("Using existing peer connection");
-        // If we already have a peer, just reinitialize media
-        initializeMedia();
-        return () => {
-          if (peerRef.current) {
-            peerRef.current.destroy();
-          }
-        };
-      }
-
-      console.log("Setting up new peer connection with config:", {
-        host: config.peer?.host || "0.peerjs.com",
-        port: config.peer?.port || 443,
-        path: config.peer?.path || "/",
-        secure: config.peer?.secure !== false,
-      });
-
-      // Create a new peer with the configured options
-      const peer = new Peer(userId, {
-        host: config.peer?.host || "0.peerjs.com",
-        port: config.peer?.port || 443,
-        path: config.peer?.path || "/",
-        secure: config.peer?.secure !== false,
-        debug: config.debug || 1,
+      // Configure and create PeerJS instance
+      const peerOptions = {
+        host: config.peer.host,
+        port: config.peer.port,
+        path: config.peer.path,
+        secure: true,
         config: {
-          iceServers: config.webrtc?.iceServers || [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-          ],
+          iceServers: config.webrtc.iceServers,
+          sdpSemantics: config.webrtc.sdpSemantics,
+          iceTransportPolicy: config.webrtc.iceTransportPolicy,
+          bundlePolicy: config.webrtc.bundlePolicy,
+          rtcpMuxPolicy: config.webrtc.rtcpMuxPolicy,
         },
+        debug: config.debug,
+      };
+
+      console.log("PeerJS configuration:", peerOptions);
+
+      // Add enhanced diagnostic flag
+      const enableDiagnostics = true;
+
+      // Construct a unique peer ID using userId and sessionId
+      const uniquePeerId = `${userId}-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .substr(2, 5)}`;
+      const peer = new Peer(uniquePeerId, peerOptions);
+      peerRef.current = peer;
+
+      // Log all peer events for diagnostics
+      peer.on("iceStateChanged", (state) => {
+        console.log(`ICE connection state changed to: ${state}`);
+
+        // Enhanced diagnostics for ICE connection problems
+        if (
+          enableDiagnostics &&
+          (state === "failed" || state === "disconnected")
+        ) {
+          console.warn(`ICE connection ${state}. Diagnostics:`, {
+            iceServers: config.webrtc.iceServers,
+            transportPolicy: config.webrtc.iceTransportPolicy,
+            uniquePeerId,
+            host: config.peer.host,
+            port: config.peer.port,
+          });
+
+          // Check NAT type if possible
+          checkNATType();
+        }
       });
 
-      // Handle peer open event
-      peer.on("open", (id) => {
-        console.log(`PeerJS connection established with ID: ${id}`);
-        peerRef.current = peer;
+      // Add a function to diagnose NAT type
+      const checkNATType = () => {
+        try {
+          console.log("Beginning NAT traversal diagnosis...");
+          // Create a temporary RTCPeerConnection to check NAT capabilities
+          const pc = new RTCPeerConnection({
+            iceServers: config.webrtc.iceServers,
+          });
 
-        // Once peer is open, try to get media stream
+          // Monitor ICE candidate types
+          let hasHost = false;
+          let hasReflexive = false;
+          let hasRelay = false;
+
+          pc.onicecandidate = (e) => {
+            if (!e.candidate) return;
+
+            console.log("ICE candidate:", e.candidate.candidate);
+
+            // Check candidate types
+            if (e.candidate.candidate.indexOf("typ host") !== -1)
+              hasHost = true;
+            if (e.candidate.candidate.indexOf("typ srflx") !== -1)
+              hasReflexive = true;
+            if (e.candidate.candidate.indexOf("typ relay") !== -1)
+              hasRelay = true;
+
+            // Report findings
+            if (!e.candidate) {
+              console.log("NAT diagnosis results:", {
+                localCandidates: hasHost,
+                reflexiveCandidates: hasReflexive,
+                relayCandidates: hasRelay,
+              });
+
+              // Suggest solutions
+              if (!hasReflexive && !hasRelay) {
+                console.warn(
+                  "NAT traversal will likely fail - only local candidates found. Consider adding more TURN servers."
+                );
+              } else if (!hasRelay) {
+                console.warn(
+                  "NAT traversal may have issues - no relay candidates found. Consider adding additional TURN servers."
+                );
+              }
+
+              // Clean up
+              pc.close();
+            }
+          };
+
+          // Create offer to generate candidates
+          pc.createOffer().then((offer) => pc.setLocalDescription(offer));
+        } catch (err) {
+          console.error("NAT diagnosis error:", err);
+        }
+      };
+
+      // Set a timeout for initial connection
+      const connectionTimeout = setTimeout(() => {
+        if (!peer.open) {
+          console.error("Peer connection timed out");
+          setError(
+            "Connection timed out. Please check your internet connection and refresh the page."
+          );
+        }
+      }, 15000);
+
+      // Connection established
+      peer.on("open", (id) => {
+        console.log(`Connected with peer ID: ${id}`);
+        clearTimeout(connectionTimeout);
+
+        // Initialize media after successful connection
         initializeMedia();
       });
 
@@ -110,17 +233,124 @@ const CallPanel = ({ sessionId, userId }) => {
 
         try {
           // Create a default empty stream if we don't have one
-          const streamToAnswer = localStreamRef.current || new MediaStream();
+          let streamToAnswer = localStreamRef.current;
+
+          if (!streamToAnswer || !streamToAnswer.active) {
+            console.warn(
+              `No active local stream when answering call from ${call.peer}, creating empty stream`
+            );
+            streamToAnswer = new MediaStream();
+
+            // Try to get user media if possible
+            try {
+              const tempStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                  echoCancellation: true,
+                  noiseSuppression: true,
+                  autoGainControl: true,
+                },
+                video: !isAudioMode,
+              });
+
+              streamToAnswer = tempStream;
+
+              // Update local stream reference if we didn't have one
+              if (!localStreamRef.current) {
+                localStreamRef.current = tempStream;
+                setLocalStream(tempStream);
+              }
+
+              console.log(
+                `Created new stream for answering call from ${call.peer}`
+              );
+            } catch (mediaErr) {
+              console.warn(
+                `Couldn't get media for answering call, using empty stream:`,
+                mediaErr
+              );
+            }
+          }
+
+          // Log the stream we're using to answer
+          console.log(
+            `Answering call from ${call.peer} with stream tracks:`,
+            streamToAnswer
+              .getTracks()
+              .map((t) => ({ kind: t.kind, enabled: t.enabled }))
+          );
 
           // Answer the call with our stream
           call.answer(streamToAnswer);
 
+          // Monitor connection state to debug issues
+          try {
+            const pc = call.peerConnection;
+            if (pc) {
+              // Log ICE connection state changes
+              pc.oniceconnectionstatechange = () => {
+                console.log(
+                  `ICE connection state for call ${call.peer}: ${pc.iceConnectionState}`
+                );
+
+                // Report failed connections
+                if (pc.iceConnectionState === "failed") {
+                  console.error(`ICE connection failed for peer ${call.peer}`);
+                  setError(
+                    "Connection to peer failed. Try refreshing the page."
+                  );
+                }
+
+                // Handle disconnections
+                if (
+                  pc.iceConnectionState === "disconnected" ||
+                  pc.iceConnectionState === "closed"
+                ) {
+                  console.warn(
+                    `ICE connection ${pc.iceConnectionState} for peer ${call.peer}`
+                  );
+                }
+              };
+
+              // Log ICE gathering state changes
+              pc.onicegatheringstatechange = () => {
+                console.log(
+                  `ICE gathering state for call ${call.peer}: ${pc.iceGatheringState}`
+                );
+              };
+
+              // Log ICE candidates
+              pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                  console.log(
+                    `ICE candidate for call ${call.peer}:`,
+                    event.candidate.candidate
+                      ? `Type: ${event.candidate.type}, Protocol: ${event.candidate.protocol}`
+                      : "No candidate"
+                  );
+                }
+              };
+            }
+          } catch (monitorErr) {
+            console.warn(
+              `Could not monitor call connection: ${monitorErr.message}`
+            );
+          }
+
           // Handle incoming stream
           call.on("stream", (remoteStream) => {
-            console.log(`Received remote stream from ${call.peer}`);
+            console.log(
+              `Received remote stream from ${call.peer} with tracks:`,
+              remoteStream.getTracks().map((t) => t.kind)
+            );
 
-            // Add to peers map
-            addPeer(call.peer, call, remoteStream);
+            if (remoteStream.getTracks().length === 0) {
+              console.warn(`Stream from ${call.peer} has no tracks!`);
+            }
+
+            // Add to peers map with proper media type detection
+            const mediaType =
+              remoteStream.getVideoTracks().length > 0 ? "video" : "audio";
+            addPeer(call.peer, call, remoteStream, mediaType);
           });
 
           // Handle call close
@@ -142,16 +372,27 @@ const CallPanel = ({ sessionId, userId }) => {
       // Handle peer errors
       peer.on("error", (err) => {
         console.error("PeerJS connection error:", err);
-        setError(`Connection error: ${err.type}`);
 
-        // Attempt to reconnect if disconnected
-        if (err.type === "disconnected" || err.type === "network") {
+        if (err.type === "peer-unavailable") {
+          console.log("The peer you're trying to connect to is unavailable");
+        } else if (err.type === "network" || err.type === "disconnected") {
+          setError(`Network error: ${err.message}. Trying to reconnect...`);
+
+          // Attempt to reconnect if disconnected
           setTimeout(() => {
             if (peerRef.current) {
               console.log("Attempting to reconnect peer...");
-              peerRef.current.reconnect();
+              try {
+                peerRef.current.reconnect();
+              } catch (reconnectErr) {
+                console.error("Error reconnecting peer:", reconnectErr);
+              }
             }
           }, 2000);
+        } else if (err.type === "server-error") {
+          setError(`Server error: ${err.message}. Please refresh the page.`);
+        } else {
+          setError(`Connection error: ${err.type || err.message}`);
         }
       });
 
@@ -163,7 +404,13 @@ const CallPanel = ({ sessionId, userId }) => {
         // Try to reconnect
         setTimeout(() => {
           if (peerRef.current) {
-            peerRef.current.reconnect();
+            try {
+              console.log("Attempting to reconnect peer after disconnect");
+              peerRef.current.reconnect();
+            } catch (err) {
+              console.error("Error reconnecting after disconnect:", err);
+              setError("Reconnection failed. Please refresh the page.");
+            }
           }
         }, 2000);
       });
@@ -172,7 +419,12 @@ const CallPanel = ({ sessionId, userId }) => {
       return () => {
         if (peer) {
           console.log("Cleaning up peer connection");
-          peer.destroy();
+          clearTimeout(connectionTimeout);
+          try {
+            peer.destroy();
+          } catch (err) {
+            console.error("Error destroying peer in cleanup:", err);
+          }
         }
       };
     } catch (err) {
@@ -182,7 +434,7 @@ const CallPanel = ({ sessionId, userId }) => {
       // Return empty cleanup function on error
       return () => {};
     }
-  }, [userId]);
+  }, [userId, addPeer, removePeer, initializeMedia]);
 
   // Initialize media stream (audio/video)
   const initializeMedia = async () => {
@@ -191,161 +443,234 @@ const CallPanel = ({ sessionId, userId }) => {
       return;
     }
 
-    try {
-      // Check if we already have an active stream
-      if (localStreamRef.current && localStreamRef.current.active) {
-        console.log("Using existing media stream");
-        return;
-      }
+    // Print out all WebRTC configuration for debugging
+    console.log("=== WebRTC Configuration ===");
+    console.log("PeerJS Config:", {
+      host: config.peer?.host,
+      port: config.peer?.port,
+      path: config.peer?.path,
+      secure: true,
+      debug: config.debug,
+    });
+    console.log("ICE Servers:", config.webrtc?.iceServers);
+    console.log("Audio Constraints:", config.webrtc?.audioConstraints);
+    console.log("Video Constraints:", config.webrtc?.videoConstraints);
+    console.log("==========================");
 
-      // Determine which devices to request based on mode
-      const constraints = {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-        video: !isAudioMode
-          ? {
-              width: { ideal: 320 },
-              height: { ideal: 240 },
-              frameRate: { ideal: 24 },
-            }
-          : false,
-      };
+    // Track retry attempts to prevent endless retry loops
+    const maxRetries = 2;
+    let retryCount = 0;
+    let retryTimer = null;
 
-      console.log(`Requesting media with constraints:`, constraints);
-
-      // Check for permission state if available
+    const attemptMediaConnect = async (isRetry = false) => {
       try {
-        const permissions = await navigator.permissions.query({
-          name: "microphone",
-        });
-        console.log(`Microphone permission status: ${permissions.state}`);
-
-        if (permissions.state === "denied") {
-          throw new Error("Microphone access denied in browser permissions");
+        // Check if we already have an active stream
+        if (localStreamRef.current && localStreamRef.current.active) {
+          console.log("Using existing media stream");
+          // Verify tracks are in good state
+          console.log(
+            "Local stream tracks:",
+            localStreamRef.current.getTracks().map((t) => ({
+              kind: t.kind,
+              enabled: t.enabled,
+              muted: t.muted,
+              readyState: t.readyState,
+            }))
+          );
+          return true;
         }
-      } catch (permError) {
-        // Not all browsers support permissions API, so ignore this error
-        console.log("Cannot check permissions API:", permError.message);
-      }
 
-      // First try to enumerate devices to see what's available
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioDevices = devices.filter((d) => d.kind === "audioinput");
-        const videoDevices = devices.filter((d) => d.kind === "videoinput");
-
-        console.log(
-          `Found ${audioDevices.length} audio input devices and ${videoDevices.length} video devices`
-        );
-
-        if (audioDevices.length === 0) {
-          console.warn("No audio input devices found");
+        // Clear any existing retry timer
+        if (retryTimer) {
+          clearTimeout(retryTimer);
+          retryTimer = null;
         }
-      } catch (enumError) {
-        console.warn("Could not enumerate devices:", enumError);
-      }
 
-      // Request media with timeout to prevent hanging
-      const mediaPromise = navigator.mediaDevices.getUserMedia(constraints);
+        // Show retry status to user
+        if (isRetry) {
+          setError(`Retrying media connection... (Attempt ${retryCount})`);
+        }
 
-      // Set a timeout in case getUserMedia hangs
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(
-          () => reject(new Error("Media request timeout after 10 seconds")),
-          10000
-        );
-      });
-
-      // Race between media request and timeout
-      const stream = await Promise.race([mediaPromise, timeoutPromise]);
-
-      console.log(
-        "Got local stream with tracks:",
-        stream.getTracks().map((t) => ({
-          kind: t.kind,
-          enabled: t.enabled,
-          muted: t.muted,
-          id: t.id,
-          label: t.label,
-        }))
-      );
-
-      // Verify we actually got audio tracks
-      const hasMicrophoneAccess = stream.getAudioTracks().length > 0;
-      if (!hasMicrophoneAccess) {
-        console.warn("No audio tracks in media stream");
-      }
-
-      // Store stream references
-      localStreamRef.current = stream;
-      setLocalStream(stream);
-
-      // Connect local stream to video element if in video mode
-      if (localVideoRef.current && !isAudioMode) {
-        localVideoRef.current.srcObject = stream;
-
-        // Add playback detection
-        localVideoRef.current.onloadedmetadata = () => {
-          console.log("Local video metadata loaded");
-          localVideoRef.current.play().catch((e) => {
-            console.error("Error playing local video:", e);
-          });
+        // Determine which devices to request based on mode
+        const constraints = {
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: !isAudioMode
+            ? {
+                width: { ideal: 320 },
+                height: { ideal: 240 },
+                frameRate: { ideal: 24 },
+              }
+            : false,
         };
-      }
 
-      // Set initial mute state based on user preference
-      if (isMuted && stream.getAudioTracks().length > 0) {
-        stream.getAudioTracks().forEach((track) => {
-          track.enabled = false;
+        console.log(`Requesting media with constraints:`, constraints);
+
+        // Check for permission state if available
+        try {
+          const permissions = await navigator.permissions.query({
+            name: "microphone",
+          });
+          console.log(`Microphone permission status: ${permissions.state}`);
+
+          if (permissions.state === "denied") {
+            throw new Error("Microphone access denied in browser permissions");
+          }
+        } catch (permError) {
+          // Not all browsers support permissions API, so ignore this error
+          console.log("Cannot check permissions API:", permError.message);
+        }
+
+        // First try to enumerate devices to see what's available
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const audioDevices = devices.filter((d) => d.kind === "audioinput");
+          const videoDevices = devices.filter((d) => d.kind === "videoinput");
+
+          console.log(
+            `Found ${audioDevices.length} audio input devices and ${videoDevices.length} video devices`
+          );
+
+          if (audioDevices.length === 0) {
+            console.warn("No audio input devices found");
+          }
+        } catch (enumError) {
+          console.warn("Could not enumerate devices:", enumError);
+        }
+
+        // Request media with timeout to prevent hanging
+        const mediaPromise = navigator.mediaDevices.getUserMedia(constraints);
+
+        // Set a timeout in case getUserMedia hangs
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () => reject(new Error("Media request timeout after 10 seconds")),
+            10000
+          );
         });
+
+        // Race between media request and timeout
+        const stream = await Promise.race([mediaPromise, timeoutPromise]);
+
         console.log(
-          "Audio tracks muted:",
-          stream.getAudioTracks().map((t) => t.enabled)
+          "Got local stream with tracks:",
+          stream.getTracks().map((t) => ({
+            kind: t.kind,
+            enabled: t.enabled,
+            muted: t.muted,
+            id: t.id,
+            label: t.label,
+          }))
         );
-      } else if (stream.getAudioTracks().length > 0) {
-        // Ensure audio tracks are explicitly enabled
-        stream.getAudioTracks().forEach((track) => {
-          track.enabled = true;
-        });
-        console.log(
-          "Audio tracks enabled:",
-          stream.getAudioTracks().map((t) => t.enabled)
-        );
-      }
 
-      // Set initial video state based on user preference
-      if (!isVideoEnabled && stream.getVideoTracks().length > 0) {
-        stream.getVideoTracks().forEach((track) => {
-          track.enabled = false;
-        });
-      }
+        // Verify we actually got audio tracks
+        const hasMicrophoneAccess = stream.getAudioTracks().length > 0;
+        if (!hasMicrophoneAccess) {
+          console.warn("No audio tracks in media stream");
+        }
 
-      // Now join the session's media room
-      joinMediaRoom();
+        // Store stream references
+        localStreamRef.current = stream;
+        setLocalStream(stream);
 
-      // Successfully connected
-      setConnected(true);
-      setError(null);
-    } catch (err) {
-      console.error("Error getting user media:", err);
+        // Connect local stream to video element if in video mode
+        if (localVideoRef.current && !isAudioMode) {
+          localVideoRef.current.srcObject = stream;
 
-      // More detailed error handling
-      if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          // Add playback detection
+          localVideoRef.current.onloadedmetadata = () => {
+            console.log("Local video metadata loaded");
+            localVideoRef.current.play().catch((e) => {
+              console.error("Error playing local video:", e);
+            });
+          };
+        }
+
+        // Set initial mute state based on user preference
+        if (isMuted && stream.getAudioTracks().length > 0) {
+          stream.getAudioTracks().forEach((track) => {
+            track.enabled = false;
+          });
+          console.log(
+            "Audio tracks muted:",
+            stream.getAudioTracks().map((t) => t.enabled)
+          );
+        } else if (stream.getAudioTracks().length > 0) {
+          // Ensure audio tracks are explicitly enabled
+          stream.getAudioTracks().forEach((track) => {
+            track.enabled = true;
+          });
+          console.log(
+            "Audio tracks enabled:",
+            stream.getAudioTracks().map((t) => t.enabled)
+          );
+        }
+
+        // Set initial video state based on user preference
+        if (!isVideoEnabled && stream.getVideoTracks().length > 0) {
+          stream.getVideoTracks().forEach((track) => {
+            track.enabled = false;
+          });
+        }
+
+        // Now join the session's media room
+        joinMediaRoom();
+
+        // Successfully connected
+        setConnected(true);
+        setError(null);
+        return true;
+      } catch (err) {
+        console.error("Error getting user media:", err);
+
+        // Specific error handling with detailed user messaging
+        let errorMessage = "";
+        let shouldRetry = false;
+        let fallbackToAudio = false;
+
+        if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          errorMessage =
+            "Could not access camera/microphone (in use by another application)";
+          shouldRetry = true;
+        } else if (
+          err.name === "NotFoundError" ||
+          err.name === "DevicesNotFoundError"
+        ) {
+          errorMessage =
+            "No camera or microphone found. Trying audio-only mode.";
+          fallbackToAudio = true;
+        } else if (
+          err.name === "NotAllowedError" ||
+          err.name === "PermissionDeniedError"
+        ) {
+          errorMessage =
+            "Permission denied. Please allow camera/microphone access in your browser settings and refresh.";
+          // Don't retry permission issues - user action needed
+        } else if (err.message && err.message.includes("timeout")) {
+          errorMessage = "Media request timed out. Retrying...";
+          shouldRetry = true;
+        } else {
+          errorMessage = `Media error: ${err.message}`;
+          shouldRetry = true;
+        }
+
+        // Set error message with retry info
         setError(
-          "Could not access camera/microphone (in use by another application)"
+          errorMessage +
+            (shouldRetry && retryCount < maxRetries
+              ? ` Retrying (${retryCount + 1}/${maxRetries})...`
+              : "")
         );
-      } else if (
-        err.name === "NotFoundError" ||
-        err.name === "DevicesNotFoundError"
-      ) {
-        setError("No camera or microphone found. Try audio-only mode.");
-        setIsAudioMode(true);
 
-        // Try to get audio only if video failed
-        if (!isAudioMode) {
+        // Handle fallback to audio
+        if (fallbackToAudio && !isAudioMode) {
+          console.log("Falling back to audio-only mode");
+          setIsAudioMode(true);
+
+          // Try again with audio-only immediately
           try {
             const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
               audio: {
@@ -357,43 +682,47 @@ const CallPanel = ({ sessionId, userId }) => {
             });
             localStreamRef.current = audioOnlyStream;
             setLocalStream(audioOnlyStream);
-            setIsAudioMode(true);
             joinMediaRoom();
             setConnected(true);
             setError(null);
+            return true;
           } catch (audioErr) {
             console.error("Failed to get audio-only stream:", audioErr);
-            // Create an empty stream for connection
-            const emptyStream = new MediaStream();
-            localStreamRef.current = emptyStream;
-            setLocalStream(emptyStream);
-            joinMediaRoom();
+          }
+        }
+
+        // Try to fallback to empty stream as a last resort
+        if (!shouldRetry || retryCount >= maxRetries) {
+          console.log("Creating empty fallback media stream");
+          const emptyStream = new MediaStream();
+          localStreamRef.current = emptyStream;
+          setLocalStream(emptyStream);
+          joinMediaRoom();
+
+          if (fallbackToAudio) {
             setError(
               "No microphone available. You can hear others but cannot speak."
             );
           }
+          return false;
         }
-      } else if (
-        err.name === "NotAllowedError" ||
-        err.name === "PermissionDeniedError"
-      ) {
-        setError(
-          "Permission denied. Please allow camera/microphone access in your browser settings and refresh the page."
-        );
-      } else if (err.message && err.message.includes("timeout")) {
-        setError(
-          "Media request timed out. Please check your camera/microphone connection and refresh."
-        );
-      } else {
-        setError(`Media error: ${err.message}`);
 
-        // Create an empty stream as fallback
-        const emptyStream = new MediaStream();
-        localStreamRef.current = emptyStream;
-        setLocalStream(emptyStream);
-        joinMediaRoom();
+        // Schedule retry if we should retry
+        if (shouldRetry && retryCount < maxRetries) {
+          retryCount++;
+          console.log(
+            `Scheduling media connection retry #${retryCount} in 2 seconds`
+          );
+          retryTimer = setTimeout(() => attemptMediaConnect(true), 2000);
+          return false;
+        }
+
+        return false;
       }
-    }
+    };
+
+    // Start the media connection process
+    return attemptMediaConnect();
   };
 
   // Join the session's media room
@@ -462,12 +791,12 @@ const CallPanel = ({ sessionId, userId }) => {
   }, [socket, sessionId, userId]);
 
   // Helper to add a peer to state
-  const addPeer = useCallback((peerId, call, stream) => {
+  const addPeer = useCallback((peerId, call, stream, mediaType) => {
     const newPeer = {
       call,
       stream,
       userId: peerId.split("-")[0], // Assume peerId might be formatted as userId-random
-      mediaType: "unknown", // Will be updated with participant data
+      mediaType,
     };
 
     peersRef.current.set(peerId, newPeer);
@@ -500,12 +829,43 @@ const CallPanel = ({ sessionId, userId }) => {
         }
 
         // Check if we have a local stream
-        const streamToSend = localStreamRef.current || new MediaStream();
+        let streamToSend = localStreamRef.current;
+
+        if (
+          !streamToSend ||
+          !streamToSend.active ||
+          streamToSend.getTracks().length === 0
+        ) {
+          console.warn(
+            "No active local stream for outgoing call, using empty stream"
+          );
+          streamToSend = new MediaStream();
+
+          // Try to initialize media again if needed
+          if (!streamToSend.active) {
+            setTimeout(() => {
+              try {
+                initializeMedia();
+              } catch (err) {
+                console.error("Error reinitializing media:", err);
+              }
+            }, 1000);
+          }
+        }
 
         console.log(
           `Calling peer: ${peerId} with stream tracks:`,
-          streamToSend.getTracks().map((t) => t.kind)
+          streamToSend.getTracks().map((t) => ({
+            kind: t.kind,
+            enabled: t.enabled,
+            muted: t.muted,
+          }))
         );
+
+        // Set timeout for call operation
+        const callTimeout = setTimeout(() => {
+          console.warn(`Call to peer ${peerId} timed out after 10 seconds`);
+        }, 10000);
 
         // Make the call with proper error handling
         try {
@@ -513,40 +873,70 @@ const CallPanel = ({ sessionId, userId }) => {
 
           if (!call) {
             console.error(`Failed to create call to peer: ${peerId}`);
+            clearTimeout(callTimeout);
             return;
           }
 
+          // Add temporary placeholder while connecting
+          setPeers((prev) => {
+            const updated = new Map(prev);
+            updated.set(peerId, {
+              call,
+              stream: null,
+              connecting: true,
+              userId: peerId.split("-")[0],
+              mediaType: "connecting",
+            });
+            return updated;
+          });
+
           // Set up event handlers safely
           call.on("stream", (remoteStream) => {
-            console.log(`Received stream from ${peerId}`);
-            addPeer(peerId, call, remoteStream);
+            clearTimeout(callTimeout);
+            console.log(
+              `Received stream from ${peerId} with tracks:`,
+              remoteStream.getTracks().map((t) => t.kind)
+            );
+
+            // Determine media type based on tracks
+            const mediaType =
+              remoteStream.getVideoTracks().length > 0 ? "video" : "audio";
+
+            addPeer(peerId, call, remoteStream, mediaType);
           });
 
           call.on("close", () => {
+            clearTimeout(callTimeout);
             console.log(`Call with ${peerId} closed`);
             removePeer(peerId);
           });
 
           call.on("error", (err) => {
+            clearTimeout(callTimeout);
             console.error(`Call error with ${peerId}:`, err);
             removePeer(peerId);
           });
         } catch (callErr) {
+          clearTimeout(callTimeout);
           console.error(`Error initiating call to peer ${peerId}:`, callErr);
         }
       } catch (err) {
         console.error(`Error in callPeer ${peerId}:`, err);
       }
     },
-    [addPeer, removePeer]
+    [addPeer, removePeer, initializeMedia]
   );
 
   // Socket event listeners
   useEffect(() => {
     if (!socket) return;
 
+    // Cleanup flag to prevent state updates after unmounting
+    let isMounted = true;
+
     // Handle existing participants
     const handleExistingParticipants = (data) => {
+      if (!isMounted) return;
       console.log("Received existing participants:", data.participants);
 
       // Call each existing participant
@@ -558,17 +948,20 @@ const CallPanel = ({ sessionId, userId }) => {
     // Handle new participant joining - don't update count here
     // The count will be updated when the peer connection is established
     const handleParticipantJoined = (data) => {
+      if (!isMounted) return;
       console.log("New participant joined media room:", data);
     };
 
     // Handle participant leaving
     const handleParticipantLeft = (data) => {
+      if (!isMounted) return;
       console.log("Participant left media room:", data);
       removePeer(data.peerId);
     };
 
     // Handle participant state changes
     const handleParticipantStateChanged = (data) => {
+      if (!isMounted) return;
       console.log("Participant state changed:", data);
 
       // Update peer data
@@ -585,9 +978,15 @@ const CallPanel = ({ sessionId, userId }) => {
     socket.on("participant-left", handleParticipantLeft);
     socket.on("participant-state-changed", handleParticipantStateChanged);
 
+    console.log("Registered media socket event handlers");
+
     // Cleanup function
     return () => {
-      // Remove event listeners
+      // Set cleanup flag first
+      isMounted = false;
+
+      // Then remove all event listeners
+      console.log("Removing media socket event handlers");
       socket.off("existing-participants", handleExistingParticipants);
       socket.off("participant-joined", handleParticipantJoined);
       socket.off("participant-left", handleParticipantLeft);
@@ -600,13 +999,81 @@ const CallPanel = ({ sessionId, userId }) => {
     // Only initialize if we have both sessionId and userId
     if (!sessionId || !userId || !socket) return;
 
+    // Cleanup flag to prevent operations after unmounting
+    let isMounted = true;
+
     // Setup peer connection
     const cleanupPeer = setupPeerConnection();
 
     // Return cleanup function
     return () => {
-      cleanupPeer();
-      leaveMediaRoom();
+      console.log("Cleaning up CallPanel resources");
+      isMounted = false;
+
+      // First clean up media resources
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          console.log(`Stopping track: ${track.kind}`);
+          track.stop();
+        });
+        localStreamRef.current = null;
+      }
+
+      // Close all peer connections
+      if (peersRef.current) {
+        peersRef.current.forEach((peerData, peerId) => {
+          if (peerData.call) {
+            try {
+              console.log(`Closing call with peer: ${peerId}`);
+              peerData.call.close();
+            } catch (err) {
+              console.error(`Error closing call with peer ${peerId}:`, err);
+            }
+          }
+        });
+        peersRef.current.clear();
+      }
+
+      // Emit leave media event if socket is still connected
+      if (socket && socket.connected) {
+        try {
+          socket.emit("leave-media", {
+            sessionId,
+            userId,
+            peerId: peerRef.current?.id,
+          });
+        } catch (err) {
+          console.error("Error emitting leave-media event:", err);
+        }
+      }
+
+      // Clean up peer connection
+      if (cleanupPeer && typeof cleanupPeer === "function") {
+        try {
+          cleanupPeer();
+        } catch (err) {
+          console.error("Error in cleanupPeer function:", err);
+        }
+      }
+
+      // Explicitly destroy peer connection
+      if (peerRef.current) {
+        try {
+          peerRef.current.destroy();
+        } catch (err) {
+          console.error("Error destroying peer connection:", err);
+        }
+        peerRef.current = null;
+      }
+
+      // Run additional cleanup from leaveMediaRoom but only if it's safe
+      try {
+        if (socket && socket.connected && sessionId) {
+          leaveMediaRoom();
+        }
+      } catch (err) {
+        console.error("Error in leaveMediaRoom:", err);
+      }
     };
   }, [sessionId, userId, socket, setupPeerConnection, leaveMediaRoom]);
 
@@ -804,22 +1271,64 @@ const CallPanel = ({ sessionId, userId }) => {
     <div className="remote-participants">
       {Array.from(peers.entries()).map(([peerId, peerData]) => (
         <div key={peerId} className="remote-participant">
-          {peerData.mediaType !== "audio" ? (
+          {peerData.connecting ? (
+            // Show connecting state
+            <div className="connecting-participant">
+              <div className="avatar-placeholder">
+                {peerData.userId?.charAt(0) || "U"}
+              </div>
+              <div className="connecting-indicator">Connecting...</div>
+            </div>
+          ) : peerData.mediaType === "video" && peerData.stream ? (
+            // Video participant
             <video
-              ref={(el) => (remoteVideoRefs.current[peerId] = el)}
+              ref={(el) => {
+                remoteVideoRefs.current[peerId] = el;
+                // If element is new and we have a stream, set it immediately
+                if (el && peerData.stream && el.srcObject !== peerData.stream) {
+                  console.log(`Setting video srcObject for peer ${peerId}`);
+                  el.srcObject = peerData.stream;
+                  el.onloadedmetadata = () =>
+                    el
+                      .play()
+                      .catch((e) => console.error("Error playing video:", e));
+                }
+              }}
               autoPlay
               playsInline
               className="remote-video"
             />
           ) : (
+            // Audio participant or fallback
             <div className="audio-participant">
               <div className="avatar-placeholder">
                 {peerData.userId?.charAt(0) || "U"}
               </div>
-              <audio
-                ref={(el) => (remoteAudioRefs.current[peerId] = el)}
-                autoPlay
-              />
+              {peerData.stream ? (
+                <audio
+                  ref={(el) => {
+                    remoteAudioRefs.current[peerId] = el;
+                    // If element is new and we have a stream, set it immediately
+                    if (
+                      el &&
+                      peerData.stream &&
+                      el.srcObject !== peerData.stream
+                    ) {
+                      console.log(`Setting audio srcObject for peer ${peerId}`);
+                      el.srcObject = peerData.stream;
+                      el.onloadedmetadata = () =>
+                        el
+                          .play()
+                          .catch((e) =>
+                            console.error("Error playing audio:", e)
+                          );
+                    }
+                  }}
+                  autoPlay
+                />
+              ) : (
+                <div className="no-stream-indicator">No media</div>
+              )}
             </div>
           )}
         </div>

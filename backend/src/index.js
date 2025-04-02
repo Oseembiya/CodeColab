@@ -41,6 +41,14 @@ const peerServer = configurePeerServer();
 // Register API routes
 app.use("/api", apiRoutes);
 
+// Add special route to handle PeerJS token generation if coming through a proxy
+app.get("/peerjs/peerjs/id", (req, res) => {
+  // This helps PeerJS when it's behind a proxy
+  res.setHeader("Content-Type", "text/plain");
+  const id = `${Math.random().toString(36).substr(2, 10)}`;
+  res.send(id);
+});
+
 // Add root route handler
 app.get("/", (req, res) => {
   res.status(200).json({

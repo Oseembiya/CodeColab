@@ -14,6 +14,7 @@ const configurePeerServer = () => {
     path: peerPath,
     ssl: true,
     proxied: true,
+    allow_discovery: true,
   });
 
   const peerServer = PeerServer({
@@ -24,12 +25,20 @@ const configurePeerServer = () => {
     cleanup_out_msgs: 1000,
     alive_timeout: 60000,
     key: "peerjs",
-    ssl: true, // Always enable SSL for production
+    ssl: true,
     concurrent_limit: 5000,
+    expire_timeout: 90000,
+    ping_interval: 20000,
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
       credentials: true,
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-Forwarded-For",
+      ],
     },
     config: {
       iceServers: [
@@ -62,9 +71,13 @@ const configurePeerServer = () => {
           username: process.env.TURN_USERNAME || "",
           credential: process.env.TURN_CREDENTIAL || "",
         },
-      ].filter(Boolean), // Filter out undefined entries
+      ].filter(Boolean),
+      sdpSemantics: "unified-plan",
+      iceTransportPolicy: "all",
+      bundlePolicy: "max-bundle",
+      rtcpMuxPolicy: "require",
     },
-    debug: 3, // Enable more verbose debugging
+    debug: 3,
   });
 
   // PeerJS server events

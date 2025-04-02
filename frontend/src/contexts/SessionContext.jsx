@@ -175,15 +175,18 @@ export function SessionProvider({ children }) {
       try {
         console.log(`Leaving session ${currentSession.id}`);
 
-        // Emit leave event to socket server
-        socket.emit("leave-session", {
-          sessionId: currentSession.id,
-          userId: user?.uid,
-        });
+        // Save the session ID before clearing state
+        const sessionId = currentSession.id;
 
-        // Clear UI state
+        // Clear UI state first to prevent state updates after unmounting
         setCurrentSession(null);
         localStorage.removeItem("activeSession");
+
+        // Then emit leave event to socket server
+        socket.emit("leave-session", {
+          sessionId,
+          userId: user?.uid,
+        });
 
         console.log("Session context cleared successfully");
       } catch (error) {
