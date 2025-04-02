@@ -234,6 +234,15 @@ const CommunicationManager = ({
     const setupPeerAndSocket = async () => {
       // Track initialization state to prevent multiple setup calls
       const initializationKey = `${sessionId}_${userId}_init`;
+
+      // First check if we already have an active stream to avoid repeated setup
+      if (streamRef.current && streamRef.current.active) {
+        console.debug(
+          "Active stream already exists, skipping media initialization"
+        );
+        return;
+      }
+
       if (sessionStorage.getItem(initializationKey)) {
         console.debug(
           "Setup already initialized for this session, skipping duplicate initialization"
@@ -241,96 +250,161 @@ const CommunicationManager = ({
         return;
       }
 
+      // Mark as initialized at the start to prevent duplicate setups
+      sessionStorage.setItem(initializationKey, Date.now().toString());
+
+      // Add a failsafe to prevent excessive media requests
+      const lastMediaRequestTime = parseInt(
+        sessionStorage.getItem("lastMediaRequestTime") || "0",
+        10
+      );
+      const now = Date.now();
+      const mediaRequestCooldown = 2000; // 2 seconds cooldown
+
+      if (now - lastMediaRequestTime < mediaRequestCooldown) {
+        console.debug("Media request throttled to prevent excessive calls");
+        return;
+      }
+
+      // Update last request time
+      sessionStorage.setItem("lastMediaRequestTime", now.toString());
+
+      // Attempt to get user media stream, but continue setup even if it fails
+      console.log("Attempting to get user media stream...");
+
+      // Create a dummy stream to use if real media access fails
+      let mediaStream = null;
+      let mediaError = null;
+
+      // Configure audio options for optimal quality
+      const audioOptions = mediaConstraints.audio
+        ? {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+            channelCount: 2,
+            latency: 0.01,
+          }
+        : false;
+
+      // Use provided constraints but ensure our audio quality settings
+      const streamConstraints = {
+        ...mediaConstraints,
+        audio: mediaConstraints.audio ? audioOptions : false,
+      };
+
       try {
-        // Mark as initialized at the start to prevent duplicate setups
-        sessionStorage.setItem(initializationKey, Date.now().toString());
+        // First try to get the full requested media stream
+        mediaStream = await navigator.mediaDevices
+          .getUserMedia(streamConstraints)
+          .catch(async (mainErr) => {
+            mediaError = mainErr;
+            console.warn("Failed to get full media stream:", mainErr.message);
 
-        // 1. Get user media stream
-        console.log("Attempting to get user media stream...");
-
-        // Configure audio options for optimal quality
-        const audioOptions = mediaConstraints.audio
-          ? {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-              sampleRate: 48000,
-              channelCount: 2,
-              latency: 0.01,
-              highpassFilter: true,
-              volume: 1.0,
+            // If we requested both audio and video but failed, try with just audio
+            if (mediaConstraints.audio && mediaConstraints.video) {
+              console.log("Trying with audio only...");
+              try {
+                return await navigator.mediaDevices.getUserMedia({
+                  audio: audioOptions,
+                  video: false,
+                });
+              } catch (audioErr) {
+                console.warn(
+                  "Failed to get audio-only stream:",
+                  audioErr.message
+                );
+                // Allow initialization to continue even without media
+                return null;
+              }
             }
-          : false;
+            // If initial request failed and wasn't for both audio+video, return null
+            return null;
+          });
 
-        // Use provided constraints but ensure our audio quality settings
-        const streamConstraints = {
-          ...mediaConstraints,
-          audio: mediaConstraints.audio ? audioOptions : false,
-        };
+        if (mediaStream) {
+          console.log("User media stream acquired successfully");
+          console.log(
+            "Media stream tracks:",
+            mediaStream
+              .getTracks()
+              .map(
+                (track) =>
+                  `${track.kind}: ${track.label} (enabled: ${track.enabled}, muted: ${track.muted})`
+              )
+          );
+        } else {
+          // Create an empty stream if we couldn't get a real one
+          mediaStream = new MediaStream();
+          console.warn("Using empty MediaStream - device access failed");
+        }
+      } catch (err) {
+        console.error("Error initializing media stream:", err);
+        mediaError = err;
+        // Create an empty stream if we couldn't get a real one
+        mediaStream = new MediaStream();
+        console.warn("Using empty MediaStream - device access failed");
+      }
 
-        const mediaStream = await navigator.mediaDevices.getUserMedia(
-          streamConstraints
-        );
+      // Set stream even if it's empty to allow joining without media
+      streamRef.current = mediaStream;
+      setStream(mediaStream);
+      onStreamReady?.(mediaStream);
 
-        console.log("User media stream acquired successfully");
-        console.log(
-          "Media stream tracks:",
-          mediaStream
-            .getTracks()
-            .map(
-              (track) =>
-                `${track.kind}: ${track.label} (enabled: ${track.enabled}, muted: ${track.muted})`
-            )
-        );
+      // Report the error but continue initialization
+      if (mediaError) {
+        const errMsg = `Warning: ${mediaError.name}: No camera/microphone access`;
+        console.warn(errMsg);
+        setError(errMsg);
+        onError?.(errMsg);
+      }
 
-        streamRef.current = mediaStream;
-        setStream(mediaStream);
-        onStreamReady?.(mediaStream);
+      // 2. Initialize PeerJS with or without media stream
+      const peerId = `${sessionId}-${userId}-${Date.now()}`;
+      console.log(`Initializing PeerJS with ID: ${peerId}`);
+      console.log(
+        `Connecting to PeerJS server: ${config.peer.host}:${config.peer.port}`
+      );
 
-        // 2. Initialize PeerJS
-        const peerId = `${sessionId}-${userId}-${Date.now()}`;
-        console.log(`Initializing PeerJS with ID: ${peerId}`);
-        console.log(
-          `Connecting to PeerJS server: ${config.peer.host}:${config.peer.port}`
-        );
+      // If connection fails with CSP error, the Content-Security-Policy in netlify.toml
+      // might need updating to include 'https://0.peerjs.com wss://0.peerjs.com'
+      const peer = new Peer(peerId, {
+        host: config.peer.host,
+        port: config.peer.port,
+        path: config.peer.path,
+        secure: config.peer.secure,
+        debug: 3, // Enable full debugging
+        config: {
+          iceServers: config.webrtc.iceServers,
+          iceTransportPolicy: "all",
+          iceCandidatePoolSize: 10,
+          bundlePolicy: "max-bundle",
+          rtcpMuxPolicy: "require",
+          sdpSemantics: "unified-plan",
+          reconnectTimer: 3000,
+          peerIdentity: null,
+          sdpTransform: (sdp) => {
+            // Add better audio codecs configuration
+            let newSdp = sdp;
 
-        // If connection fails with CSP error, the Content-Security-Policy in netlify.toml
-        // might need updating to include 'https://0.peerjs.com wss://0.peerjs.com'
-        const peer = new Peer(peerId, {
-          host: config.peer.host,
-          port: config.peer.port,
-          path: config.peer.path,
-          secure: config.peer.secure,
-          debug: 3, // Enable full debugging
-          config: {
-            iceServers: config.webrtc.iceServers,
-            iceTransportPolicy: "all",
-            iceCandidatePoolSize: 10,
-            bundlePolicy: "max-bundle",
-            rtcpMuxPolicy: "require",
-            sdpSemantics: "unified-plan",
-            reconnectTimer: 3000,
-            peerIdentity: null,
-            sdpTransform: (sdp) => {
-              // Add better audio codecs configuration
-              let newSdp = sdp;
+            // Improve opus codec parameters
+            newSdp = newSdp.replace(
+              "useinbandfec=1",
+              "useinbandfec=1; stereo=1; maxaveragebitrate=510000; maxplaybackrate=48000"
+            );
 
-              // Improve opus codec parameters
-              newSdp = newSdp.replace(
-                "useinbandfec=1",
-                "useinbandfec=1; stereo=1; maxaveragebitrate=510000; maxplaybackrate=48000"
-              );
+            // Prioritize opus for better audio
+            if (newSdp.includes("opus/48000")) {
+              // Move opus to the top of the codec list
+              const mediaSection = newSdp.match(/m=audio.*\r\n/g);
+              if (mediaSection && mediaSection.length > 0) {
+                const codecSection = newSdp
+                  .split(mediaSection[0])[1]
+                  .split("m=")[0];
 
-              // Prioritize opus for better audio
-              if (newSdp.includes("opus/48000")) {
-                // Move opus to the top of the codec list
-                const mediaSection = newSdp.match(/m=audio.*\r\n/g);
-                if (mediaSection && mediaSection.length > 0) {
-                  const codecSection = newSdp
-                    .split(mediaSection[0])[1]
-                    .split("m=")[0];
-
-                  // Find opus
+                // Find opus
+                try {
                   const opusRTPLine = codecSection.match(
                     /a=rtpmap:(\d+) opus\/48000.*/
                   )[0];
@@ -352,210 +426,205 @@ const CommunicationManager = ({
                   );
 
                   newSdp = newSdp.replace(mediaSection[0], newMediaSection);
+                } catch (codecErr) {
+                  console.warn("Error while optimizing opus codec:", codecErr);
                 }
               }
+            }
 
-              console.log("Audio SDP modified to improve quality");
-              return newSdp;
-            },
+            console.log("Audio SDP modified to improve quality");
+            return newSdp;
           },
-          pingInterval: config.peer.pingInterval || 10000, // Use config value or default to 10s
-          retryAttempts: config.peer.reconnectAttempts || 10, // More reconnection attempts
-          iceTransportPolicy: "all",
-          reliable: true,
-        });
+        },
+        pingInterval: config.peer.pingInterval || 10000, // Use config value or default to 10s
+        retryAttempts: config.peer.reconnectAttempts || 10, // More reconnection attempts
+        iceTransportPolicy: "all",
+        reliable: true,
+      });
 
-        peerRef.current = peer;
+      peerRef.current = peer;
 
-        // Error handling
-        peer.on("error", (err) => {
-          console.error("Peer error:", err.type, err);
+      // Error handling
+      peer.on("error", (err) => {
+        console.error("Peer error:", err.type, err);
 
-          // Track stale peer IDs
-          if (err.type === "peer-unavailable") {
-            const errorMessage = err.message || "";
-            const match = errorMessage.match(/Could not connect to peer (.*)/);
-            if (match && match[1]) {
-              const stalePeerId = match[1];
-              console.log(`Marking unavailable peer as stale: ${stalePeerId}`);
-              markPeerAsStale(stalePeerId);
-            }
-
-            console.log(
-              "Attempted to connect to unavailable peer, this is normal if users reconnected"
-            );
-            // Don't display this error to users
-            setError(null);
-            onError?.(null);
-          } else if (err.type === "server-error") {
-            console.error("PeerJS server error:", err);
-            const errMsg =
-              "Server communication error. Please refresh the page.";
-            setError(errMsg);
-            onError?.(errMsg);
-          } else if (err.type === "network" || err.type === "disconnected") {
-            const errMsg = `Peer error: ${err.type}`;
-            setError(errMsg);
-            onError?.(errMsg);
-            console.log("Attempting to reconnect due to network error");
-
-            clearTimeout(reconnectTimeoutRef.current);
-            reconnectTimeoutRef.current = setTimeout(() => {
-              if (!isUnmountingRef.current && peerRef.current) {
-                if (peerRef.current.disconnected) {
-                  setReconnectCount((prev) => prev + 1);
-                  try {
-                    // First try to reconnect to the existing peer
-                    console.log("Attempting to reconnect to PeerJS server...");
-                    peerRef.current.reconnect();
-
-                    // If we have too many reconnection attempts, try to destroy and recreate
-                    if (
-                      reconnectCount > config.webrtc.reconnectionAttempts ||
-                      reconnectCount > 3
-                    ) {
-                      console.log(
-                        "Multiple reconnect attempts failed, recreating peer"
-                      );
-                      setTimeout(() => {
-                        try {
-                          if (peerRef.current) {
-                            console.log("Destroying peer and recreating...");
-                            peerRef.current.destroy();
-
-                            // Clear the initialization key to allow recreation
-                            sessionStorage.removeItem(initializationKey);
-
-                            // Setup again with slight delay to ensure clean slate
-                            setTimeout(() => {
-                              setupPeerAndSocket();
-                            }, 1000);
-                          }
-                        } catch (e) {
-                          console.error("Error recreating peer:", e);
-                        }
-                      }, 1000);
-                    }
-                  } catch (e) {
-                    console.error("Error during reconnection:", e);
-                  }
-                }
-              }
-            }, 2000);
-          } else {
-            const errMsg = `Peer error: ${err.type}`;
-            setError(errMsg);
-            onError?.(errMsg);
+        // Track stale peer IDs
+        if (err.type === "peer-unavailable") {
+          const errorMessage = err.message || "";
+          const match = errorMessage.match(/Could not connect to peer (.*)/);
+          if (match && match[1]) {
+            const stalePeerId = match[1];
+            console.log(`Marking unavailable peer as stale: ${stalePeerId}`);
+            markPeerAsStale(stalePeerId);
           }
-        });
 
-        peer.on("disconnected", () => {
-          if (!isUnmountingRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-            reconnectTimeoutRef.current = setTimeout(() => {
-              if (peerRef.current && !isUnmountingRef.current) {
-                if (peerRef.current.disconnected) {
+          console.log(
+            "Attempted to connect to unavailable peer, this is normal if users reconnected"
+          );
+          // Don't display this error to users
+          setError(null);
+          onError?.(null);
+        } else if (err.type === "server-error") {
+          console.error("PeerJS server error:", err);
+          const errMsg = "Server communication error. Please refresh the page.";
+          setError(errMsg);
+          onError?.(errMsg);
+        } else if (err.type === "network" || err.type === "disconnected") {
+          const errMsg = `Peer error: ${err.type}`;
+          setError(errMsg);
+          onError?.(errMsg);
+          console.log("Attempting to reconnect due to network error");
+
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (!isUnmountingRef.current && peerRef.current) {
+              if (peerRef.current.disconnected) {
+                setReconnectCount((prev) => prev + 1);
+                try {
+                  // First try to reconnect to the existing peer
+                  console.log("Attempting to reconnect to PeerJS server...");
                   peerRef.current.reconnect();
+
+                  // If we have too many reconnection attempts, try to destroy and recreate
+                  if (
+                    reconnectCount > config.webrtc.reconnectionAttempts ||
+                    reconnectCount > 3
+                  ) {
+                    console.log(
+                      "Multiple reconnect attempts failed, recreating peer"
+                    );
+                    setTimeout(() => {
+                      try {
+                        if (peerRef.current) {
+                          console.log("Destroying peer and recreating...");
+                          peerRef.current.destroy();
+
+                          // Clear the initialization key to allow recreation
+                          sessionStorage.removeItem(initializationKey);
+
+                          // Setup again with slight delay to ensure clean slate
+                          setTimeout(() => {
+                            setupPeerAndSocket();
+                          }, 1000);
+                        }
+                      } catch (e) {
+                        console.error("Error recreating peer:", e);
+                      }
+                    }, 1000);
+                  }
+                } catch (e) {
+                  console.error("Error during reconnection:", e);
                 }
               }
-            }, 2000);
-          }
-        });
-
-        peer.on("close", () => {
-          console.error("Peer connection closed");
-        });
-
-        // Connect to server when peer is ready
-        peer.on("open", (peerId) => {
-          // Store local peer ID to prevent self-connections
-          localPeerIdRef.current = peerId;
-
-          if (socket && !isUnmountingRef.current) {
-            const userName =
-              user?.displayName ||
-              user?.email?.split("@")[0] ||
-              localStorage.getItem("userName") ||
-              sessionStorage.getItem("userName") ||
-              `User-${userId.substring(0, 6)}`;
-
-            // Store in localStorage for consistency across sessions
-            if (
-              !localStorage.getItem("userName") &&
-              userName !== `User-${userId.substring(0, 6)}`
-            ) {
-              localStorage.setItem("userName", userName);
-              localStorage.setItem(`user-${userId}`, userName);
             }
+          }, 2000);
+        } else {
+          const errMsg = `Peer error: ${err.type}`;
+          setError(errMsg);
+          onError?.(errMsg);
+        }
+      });
 
-            // Join after a short delay to ensure WebRTC is fully initialized
-            setTimeout(() => {
-              socket.emit("join-video", {
-                sessionId,
-                userId,
-                peerId,
-                userName,
-              });
-            }, 300);
+      peer.on("disconnected", () => {
+        if (!isUnmountingRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (peerRef.current && !isUnmountingRef.current) {
+              if (peerRef.current.disconnected) {
+                peerRef.current.reconnect();
+              }
+            }
+          }, 2000);
+        }
+      });
+
+      peer.on("close", () => {
+        console.error("Peer connection closed");
+      });
+
+      // Connect to server when peer is ready
+      peer.on("open", (peerId) => {
+        // Store local peer ID to prevent self-connections
+        localPeerIdRef.current = peerId;
+
+        if (socket && !isUnmountingRef.current) {
+          const userName =
+            user?.displayName ||
+            user?.email?.split("@")[0] ||
+            localStorage.getItem("userName") ||
+            sessionStorage.getItem("userName") ||
+            `User-${userId.substring(0, 6)}`;
+
+          // Store in localStorage for consistency across sessions
+          if (
+            !localStorage.getItem("userName") &&
+            userName !== `User-${userId.substring(0, 6)}`
+          ) {
+            localStorage.setItem("userName", userName);
+            localStorage.setItem(`user-${userId}`, userName);
           }
 
-          // Mark initial setup as done
-          setInitialSetupDone(true);
+          // Join after a short delay to ensure WebRTC is fully initialized
+          setTimeout(() => {
+            socket.emit("join-video", {
+              sessionId,
+              userId,
+              peerId,
+              userName,
+            });
+          }, 300);
+        }
+
+        // Mark initial setup as done
+        setInitialSetupDone(true);
+      });
+
+      // Handle incoming calls
+      peer.on("call", (call) => {
+        console.log(`Received incoming call from ${call.peer}`);
+        if (streamRef.current) {
+          console.log(
+            `Answering call with local stream (${
+              streamRef.current.getTracks().length
+            } tracks)`
+          );
+          call.answer(streamRef.current);
+        } else {
+          console.error("Cannot answer call - no local stream available");
+        }
+
+        call.on("stream", (remoteStream) => {
+          console.log(
+            `Received remote stream from ${call.peer} with ${
+              remoteStream.getTracks().length
+            } tracks`
+          );
+          console.log(
+            "Remote tracks:",
+            remoteStream
+              .getTracks()
+              .map(
+                (track) =>
+                  `${track.kind}: ${track.readyState} (enabled: ${track.enabled})`
+              )
+          );
+
+          const peerIdParts = call.peer.split("-");
+          const remoteUserId =
+            peerIdParts.length > 1 ? peerIdParts[1] : "unknown";
+
+          // Get the socket-provided name or use a more friendly fallback
+          const name =
+            localStorage.getItem(`remoteUser-${call.peer}`) ||
+            `User-${remoteUserId.substring(0, 6)}`;
+
+          addPeerToState(call.peer, remoteStream, name);
         });
 
-        // Handle incoming calls
-        peer.on("call", (call) => {
-          console.log(`Received incoming call from ${call.peer}`);
-          if (streamRef.current) {
-            console.log(
-              `Answering call with local stream (${
-                streamRef.current.getTracks().length
-              } tracks)`
-            );
-            call.answer(streamRef.current);
-          } else {
-            console.error("Cannot answer call - no local stream available");
-          }
-
-          call.on("stream", (remoteStream) => {
-            console.log(
-              `Received remote stream from ${call.peer} with ${
-                remoteStream.getTracks().length
-              } tracks`
-            );
-            console.log(
-              "Remote tracks:",
-              remoteStream
-                .getTracks()
-                .map(
-                  (track) =>
-                    `${track.kind}: ${track.readyState} (enabled: ${track.enabled})`
-                )
-            );
-
-            const peerIdParts = call.peer.split("-");
-            const remoteUserId =
-              peerIdParts.length > 1 ? peerIdParts[1] : "unknown";
-
-            // Get the socket-provided name or use a more friendly fallback
-            const name =
-              localStorage.getItem(`remoteUser-${call.peer}`) ||
-              `User-${remoteUserId.substring(0, 6)}`;
-
-            addPeerToState(call.peer, remoteStream, name);
-          });
-
-          call.on("close", () => {
-            removePeerFromState(call.peer);
-          });
+        call.on("close", () => {
+          removePeerFromState(call.peer);
         });
-      } catch (err) {
-        console.error("Error initializing communication:", err);
-        setError(err.message);
-        onError?.(err.message);
-        // Remove initialization mark if failed
-        sessionStorage.removeItem(initializationKey);
-      }
+      });
     };
 
     // Make setupPeerAndSocket accessible for retry

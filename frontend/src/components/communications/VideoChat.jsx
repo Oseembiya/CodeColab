@@ -66,6 +66,9 @@ const VideoChat = ({ sessionId, userId }) => {
       x: e.clientX - position.x,
       y: e.clientY - position.y,
     };
+
+    // Prevent the default behavior which can cause re-renders in some browsers
+    e.preventDefault();
   };
 
   const handleMouseMove = useCallback((e) => {
@@ -99,15 +102,30 @@ const VideoChat = ({ sessionId, userId }) => {
         Math.min(newY, viewportHeight - containerRect.height)
       );
 
-      // Update position state
-      setPosition({
-        x: boundedX,
-        y: boundedY,
-      });
+      // Directly update DOM position for smoother dragging without state updates
+      if (dragRef.current) {
+        dragRef.current.style.setProperty("--x", `${boundedX}px`);
+        dragRef.current.style.setProperty("--y", `${boundedY}px`);
+      }
     });
   }, []);
 
+  // When dragging ends, we update the React state
   const handleMouseUp = () => {
+    if (isDraggingRef.current && dragRef.current) {
+      // Get current position from computed style
+      const style = getComputedStyle(dragRef.current);
+      const xVal = style.getPropertyValue("--x");
+      const yVal = style.getPropertyValue("--y");
+
+      // Extract numeric values (remove 'px')
+      const x = parseInt(xVal, 10) || position.x;
+      const y = parseInt(yVal, 10) || position.y;
+
+      // Update React state once at the end to avoid re-renders during drag
+      setPosition({ x, y });
+    }
+
     setIsDragging(false);
     isDraggingRef.current = false;
 
@@ -140,9 +158,10 @@ const VideoChat = ({ sessionId, userId }) => {
     };
   }, []);
 
-  // Use CommunicationManager to handle WebRTC connections
+  // Use CommunicationManager with key prop to prevent remounts during drag
   return (
     <CommunicationManager
+      key={`${sessionId}-${userId}`}
       sessionId={sessionId}
       userId={userId}
       mediaConstraints={{ audio: true, video: true }}
