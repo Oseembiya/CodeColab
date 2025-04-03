@@ -8,13 +8,6 @@ import { UserMetricsProvider } from "./contexts/UserMetricsContext.jsx";
 import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
 import { NotificationProvider } from "./contexts/NotificationContext.jsx";
-import LoadingFallback from "./components/common/LoadingFallback";
-
-// Initialize error tracking for production
-const initErrorTracking = () => {
-  // Production-only error tracking
-  console.log("Error tracking initialized in production mode");
-};
 
 /**
  * Render a route based on its configuration with suspense boundaries
@@ -40,19 +33,6 @@ const renderRouteElement = (route) => {
       </ErrorBoundary>
     );
   }
-
-  const Component = route.element.component;
-  return (
-    <ErrorBoundary>
-      <Suspense
-        fallback={
-          <LoadingFallback message={`Loading ${route.path || "page"}...`} />
-        }
-      >
-        <Component />
-      </Suspense>
-    </ErrorBoundary>
-  );
 };
 
 /**
