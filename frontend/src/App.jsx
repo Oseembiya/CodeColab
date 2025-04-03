@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
-import { AuthProvider } from "./hooks/useAuth";
 import { SocketProvider } from "./contexts/SocketContext.jsx";
 import { SessionProvider } from "./contexts/SessionContext.jsx";
 import { FriendProvider } from "./contexts/FriendContext.jsx";
