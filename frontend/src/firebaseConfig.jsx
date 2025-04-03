@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, signInWithPopup } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import config from "./config/env";
@@ -16,6 +16,37 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 
+/**
+ * Custom function to handle popup authentication with better error handling
+ * @param {AuthProvider} provider - The auth provider (Google, Facebook, etc.)
+ * @returns {Promise<UserCredential>} - Promise resolving to user credentials
+ */
+const handlePopupAuth = async (provider) => {
+  try {
+    // Use standard Firebase signInWithPopup with the specified provider
+    const result = await signInWithPopup(auth, provider);
+    return result;
+  } catch (error) {
+    console.error("Popup auth error:", error);
+
+    // Improve error handling for specific cases
+    if (error.code === "auth/popup-closed-by-user") {
+      throw new Error("Authentication was cancelled by the user.");
+    } else if (error.code === "auth/popup-blocked") {
+      throw new Error(
+        "Authentication popup was blocked by the browser. Please enable popups for this site."
+      );
+    } else if (error.code === "auth/cancelled-popup-request") {
+      throw new Error(
+        "Multiple popup requests were made. Only one popup can be open at a time."
+      );
+    }
+
+    // Forward other errors
+    throw error;
+  }
+};
+
 // Initialize Analytics conditionally (only in browser environment)
 let analytics = null;
 if (typeof window !== "undefined") {
@@ -28,4 +59,4 @@ if (typeof window !== "undefined") {
 }
 
 // Export Firebase services
-export { app, db, auth, storage, analytics };
+export { app, db, auth, storage, analytics, handlePopupAuth };
