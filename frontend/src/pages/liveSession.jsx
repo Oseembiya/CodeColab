@@ -28,12 +28,18 @@ const LiveSession = () => {
   const [error, setError] = useState(null);
   const [sessionEndedMessage, setSessionEndedMessage] = useState(null);
   const [unsubscribeRef, setUnsubscribeRef] = useState(null);
+  const [userId, setUserId] = useState(null); // Store userId in state instead
 
   // References to prevent duplicate requests
   const requestedInitialCount = useRef(false);
 
-  // User ID - extracted from auth
-  const userId = auth.currentUser?.uid;
+  // Set userId from auth - moved inside useEffect to avoid hook violations
+  useEffect(() => {
+    // Get user ID from auth
+    if (auth.currentUser) {
+      setUserId(auth.currentUser.uid);
+    }
+  }, []);
 
   // Check authentication and redirect if necessary
   useEffect(() => {
@@ -120,13 +126,13 @@ const LiveSession = () => {
         setUnsubscribeRef(() => unsubscribe);
 
         // Emit join event to socket
-        if (socket && userId) {
+        if (socket && user.uid) {
           console.log(
-            `Emitting join-session event for session ${sessionId}, user ${userId}`
+            `Emitting join-session event for session ${sessionId}, user ${user.uid}`
           );
           socket.emit("join-session", {
             sessionId,
-            userId,
+            userId: user.uid,
             username: user?.displayName || "Anonymous",
             photoURL: user?.photoURL,
           });
@@ -163,9 +169,9 @@ const LiveSession = () => {
 
       try {
         // Clean up socket connection
-        if (socket && sessionId && userId) {
-          socket.emit("leave-session", { sessionId, userId });
-          socket.emit("user-left-session", { sessionId, userId });
+        if (socket && sessionId && user.uid) {
+          socket.emit("leave-session", { sessionId, userId: user.uid });
+          socket.emit("user-left-session", { sessionId, userId: user.uid });
         }
 
         // Clean up Firestore listener
@@ -186,13 +192,12 @@ const LiveSession = () => {
     contextJoinSession,
     contextLeaveSession,
     socket,
-    userId,
     unsubscribeRef,
   ]);
 
   // Socket event listeners
   useEffect(() => {
-    if (!socket || !sessionId) return;
+    if (!socket || !sessionId || !user) return;
 
     // Handle session update event
     const handleSessionUpdate = (updatedSession) => {
@@ -226,7 +231,7 @@ const LiveSession = () => {
           });
         }
 
-        const endedByCurrentUser = endedBy === userId;
+        const endedByCurrentUser = endedBy === user.uid;
         const message = endedByCurrentUser
           ? "You have successfully completed this session. Redirecting to sessions page..."
           : "This session has been completed by the host. Redirecting to sessions page...";
@@ -255,17 +260,17 @@ const LiveSession = () => {
       socket.off("user-joined");
       socket.off("user-left");
     };
-  }, [socket, sessionId, userId, currentSession, contextJoinSession, navigate]);
+  }, [socket, sessionId, user, currentSession, contextJoinSession, navigate]);
 
   // Handle UI-triggered leave
-  const handleLeave = () => {
-    if (socket && currentSession) {
+  const handleLeave = useCallback(() => {
+    if (socket && currentSession && user) {
       console.log("Starting leave process for session:", sessionId);
 
       // Clean up socket connection
       socket.emit("leave-session", {
         sessionId,
-        userId,
+        userId: user.uid,
       });
 
       // Clean up context
@@ -274,7 +279,7 @@ const LiveSession = () => {
 
     // Navigate away
     navigate("/sessions");
-  };
+  }, [socket, currentSession, sessionId, user, contextLeaveSession, navigate]);
 
   // Render component
   return (
@@ -320,7 +325,7 @@ const LiveSession = () => {
 
           <div className="session-content">
             <div className="editor-section">
-              <CollaborativeEditor sessionId={sessionId} userId={userId} />
+              <CollaborativeEditor sessionId={sessionId} userId={user?.uid} />
             </div>
           </div>
         </div>
