@@ -8,7 +8,6 @@ const Login = lazy(() => import("./pages/login"));
 const Profile = lazy(() => import("./pages/profile"));
 const Sessions = lazy(() => import("./pages/sessions"));
 const LiveSession = lazy(() => import("./pages/liveSession"));
-const Settings = lazy(() => import("./pages/settings"));
 const NotFound = lazy(() => import("./pages/notFound"));
 
 /**
@@ -76,13 +75,6 @@ const routeConfig = [
         element: {
           type: "component",
           component: Profile,
-        },
-      },
-      {
-        path: "settings",
-        element: {
-          type: "component",
-          component: Settings,
         },
       },
     ],
