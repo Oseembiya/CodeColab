@@ -26,7 +26,8 @@ console.log("Set PeerJS environment variables for Render compatibility");
 try {
   const peerModule = require("peer");
   console.log("PeerJS module found:", !!peerModule);
-  console.log("PeerJS version:", require("peer/package.json").version);
+  // Don't try to access package.json directly as it may not be exported
+  console.log("PeerJS module successfully loaded");
 } catch (error) {
   console.error("PeerJS module not found or error loading it:", error.message);
 }
