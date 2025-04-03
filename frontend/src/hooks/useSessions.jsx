@@ -39,17 +39,16 @@ export const useSessions = () => {
       }
 
       // Query for sessions where user is participant or owner
+      // Removing orderBy to avoid composite index requirement
       const sessionsRef = collection(db, "sessions");
       const userSessionsQuery = query(
         sessionsRef,
-        where("participants", "array-contains", user.uid),
-        orderBy("createdAt", "desc")
+        where("participants", "array-contains", user.uid)
       );
 
       const ownedSessionsQuery = query(
         sessionsRef,
-        where("ownerId", "==", user.uid),
-        orderBy("createdAt", "desc")
+        where("ownerId", "==", user.uid)
       );
 
       // Execute queries
@@ -73,9 +72,26 @@ export const useSessions = () => {
 
       // Convert to array and sort by creation date (newest first)
       const sessionsArray = Array.from(uniqueSessions.values());
-      sessionsArray.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
+      sessionsArray.sort((a, b) => {
+        // Handle both Firestore timestamps and ISO date strings
+        const getTimestamp = (item) => {
+          if (!item.createdAt) return 0;
+
+          // Handle Firestore Timestamp objects
+          if (typeof item.createdAt.toDate === "function") {
+            return item.createdAt.toDate().getTime();
+          }
+
+          // Handle ISO strings or already converted dates
+          if (typeof item.createdAt === "string") {
+            return new Date(item.createdAt).getTime();
+          }
+
+          return 0;
+        };
+
+        return getTimestamp(b) - getTimestamp(a);
+      });
 
       setSessions(sessionsArray);
       setLoading(false);
