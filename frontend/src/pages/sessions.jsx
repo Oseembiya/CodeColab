@@ -15,6 +15,9 @@ import CreateSessionModal from "../components/sessions/CreateSessionModal";
 import JoinSessionModal from "../components/sessions/JoinSessionModal";
 import SessionCard from "../components/sessions/SessionCard";
 import SessionFilters from "../components/sessions/SessionFilters";
+import { useAuth } from "../hooks/useAuth";
+import { useSessions } from "../hooks/useSessions";
+import { useSession } from "../contexts/SessionContext";
 
 const Sessions = () => {
   const navigate = useNavigate();
@@ -102,7 +105,7 @@ const Sessions = () => {
     try {
       const sessionId = await sessionContextCreateSession(sessionData);
       setShowCreateModal(false);
-      navigate(`/dashboard/sessions/${sessionId}`);
+      navigate(`/session/${sessionId}`);
     } catch (error) {
       console.error("Failed to create session:", error);
     }
@@ -116,7 +119,7 @@ const Sessions = () => {
       const result = await joinSession(sessionId);
 
       // Navigate to session
-      navigate(`/sessions/${sessionId}`);
+      navigate(`/session/${sessionId}`);
     } catch (error) {
       console.error("Failed to join session:", error);
       setJoinError(error.message);
@@ -177,7 +180,7 @@ const Sessions = () => {
       setJoinError("");
 
       // Navigate to session
-      navigate(`/dashboard/sessions/${targetSessionId}`);
+      navigate(`/session/${targetSessionId}`);
     } catch (error) {
       console.error("Failed to join session:", error);
       setJoinError(error.message);

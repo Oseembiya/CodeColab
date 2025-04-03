@@ -69,7 +69,7 @@ const Dashboard = () => {
       const sessionId = await createSession(sessionData);
       setShowCreateModal(false);
       // Navigate to the newly created session
-      navigate(`/sessions/${sessionId}`);
+      navigate(`/session/${sessionId}`);
     } catch (error) {
       console.error("Failed to create session:", error);
       // Handle error (you might want to show this to the user)

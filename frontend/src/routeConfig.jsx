@@ -17,7 +17,7 @@ const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage"));
  * and nesting structure.
  */
 const routeConfig = [
-  // Login route (public)
+  // Public routes
   {
     path: "/login",
     element: {
@@ -25,7 +25,6 @@ const routeConfig = [
       component: Auth,
     },
   },
-  // Signup route (public)
   {
     path: "/signup",
     element: {
@@ -34,7 +33,7 @@ const routeConfig = [
     },
   },
 
-  // Root redirect for authenticated users
+  // Root redirect
   {
     path: "/",
     element: {
@@ -52,7 +51,7 @@ const routeConfig = [
     ],
   },
 
-  // Dashboard and protected routes
+  // Protected routes - main application routes
   {
     path: "/dashboard",
     element: {
@@ -67,45 +66,74 @@ const routeConfig = [
           component: Dashboard,
         },
       },
+    ],
+  },
+  {
+    path: "/sessions",
+    element: {
+      type: "protected",
+      component: ProtectedRoute,
+    },
+    children: [
       {
-        path: "sessions",
+        index: true,
         element: {
           type: "component",
           component: Sessions,
         },
       },
+    ],
+  },
+  {
+    path: "/session/:sessionId",
+    element: {
+      type: "protected",
+      component: ProtectedRoute,
+    },
+    children: [
       {
-        path: "session/:sessionId",
+        index: true,
         element: {
           type: "component",
           component: LiveSession,
         },
       },
+    ],
+  },
+  {
+    path: "/profile",
+    element: {
+      type: "protected",
+      component: ProtectedRoute,
+    },
+    children: [
       {
-        path: "profile",
+        index: true,
         element: {
           type: "component",
           component: Profile,
         },
       },
+    ],
+  },
+  {
+    path: "/editor",
+    element: {
+      type: "protected",
+      component: ProtectedRoute,
+    },
+    children: [
       {
-        path: "editor",
+        index: true,
         element: {
           type: "component",
           component: CodeEditorPage,
         },
       },
-      /*{
-        path: "whiteboard",
-        element: {
-          type: "component",
-          component: WhiteboardPage,
-        },
-      },*/
     ],
   },
 
-  // 404 route
+  // Fallback route
   {
     path: "*",
     element: {

@@ -56,7 +56,7 @@ const Navbar = ({ toggleSidebar }) => {
         </div>
         <button
           className="user-profile-section"
-          onClick={() => navigate("/dashboard/profile")}
+          onClick={() => navigate("/profile")}
           aria-label="View profile"
         >
           <img

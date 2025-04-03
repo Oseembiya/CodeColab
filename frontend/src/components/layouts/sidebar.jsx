@@ -169,9 +169,12 @@ const Sidebar = memo(({ isOpen, onClose }) => {
           </Link>
 
           <Link
-            to="/dashboard/editor"
+            to="/editor"
             className={`menu-item ${
-              location.pathname === "/dashboard/editor" ? "active" : ""
+              location.pathname === "/editor" ||
+              location.pathname === "/dashboard/editor"
+                ? "active"
+                : ""
             }`}
             onClick={onClose}
           >
@@ -180,9 +183,12 @@ const Sidebar = memo(({ isOpen, onClose }) => {
           </Link>
 
           <Link
-            to="/dashboard/sessions"
+            to="/sessions"
             className={`menu-item ${
-              location.pathname === "/dashboard/sessions" ? "active" : ""
+              location.pathname === "/sessions" ||
+              location.pathname === "/dashboard/sessions"
+                ? "active"
+                : ""
             }`}
             onClick={onClose}
           >
