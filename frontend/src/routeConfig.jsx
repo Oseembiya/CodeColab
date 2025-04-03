@@ -50,7 +50,7 @@ const routeConfig = [
         },
       },
       {
-        path: "dashboard/sessions",
+        path: "sessions",
         element: {
           type: "component",
           component: Sessions,
