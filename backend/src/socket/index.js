@@ -32,9 +32,11 @@ const initializeSocketHandlers = (io) => {
   // Set up authentication middleware
   io.use(async (socket, next) => {
     try {
-      // Get authentication token from handshake
+      // Get authentication data from handshake
       const token = socket.handshake.auth.token;
       const clientId = socket.handshake.auth.clientId;
+      const isGuest = socket.handshake.auth.isGuest;
+      const guestId = socket.handshake.auth.guestId;
 
       // Log detailed debugging information
       logger.info(`Socket connection attempt - Client ID: ${clientId}`);
@@ -43,8 +45,21 @@ const initializeSocketHandlers = (io) => {
           hasToken: !!token,
           userId: socket.handshake.auth.userId,
           username: socket.handshake.auth.username,
+          isGuest: isGuest,
         })}`
       );
+
+      // Guest mode - allow connection without authentication
+      if (isGuest === true) {
+        logger.info(
+          `Allowing guest connection for client: ${clientId || guestId}`
+        );
+        socket.userId = `guest-${clientId || guestId || Date.now()}`;
+        socket.username = "Guest User";
+        socket.isAuthenticated = false;
+        socket.isGuest = true;
+        return next();
+      }
 
       // If in development mode, allow connections without token for testing
       const isDevelopmentMode = process.env.NODE_ENV !== "production";
@@ -59,9 +74,15 @@ const initializeSocketHandlers = (io) => {
           socket.isAuthenticated = false;
           return next();
         } else {
-          // In production, reject unauthenticated connections
-          logger.warn("Socket connection rejected - no auth token");
-          return next(new Error("Authentication error: No token provided"));
+          // In production, reject unauthenticated non-guest connections
+          logger.warn(
+            "Socket connection rejected - no auth token and not in guest mode"
+          );
+          return next(
+            new Error(
+              "Authentication error: No token provided. Use guest mode if you don't want to authenticate."
+            )
+          );
         }
       }
 
@@ -70,6 +91,7 @@ const initializeSocketHandlers = (io) => {
       socket.userId = socket.handshake.auth.userId;
       socket.username = socket.handshake.auth.username || "Anonymous";
       socket.isAuthenticated = true;
+      socket.isGuest = false;
 
       logger.info(`Authenticated socket connection for user: ${socket.userId}`);
       next();

@@ -79,19 +79,32 @@ export function SocketProvider({ children }) {
       }
 
       // Prepare auth data with client ID
-      const authData = { clientId };
+      const authData = {
+        clientId,
+        isGuest: !isAuthenticated, // Explicitly mark as guest if not authenticated
+      };
 
       // Add authentication token if user is logged in
-      if (isAuthenticated && getIdToken) {
+      if (isAuthenticated && user && getIdToken) {
         try {
+          console.log("Attempting to get auth token...");
           const token = await getIdToken(true);
+          console.log(
+            `Token obtained: ${token ? "yes" : "no"}, length: ${
+              token?.length || 0
+            }`
+          );
+
           if (token) {
             authData.token = token;
             authData.userId = user?.uid;
             authData.username = user?.displayName || "Anonymous";
             console.log("Authentication token acquired for socket connection");
-            // Add more detailed debug info without exposing the full token
-            console.log(`Token length: ${token.length}, User ID: ${user?.uid}`);
+            console.log(
+              `User details: uid=${user.uid}, displayName=${
+                user.displayName || "not set"
+              }`
+            );
           } else {
             console.warn(
               "Token retrieval returned null despite authenticated user"
@@ -101,12 +114,15 @@ export function SocketProvider({ children }) {
           console.error("Error getting auth token:", tokenErr);
         }
       } else {
-        console.warn(
-          "User authenticated status:",
+        // For guests or not yet authenticated users
+        console.log("Connecting as guest or auth not ready:", {
           isAuthenticated,
-          "getIdToken available:",
-          !!getIdToken
-        );
+          hasUser: !!user,
+          hasGetIdToken: !!getIdToken,
+        });
+
+        authData.mode = "guest";
+        authData.guestId = clientId;
       }
 
       // Socket.io connection options
@@ -120,14 +136,24 @@ export function SocketProvider({ children }) {
         forceNew: true,
         auth: authData,
         path: config.socketPath,
-        withCredentials: true, // Important for CORS with credentials
-        autoConnect: false, // Manually control connection
+        withCredentials: true,
+        autoConnect: false,
       };
 
       // Create socket connection
       const socketUrl =
         config.socketUrl || "https://codecolab-852p.onrender.com";
       console.log(`Connecting to socket server at ${socketUrl}`);
+      console.log("Connection options:", {
+        transports: socketOptions.transports,
+        auth: {
+          hasToken: !!authData.token,
+          userId: authData.userId,
+          isGuest: authData.isGuest,
+          clientId: authData.clientId,
+        },
+        path: socketOptions.path,
+      });
 
       const newSocket = io(socketUrl, socketOptions);
 
@@ -190,6 +216,24 @@ export function SocketProvider({ children }) {
   // Connect/reconnect when auth state changes
   useEffect(() => {
     console.log("Auth state changed, connecting socket");
+    console.log("Auth status:", {
+      isAuthenticated,
+      hasUser: !!user,
+      hasGetIdToken: !!getIdToken,
+    });
+
+    // Only proceed if we have a definitive auth state (true or false, not undefined)
+    // And if authenticated, ensure we have the necessary auth functions
+    if (typeof isAuthenticated === "undefined") {
+      console.log("Authentication state not yet determined, waiting...");
+      return;
+    }
+
+    // If authenticated, ensure we have user and getIdToken function
+    if (isAuthenticated && (!user || !getIdToken)) {
+      console.log("Authenticated but user or getIdToken not ready, waiting...");
+      return;
+    }
 
     // Debounce reconnection to prevent rapid reconnection attempts
     if (reconnectTimeout.current) {
@@ -214,7 +258,7 @@ export function SocketProvider({ children }) {
         clearTimeout(reconnectTimeout.current);
       }
     };
-  }, [isAuthenticated, connectSocket]);
+  }, [isAuthenticated, user, getIdToken, connectSocket]);
 
   // Manual reconnect function
   const reconnect = useCallback(() => {
