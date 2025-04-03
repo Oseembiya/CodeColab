@@ -169,6 +169,9 @@ const LiveSession = () => {
     // Check if user is authenticated
     if (!user) return;
 
+    // Track if component is mounted
+    let isMounted = true;
+
     // Check if already in the correct session
     if (currentSession?.id === sessionId) {
       setLoading(false);
@@ -178,7 +181,7 @@ const LiveSession = () => {
     // Run initial session check and join
     const initSession = async () => {
       const isSessionValid = await checkScheduledSession();
-      if (isSessionValid) {
+      if (isSessionValid && isMounted) {
         await joinSessionHandler();
       }
     };
@@ -187,6 +190,7 @@ const LiveSession = () => {
 
     // Clean up on unmount or when sessionId changes
     return () => {
+      isMounted = false;
       leaveSessionHandler();
     };
   }, [
@@ -198,7 +202,7 @@ const LiveSession = () => {
     checkScheduledSession,
   ]);
 
-  // Socket event listeners
+  // Socket event listeners - separate from other effects to reduce rerenders
   useEffect(() => {
     if (!socket || !sessionId) return;
 

@@ -499,8 +499,8 @@ const CallPanel = ({ sessionId, userId }) => {
           rtcpMuxPolicy: config.webrtc.rtcpMuxPolicy,
         },
         debug: config.debug,
-        // Set higher timeouts for Render's environment
-        pingInterval: 5000,
+        // Set higher timeouts for Render's environment - match server settings
+        pingInterval: 25000, // Changed from 5000 to match server's 25000ms
         retryTimeouts: [3000, 6000, 10000],
       };
 
@@ -524,15 +524,52 @@ const CallPanel = ({ sessionId, userId }) => {
           console.log(
             "Destroying existing peer connection before creating new one"
           );
-          peerRef.current.destroy();
+          if (!peerRef.current.destroyed) {
+            peerRef.current.destroy();
+          }
         } catch (err) {
           console.warn("Error destroying existing peer:", err);
         }
         peerRef.current = null;
       }
 
-      const peer = new Peer(uniquePeerId, peerOptions);
-      peerRef.current = peer;
+      // Track reconnection attempts to prevent loops
+      let reconnectAttempts = 0;
+      const maxReconnectAttempts = 3;
+
+      // Create the peer with retry logic
+      const createPeerWithRetry = () => {
+        try {
+          console.log(
+            `Creating PeerJS instance (attempt ${reconnectAttempts + 1}/${
+              maxReconnectAttempts + 1
+            })`
+          );
+          const peer = new Peer(uniquePeerId, peerOptions);
+          peerRef.current = peer;
+          return peer;
+        } catch (err) {
+          console.error(
+            `Error creating Peer instance (attempt ${reconnectAttempts + 1}):`,
+            err
+          );
+          if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            console.log(`Retrying peer creation in 2 seconds...`);
+            setTimeout(createPeerWithRetry, 2000);
+          } else {
+            setError(
+              `Failed to create peer connection after ${
+                maxReconnectAttempts + 1
+              } attempts`
+            );
+            return null;
+          }
+        }
+      };
+
+      const peer = createPeerWithRetry();
+      if (!peer) return () => {};
 
       // Set connection timeout
       const connectionTimeout = setTimeout(() => {
@@ -739,33 +776,6 @@ const CallPanel = ({ sessionId, userId }) => {
         }
       });
 
-      // Handle peer errors
-      peer.on("error", (err) => {
-        console.error("PeerJS connection error:", err);
-
-        if (err.type === "peer-unavailable") {
-          console.log("The peer you're trying to connect to is unavailable");
-        } else if (err.type === "network" || err.type === "disconnected") {
-          setError(`Network error: ${err.message}. Trying to reconnect...`);
-
-          // Attempt to reconnect if disconnected
-          setTimeout(() => {
-            if (peerRef.current) {
-              console.log("Attempting to reconnect peer...");
-              try {
-                peerRef.current.reconnect();
-              } catch (reconnectErr) {
-                console.error("Error reconnecting peer:", reconnectErr);
-              }
-            }
-          }, 2000);
-        } else if (err.type === "server-error") {
-          setError(`Server error: ${err.message}. Please refresh the page.`);
-        } else {
-          setError(`Connection error: ${err.type || err.message}`);
-        }
-      });
-
       // Handle peer disconnection
       peer.on("disconnected", () => {
         console.log("PeerJS disconnected, attempting to reconnect...");
@@ -773,16 +783,86 @@ const CallPanel = ({ sessionId, userId }) => {
 
         // Try to reconnect
         setTimeout(() => {
-          if (peerRef.current) {
+          if (peerRef.current && peerRef.current === peer && !peer.destroyed) {
             try {
               console.log("Attempting to reconnect peer after disconnect");
               peerRef.current.reconnect();
             } catch (err) {
               console.error("Error reconnecting after disconnect:", err);
               setError("Reconnection failed. Please refresh the page.");
+
+              // If we can't reconnect, create a new peer connection
+              setTimeout(() => {
+                setupPeerConnection();
+              }, 3000);
             }
+          } else {
+            console.log(
+              "Peer was destroyed or replaced, not attempting reconnect"
+            );
           }
         }, 2000);
+      });
+
+      // Handle peer errors
+      peer.on("error", (err) => {
+        console.error("PeerJS error:", err);
+        setError(`Connection error: ${err.type || err.message}`);
+
+        if (err.type === "peer-unavailable") {
+          console.log("The peer you're trying to connect to is unavailable");
+        } else if (err.type === "network" || err.type === "disconnected") {
+          setError(`Network error: ${err.message}. Trying to reconnect...`);
+
+          // Increased delay for reconnection attempts
+          setTimeout(() => {
+            if (
+              peerRef.current &&
+              peerRef.current === peer &&
+              !peer.destroyed
+            ) {
+              console.log("Attempting to reconnect peer after network error");
+              try {
+                peerRef.current.reconnect();
+                console.log("Peer reconnection initiated");
+              } catch (reconnectErr) {
+                console.error("Error reconnecting peer:", reconnectErr);
+                // If reconnect fails, wait longer before creating new peer
+                setTimeout(() => {
+                  console.log("Creating new peer connection");
+                  setupPeerConnection();
+                }, 5000);
+              }
+            } else {
+              console.log("Not reconnecting: peer was destroyed or replaced");
+            }
+          }, 3000);
+        } else if (err.type === "server-error") {
+          setError(`Server error: ${err.message}. Please refresh the page.`);
+        } else {
+          setError(`Connection error: ${err.type || err.message}`);
+        }
+      });
+
+      // Check for browser page visibility changes to detect when page returns from background
+      document.addEventListener("visibilitychange", () => {
+        if (
+          document.visibilityState === "visible" &&
+          peerRef.current === peer &&
+          !peer.connected &&
+          !peer.destroyed
+        ) {
+          console.log("Page became visible, checking peer connection status");
+          try {
+            // Only reconnect if the peer exists, isn't connected, and hasn't been destroyed
+            if (!peer.connected && !peer.destroyed) {
+              console.log("Reconnecting peer on visibility change");
+              peer.reconnect();
+            }
+          } catch (err) {
+            console.error("Error reconnecting on visibility change:", err);
+          }
+        }
       });
 
       // Return cleanup function
@@ -987,88 +1067,56 @@ const CallPanel = ({ sessionId, userId }) => {
     };
   }, [socket, callPeer, removePeer]);
 
-  // Initialize PeerJS and media
+  // Set up PeerJS and cleanup on unmount
   useEffect(() => {
-    // Only initialize if we have both sessionId and userId
-    if (!sessionId || !userId || !socket) return;
+    // Only set up if we have userId
+    if (!userId) return;
 
-    // Cleanup flag to prevent operations after unmounting
-    let isMounted = true;
+    console.log("Setting up WebRTC for user:", userId);
 
-    // Setup peer connection
-    const cleanupPeer = setupPeerConnection();
+    // Set up peer connection
+    const cleanup = setupPeerConnection();
 
-    // Return cleanup function
+    // Cleanup handler for unmounting
     return () => {
-      console.log("Cleaning up CallPanel resources");
-      isMounted = false;
+      console.log("Cleaning up Call Panel component");
 
-      // First clean up media resources
+      // Clear event listeners
+      document.removeEventListener("visibilitychange", null);
+
+      // Stop local media
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => {
-          console.log(`Stopping track: ${track.kind}`);
           track.stop();
         });
         localStreamRef.current = null;
       }
 
-      // Close all peer connections
-      if (peersRef.current) {
-        peersRef.current.forEach((peerData, peerId) => {
-          if (peerData.call) {
-            try {
-              console.log(`Closing call with peer: ${peerId}`);
-              peerData.call.close();
-            } catch (err) {
-              console.error(`Error closing call with peer ${peerId}:`, err);
-            }
-          }
-        });
-        peersRef.current.clear();
+      // Clean up peer
+      if (typeof cleanup === "function") {
+        cleanup();
       }
 
-      // Emit leave media event if socket is still connected
-      if (socket && socket.connected) {
-        try {
-          socket.emit("leave-media", {
-            sessionId,
-            userId,
-            peerId: peerRef.current?.id,
-          });
-        } catch (err) {
-          console.error("Error emitting leave-media event:", err);
-        }
-      }
-
-      // Clean up peer connection
-      if (cleanupPeer && typeof cleanupPeer === "function") {
-        try {
-          cleanupPeer();
-        } catch (err) {
-          console.error("Error in cleanupPeer function:", err);
-        }
-      }
-
-      // Explicitly destroy peer connection
+      // Extra safety - ensure peer is destroyed
       if (peerRef.current) {
         try {
-          peerRef.current.destroy();
+          if (!peerRef.current.destroyed) {
+            peerRef.current.destroy();
+          }
         } catch (err) {
-          console.error("Error destroying peer connection:", err);
+          console.error("Error destroying peer during cleanup:", err);
         }
         peerRef.current = null;
       }
 
-      // Run additional cleanup from leaveMediaRoom but only if it's safe
-      try {
-        if (socket && socket.connected && sessionId) {
-          leaveMediaRoom();
-        }
-      } catch (err) {
-        console.error("Error in leaveMediaRoom:", err);
-      }
+      // Clear all peer connections
+      peersRef.current.clear();
+      setPeers(new Map());
+
+      // Leave the media room
+      leaveMediaRoom();
     };
-  }, [sessionId, userId, socket, setupPeerConnection, leaveMediaRoom]);
+  }, [userId, setupPeerConnection, leaveMediaRoom]);
 
   // Toggle media mode between audio and video
   const toggleMediaMode = () => {
