@@ -94,6 +94,12 @@ export function SocketProvider({ children }) {
           (5000 - timeSinceLastConnect) / 1000
         )} seconds remaining until next attempt.`
       );
+
+      // Reset connection count after cooldown period
+      setTimeout(() => {
+        connectCount.current = 0;
+      }, 5000);
+
       return () => {};
     }
 
@@ -105,6 +111,8 @@ export function SocketProvider({ children }) {
     if (socket && socket.connected) {
       console.log("Disconnecting existing socket connection");
       socket.disconnect();
+      // Add a small delay to ensure proper cleanup before creating a new connection
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     try {
@@ -348,6 +356,9 @@ export function SocketProvider({ children }) {
           // Reset the connection logged flag during cleanup
           connectionLogged.current = false;
 
+          // Reset connection counters to allow fresh connections after cleanup
+          connectCount.current = 0;
+
           if (newSocket.connected) {
             newSocket.disconnect();
           }
@@ -376,21 +387,34 @@ export function SocketProvider({ children }) {
 
     // Only connect if authenticated or if we haven't connected yet
     if (isAuthenticated || connectionStatus === "disconnected") {
-      const cleanup = connectSocket();
+      // Add a debounce to prevent rapid reconnection attempts
+      if (reconnectTimeout.current) {
+        clearTimeout(reconnectTimeout.current);
+      }
+
+      reconnectTimeout.current = setTimeout(() => {
+        const cleanup = connectSocket();
+
+        return () => {
+          if (typeof cleanup === "function") {
+            cleanup();
+          }
+          if (cleanupRef.current) {
+            cleanupRef.current();
+          }
+          if (reconnectTimeout.current) {
+            clearTimeout(reconnectTimeout.current);
+          }
+        };
+      }, 300); // Add a small delay to debounce multiple auth state changes
 
       return () => {
-        if (typeof cleanup === "function") {
-          cleanup();
-        }
-        if (cleanupRef.current) {
-          cleanupRef.current();
-        }
         if (reconnectTimeout.current) {
           clearTimeout(reconnectTimeout.current);
         }
       };
     }
-  }, [isAuthenticated, connectSocket]); // Only reconnect when auth state changes
+  }, [isAuthenticated, connectSocket, connectionStatus]); // Include connectionStatus as a dependency
 
   const reconnect = useCallback(() => {
     console.log("Manual reconnection requested");
