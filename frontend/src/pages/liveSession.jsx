@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { auth, db } from "../firebaseConfig";
+import { useAuth } from "../hooks/useAuth";
+import { useSocket } from "../contexts/SocketContext";
+import { useSession } from "../contexts/SessionContext";
 import SessionInfo from "../components/sessions/SessionInfo";
 import CollaborativeEditor from "../components/editor/CollaborativeEditor";
 import Toast from "../components/common/Alert";
@@ -242,7 +246,7 @@ const LiveSession = () => {
 
         // Redirect after a delay
         setTimeout(() => {
-          navigate("/dashboard/sessions");
+          navigate("/sessions");
         }, 3000);
       }
     };
@@ -279,10 +283,10 @@ const LiveSession = () => {
       contextLeaveSession();
 
       // Navigate away
-      navigate("/dashboard/sessions");
+      navigate("/sessions");
     } else {
       // If no socket or session, just navigate
-      navigate("/dashboard/sessions");
+      navigate("/sessions");
     }
   }, [
     socket,
@@ -309,7 +313,7 @@ const LiveSession = () => {
       {error ? (
         <div className="error-container">
           <p>Error: {error}</p>
-          <button onClick={() => navigate("/dashboard/sessions")}>
+          <button onClick={() => navigate("/sessions")}>
             Return to Sessions
           </button>
         </div>
@@ -327,16 +331,10 @@ const LiveSession = () => {
           />
 
           <div className="session-tabs">
-            <Link
-              to={`/dashboard/sessions/${sessionId}`}
-              className="tab active"
-            >
+            <Link to={`/session/${sessionId}`} className="tab active">
               Code Editor
             </Link>
-            <Link
-              to={`/dashboard/sessions/${sessionId}/whiteboard`}
-              className="tab"
-            >
+            <Link to={`/session/${sessionId}/whiteboard`} className="tab">
               Whiteboard
             </Link>
           </div>
@@ -344,7 +342,6 @@ const LiveSession = () => {
           <div className="session-content">
             <div className="editor-section">
               <CollaborativeEditor sessionId={sessionId} userId={userId} />
-              <CallPanel sessionId={sessionId} userId={userId} />
             </div>
           </div>
         </div>
