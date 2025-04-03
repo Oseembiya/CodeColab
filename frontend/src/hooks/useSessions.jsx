@@ -38,40 +38,27 @@ export const useSessions = () => {
         throw new Error("User not authenticated");
       }
 
-      // Query for sessions where user is participant or owner
-      // Removing orderBy to avoid composite index requirement
+      // Get all sessions - don't filter by participants array
       const sessionsRef = collection(db, "sessions");
-      const userSessionsQuery = query(
-        sessionsRef,
-        where("participants", "array-contains", user.uid)
-      );
 
-      const ownedSessionsQuery = query(
-        sessionsRef,
-        where("ownerId", "==", user.uid)
-      );
+      // Get all sessions from the sessions collection
+      const sessionsSnapshot = await getDocs(sessionsRef);
 
-      // Execute queries
-      const [participantSnapshot, ownerSnapshot] = await Promise.all([
-        getDocs(userSessionsQuery),
-        getDocs(ownedSessionsQuery),
-      ]);
-
-      // Combine results, removing duplicates
-      const uniqueSessions = new Map();
-
-      // Add sessions where user is a participant
-      participantSnapshot.forEach((doc) => {
-        uniqueSessions.set(doc.id, { id: doc.id, ...doc.data() });
+      // Convert to array and process data
+      const sessionsArray = [];
+      sessionsSnapshot.forEach((doc) => {
+        const sessionData = doc.data();
+        sessionsArray.push({
+          id: doc.id,
+          ...sessionData,
+          // Ensure basic properties exist
+          participants: sessionData.participants || [],
+          maxParticipants: parseInt(sessionData.maxParticipants) || 10,
+          isPrivate: Boolean(sessionData.isPrivate),
+        });
       });
 
-      // Add sessions where user is the owner
-      ownerSnapshot.forEach((doc) => {
-        uniqueSessions.set(doc.id, { id: doc.id, ...doc.data() });
-      });
-
-      // Convert to array and sort by creation date (newest first)
-      const sessionsArray = Array.from(uniqueSessions.values());
+      // Sort by creation date (newest first)
       sessionsArray.sort((a, b) => {
         // Handle both Firestore timestamps and ISO date strings
         const getTimestamp = (item) => {

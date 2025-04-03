@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from "react-icons/fa";
 import { useSocket } from "../../contexts/SocketContext";
 
-const SessionCard = ({ session, onJoin, view }) => {
+const SessionCard = ({ session, onJoin, view, isOwner }) => {
   const [participantCount, setParticipantCount] = useState(
     session.participants?.length || 0
   );
@@ -81,16 +81,19 @@ const SessionCard = ({ session, onJoin, view }) => {
     }
   };
 
-  // Ensure maxParticipants is a number
-  const maxParticipants = Number(session.maxParticipants) || 0;
-
   // Add boolean conversion for isPrivate
   const isPrivate = Boolean(session.isPrivate);
 
   // Add default language handling
   const displayLanguage = session.language || "javascript";
 
+  // Ensure maxParticipants is a number
+  const maxParticipants = Number(session.maxParticipants) || 10;
+
   const displayParticipantCount = () => {
+    // Use reliable defaults in case of missing data
+    if (!session) return "0/10";
+
     if (session.status === "scheduled") {
       // For scheduled sessions, show "0/X" or special message
       return `0/${maxParticipants > 0 ? maxParticipants : 10}`;
@@ -101,10 +104,11 @@ const SessionCard = ({ session, onJoin, view }) => {
         (Array.isArray(session.participants) ? session.participants.length : 0);
       return `${totalParticipants} Participated`;
     } else {
-      // For active sessions, show actual count
-      return `${participantCount}/${
-        maxParticipants > 0 ? maxParticipants : 10
-      }`;
+      // For active sessions, use current count or participants array length
+      return `${
+        participantCount ||
+        (Array.isArray(session.participants) ? session.participants.length : 0)
+      }/${maxParticipants > 0 ? maxParticipants : 10}`;
     }
   };
 
@@ -227,18 +231,19 @@ SessionCard.propTypes = {
     id: PropTypes.string.isRequired,
     title: PropTypes.string.isRequired,
     description: PropTypes.string,
-    status: PropTypes.string.isRequired,
-    startTime: PropTypes.string,
+    status: PropTypes.string,
+    startTime: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     createdAt: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     language: PropTypes.string,
-    maxParticipants: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
-      .isRequired,
+    maxParticipants: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     participants: PropTypes.array,
-    isPrivate: PropTypes.oneOfType([PropTypes.bool, PropTypes.string])
-      .isRequired, // Allow both boolean and string
+    hostId: PropTypes.string,
+    isPrivate: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]),
+    totalParticipants: PropTypes.number,
   }).isRequired,
   onJoin: PropTypes.func.isRequired,
   view: PropTypes.oneOf(["grid", "list"]).isRequired,
+  isOwner: PropTypes.bool,
 };
 
 export default SessionCard;
