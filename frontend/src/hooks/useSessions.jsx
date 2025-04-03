@@ -123,6 +123,9 @@ export const useSessions = () => {
           ? sessionData.joinCode || generateJoinCode()
           : null;
 
+        // Create current date for participants (can't use serverTimestamp in arrays)
+        const now = new Date().toISOString();
+
         // Create session document
         const sessionRef = collection(db, "sessions");
         const newSession = {
@@ -140,13 +143,13 @@ export const useSessions = () => {
               name: user.displayName || "Anonymous",
               photoURL: user.photoURL || "",
               isHost: true,
-              joinedAt: serverTimestamp(),
+              joinedAt: now, // Using ISO string instead of serverTimestamp()
             },
           ],
           status: sessionData.scheduled ? "scheduled" : "active",
           startTime: sessionData.scheduled
             ? new Date(sessionData.scheduledDate).toISOString()
-            : new Date().toISOString(),
+            : now,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           maxParticipants: sessionData.maxParticipants || 10,
@@ -253,12 +256,15 @@ export const useSessions = () => {
 
         // Add user to participants if not already there
         if (!isExistingParticipant) {
+          // Use ISO string date instead of serverTimestamp for array
+          const now = new Date().toISOString();
+
           const userToAdd = {
             id: user.uid,
             name: user.displayName || "Anonymous",
             photoURL: user.photoURL || "",
             isHost: sessionData.hostId === user.uid,
-            joinedAt: serverTimestamp(),
+            joinedAt: now, // Using ISO string instead of serverTimestamp
           };
 
           // Update session with new participant
