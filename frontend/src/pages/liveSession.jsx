@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
@@ -28,6 +28,9 @@ const LiveSession = () => {
   const [error, setError] = useState(null);
   const [sessionEndedMessage, setSessionEndedMessage] = useState(null);
   const [unsubscribeRef, setUnsubscribeRef] = useState(null);
+
+  // References to prevent duplicate requests
+  const requestedInitialCount = useRef(false);
 
   // User ID - extracted from auth
   const userId = auth.currentUser?.uid;
@@ -128,10 +131,16 @@ const LiveSession = () => {
             photoURL: user?.photoURL,
           });
 
-          // Also explicitly request participant count
-          setTimeout(() => {
-            socket.emit("request-participant-count", { sessionId });
-          }, 1000);
+          // Request participant count once after joining, with a small delay to ensure join completes
+          // Don't use repeated setTimeout calls that might stack up
+          if (!requestedInitialCount.current) {
+            requestedInitialCount.current = true;
+            setTimeout(() => {
+              if (socket.connected) {
+                socket.emit("request-participant-count", { sessionId });
+              }
+            }, 1000);
+          }
         }
       } catch (error) {
         console.error("Error joining session:", error);

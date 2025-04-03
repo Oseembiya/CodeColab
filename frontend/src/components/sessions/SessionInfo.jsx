@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import PropTypes from "prop-types";
 import {
   FaClock,
@@ -37,7 +37,11 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
     // Set initial count from session
     setParticipantCount(session.participants?.length || 0);
 
-    // Request accurate participant count from server on mount
+    // Avoid frequent polling - create refs for timing control
+    const lastRequestTime = useRef(0);
+    const requestTimeoutRef = useRef(null);
+
+    // Request accurate participant count from server only once on mount
     socket.emit("request-participant-count", { sessionId: session.id });
 
     // Listen for participant count updates
@@ -46,25 +50,10 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
       if (sessionId === session.id) {
         console.log("Received participant update:", { count, participants });
         // Validate count (prevent negative or unreasonably large values)
-        let validCount = 0;
-
-        // Use explicit count if provided
-        if (typeof count === "number" && count >= 0) {
-          validCount = count;
-        }
-        // Otherwise try to get length from participants array
-        else if (Array.isArray(participants)) {
-          validCount = participants.length;
-        }
-        // If neither is available, try session.participants
-        else if (Array.isArray(session.participants)) {
-          validCount = session.participants.length;
-        }
-
-        // Use at least 1 if this is the owner's view (they are a participant)
-        if (isOwner && validCount === 0) {
-          validCount = 1;
-        }
+        const validCount =
+          typeof count === "number"
+            ? Math.min(Math.max(0, count), session.maxParticipants)
+            : participants?.length || 0;
 
         setParticipantCount(validCount);
       }
@@ -72,16 +61,24 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
 
     socket.on("participants-update", handleParticipantUpdate);
 
-    // Set up a periodic refresh of the participant count
+    // Set up a periodic refresh of the participant count - but limit to no more than once every 30 seconds
     const refreshInterval = setInterval(() => {
-      if (socket.connected) {
-        socket.emit("request-participant-count", { sessionId: session.id });
+      const now = Date.now();
+      // Only request if it's been at least 30 seconds since the last request
+      if (now - lastRequestTime.current > 30000) {
+        lastRequestTime.current = now;
+        if (socket.connected) {
+          socket.emit("request-participant-count", { sessionId: session.id });
+        }
       }
-    }, 10000); // Check every 10 seconds
+    }, 60000); // Check every 60 seconds
 
     return () => {
       socket.off("participants-update", handleParticipantUpdate);
       clearInterval(refreshInterval);
+      if (requestTimeoutRef.current) {
+        clearTimeout(requestTimeoutRef.current);
+      }
     };
   }, [socket, session?.id, session?.maxParticipants]);
 

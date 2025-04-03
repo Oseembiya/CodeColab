@@ -102,7 +102,10 @@ const SessionCard = ({ session, onJoin, view, isOwner }) => {
       const totalParticipants =
         session.totalParticipants ||
         (Array.isArray(session.participants) ? session.participants.length : 0);
-      return `${totalParticipants} Participated`;
+      // Use consistent X/Y format instead of "X Participated"
+      return `${totalParticipants}/${
+        maxParticipants > 0 ? maxParticipants : 10
+      }`;
     } else {
       // For active sessions, use current count or participants array length
       return `${
@@ -153,7 +156,7 @@ const SessionCard = ({ session, onJoin, view, isOwner }) => {
         <>
           <div className="detail-item">
             <FaUsers />
-            <span>{displayParticipantCount()}</span>
+            <span>Participants: {displayParticipantCount()}</span>
           </div>
           <div className="detail-item">
             <FaCode />
@@ -208,7 +211,7 @@ const SessionCard = ({ session, onJoin, view, isOwner }) => {
           <div className="session-details">
             <div className="detail-item">
               <FaUsers />
-              <span>{displayParticipantCount()}</span>
+              <span>Participants: {displayParticipantCount()}</span>
             </div>
             <div className="detail-item">
               <FaCode />

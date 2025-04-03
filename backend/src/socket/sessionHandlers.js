@@ -781,6 +781,20 @@ module.exports = (io, socket) => {
       "participants"
     );
 
+    // Get session max participants if available
+    let maxParticipants = 10; // Default
+    try {
+      const sessionRef = db.collection("sessions").doc(sessionId);
+      sessionRef.get().then((doc) => {
+        if (doc.exists) {
+          const sessionData = doc.data();
+          maxParticipants = Number(sessionData.maxParticipants) || 10;
+        }
+      });
+    } catch (error) {
+      console.error("Error getting session max participants:", error);
+    }
+
     // If no participants but the requestor is likely a participant, add them
     if (
       (!participants || participants.length === 0) &&
@@ -806,19 +820,27 @@ module.exports = (io, socket) => {
         userData
       );
 
+      // Ensure the participant count is valid
+      const validCount = Math.min(updatedParticipants.length, maxParticipants);
+
       socket.emit("participants-update", {
         sessionId,
         participants: updatedParticipants,
-        count: updatedParticipants.length,
+        count: validCount,
       });
 
       return;
     }
 
+    // Ensure the participant count is valid
+    const validCount = participants
+      ? Math.min(participants.length, maxParticipants)
+      : 0;
+
     socket.emit("participants-update", {
       sessionId,
       participants,
-      count: participants ? participants.length : 0,
+      count: validCount,
     });
   });
   socket.on("debug-line-count", handleDebugLineCount);

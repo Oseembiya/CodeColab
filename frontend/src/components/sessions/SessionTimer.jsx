@@ -156,11 +156,17 @@ const SessionTimer = ({ sessionId, className = "" }) => {
     if (!socket || !sessionId) return;
 
     let syncTimeoutId;
+    let lastSyncTime = Date.now();
 
     const syncWithServer = () => {
-      socket.emit("get-session-time", { sessionId });
-      // Schedule next sync
-      syncTimeoutId = setTimeout(syncWithServer, 60000); // Sync every minute
+      const now = Date.now();
+      // Only sync if it's been at least 30 seconds since the last sync
+      if (now - lastSyncTime >= 30000) {
+        lastSyncTime = now;
+        socket.emit("get-session-time", { sessionId });
+      }
+      // Schedule next sync (every 60 seconds)
+      syncTimeoutId = setTimeout(syncWithServer, 60000);
     };
 
     // Start the sync cycle
