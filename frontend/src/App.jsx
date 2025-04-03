@@ -1,13 +1,15 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
-import { SessionProvider } from "./contexts/SessionContext";
-import { FriendProvider } from "./contexts/FriendContext";
-import { DropdownProvider } from "./contexts/DropdownContext";
-import { UserMetricsProvider } from "./contexts/UserMetricsContext";
+import { AuthProvider } from "./hooks/useAuth";
+import { SocketProvider } from "./contexts/SocketContext.jsx";
+import { SessionProvider } from "./contexts/SessionContext.jsx";
+import { FriendProvider } from "./contexts/FriendContext.jsx";
+import { DropdownProvider } from "./contexts/DropdownContext.jsx";
+import { UserMetricsProvider } from "./contexts/UserMetricsContext.jsx";
 import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
 import routeConfig from "./config/routes";
-import { NotificationProvider } from "./contexts/NotificationContext";
+import { NotificationProvider } from "./contexts/NotificationContext.jsx";
 import LoadingFallback from "./components/common/LoadingFallback";
 
 // Initialize error tracking for production

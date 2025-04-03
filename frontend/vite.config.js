@@ -47,6 +47,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
+      extensions: [".js", ".jsx", ".ts", ".tsx", ".json"],
     },
     build: {
       outDir: "dist",
