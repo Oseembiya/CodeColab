@@ -11,8 +11,7 @@ import {
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
-import { db } from "../firebaseConfig";
-import { useAuth } from "./useAuth";
+import { db, auth } from "../firebaseConfig";
 import { useSocket } from "../contexts/SocketContext";
 
 /**
@@ -23,7 +22,7 @@ export const useSessions = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { user } = useAuth();
+  const { user } = auth();
   const { socket } = useSocket();
 
   // Load user's sessions
