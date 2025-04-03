@@ -63,6 +63,13 @@ const routeConfig = [
         },
       },
       {
+        path: "dashboard/profile",
+        element: {
+          type: "component",
+          component: Profile,
+        },
+      },
+      {
         path: "profile",
         element: {
           type: "component",
