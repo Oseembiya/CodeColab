@@ -1,13 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useSession } from "../contexts/SessionContext";
-import { useAuth } from "../hooks/useAuth";
-import { useSocket } from "../contexts/SocketContext";
-import { db, auth } from "../firebaseConfig";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import SessionInfo from "../components/sessions/SessionInfo";
 import CollaborativeEditor from "../components/editor/CollaborativeEditor";
-import CallPanel from "../components/communications/CallPanel";
 import Toast from "../components/common/Alert";
 
 const LiveSession = () => {

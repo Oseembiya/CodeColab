@@ -1,7 +1,5 @@
 import PropTypes from "prop-types";
 import { useState, useEffect, useRef } from "react";
-import { useSocket } from "../../contexts/SocketContext";
-import { useAuth } from "../../hooks/useAuth";
 import { FaClock, FaHourglassHalf, FaPlus } from "react-icons/fa";
 
 // Define propTypes outside the component

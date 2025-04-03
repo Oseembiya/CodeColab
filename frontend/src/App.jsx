@@ -1,8 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
-import { AuthProvider } from "./hooks/useAuth";
 import { SessionProvider } from "./contexts/SessionContext";
-import { SocketProvider } from "./contexts/SocketContext";
 import { FriendProvider } from "./contexts/FriendContext";
 import { DropdownProvider } from "./contexts/DropdownContext";
 import { UserMetricsProvider } from "./contexts/UserMetricsContext";

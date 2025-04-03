@@ -15,9 +15,6 @@ import CreateSessionModal from "../components/sessions/CreateSessionModal";
 import JoinSessionModal from "../components/sessions/JoinSessionModal";
 import SessionCard from "../components/sessions/SessionCard";
 import SessionFilters from "../components/sessions/SessionFilters";
-import { useAuth } from "../hooks/useAuth";
-import { useSessions } from "../hooks/useSessions";
-import { useSession } from "../contexts/SessionContext";
 
 const Sessions = () => {
   const navigate = useNavigate();

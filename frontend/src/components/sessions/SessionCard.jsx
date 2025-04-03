@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from "react-icons/fa";
-import { useSocket } from "../../contexts/SocketContext";
-
 const SessionCard = ({ session, onJoin, view }) => {
   const [participantCount, setParticipantCount] = useState(
     session.participants?.length || 0

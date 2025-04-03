@@ -10,7 +10,7 @@ import {
   FaStop,
 } from "react-icons/fa";
 import AlertDialog from "../notifications/AlertDialog";
-import { useAuth } from "../../hooks/useAuth";
+
 import {
   doc,
   updateDoc,
