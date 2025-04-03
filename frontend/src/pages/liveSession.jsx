@@ -118,12 +118,20 @@ const LiveSession = () => {
 
         // Emit join event to socket
         if (socket && userId) {
+          console.log(
+            `Emitting join-session event for session ${sessionId}, user ${userId}`
+          );
           socket.emit("join-session", {
             sessionId,
             userId,
             username: user?.displayName || "Anonymous",
             photoURL: user?.photoURL,
           });
+
+          // Also explicitly request participant count
+          setTimeout(() => {
+            socket.emit("request-participant-count", { sessionId });
+          }, 1000);
         }
       } catch (error) {
         console.error("Error joining session:", error);

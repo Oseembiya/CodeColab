@@ -773,10 +773,52 @@ module.exports = (io, socket) => {
   socket.on("session-ended", handleSessionEnded);
   socket.on("request-participant-count", ({ sessionId }) => {
     const participants = sessionStore.getSessionUsers(sessionId);
+
+    // Log the participants for debugging
+    console.log(
+      `Participant count requested for session ${sessionId}. Found:`,
+      participants ? participants.length : 0,
+      "participants"
+    );
+
+    // If no participants but the requestor is likely a participant, add them
+    if (
+      (!participants || participants.length === 0) &&
+      socket.userId &&
+      sessionId
+    ) {
+      console.log(
+        `No participants found, but socket has userId ${socket.userId}. Adding to participants.`
+      );
+
+      const userData = {
+        userId: socket.userId,
+        socketId: socket.id,
+        username:
+          socket.username || socket.handshake.auth.username || "Anonymous",
+        photoURL: socket.handshake.auth.photoURL || "",
+        joinedAt: new Date().toISOString(),
+      };
+
+      const updatedParticipants = sessionStore.addUserToSession(
+        sessionId,
+        socket.userId,
+        userData
+      );
+
+      socket.emit("participants-update", {
+        sessionId,
+        participants: updatedParticipants,
+        count: updatedParticipants.length,
+      });
+
+      return;
+    }
+
     socket.emit("participants-update", {
       sessionId,
       participants,
-      count: participants.length,
+      count: participants ? participants.length : 0,
     });
   });
   socket.on("debug-line-count", handleDebugLineCount);

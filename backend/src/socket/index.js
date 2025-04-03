@@ -210,10 +210,31 @@ const initializeSocketHandlers = (io) => {
         socket.join(sessionId);
 
         // Track the participant in the session store
-        sessionStore.addUserToSession(sessionId, userId, {
-          username,
-          photoURL,
+        const userData = {
+          userId,
+          socketId: socket.id,
+          username: username || "Anonymous",
+          photoURL: photoURL || "",
           joinedAt: new Date().toISOString(),
+        };
+
+        const participants = sessionStore.addUserToSession(
+          sessionId,
+          userId,
+          userData
+        );
+
+        // Log the participants for debugging
+        console.log(
+          `User ${userId} joined session ${sessionId}. Current participants:`,
+          participants ? participants.length : 0
+        );
+
+        // Emit participants update to all clients in the session
+        io.to(sessionId).emit("participants-update", {
+          sessionId,
+          participants,
+          count: participants ? participants.length : 0,
         });
 
         // Notify others in the room
@@ -228,6 +249,8 @@ const initializeSocketHandlers = (io) => {
         socket.emit("joined-session", {
           sessionId,
           message: "Successfully joined session",
+          participants,
+          count: participants ? participants.length : 0,
         });
 
         // Attach sessionId to socket for easier reference in other handlers

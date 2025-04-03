@@ -46,10 +46,25 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
       if (sessionId === session.id) {
         console.log("Received participant update:", { count, participants });
         // Validate count (prevent negative or unreasonably large values)
-        const validCount =
-          typeof count === "number"
-            ? Math.min(Math.max(0, count), session.maxParticipants)
-            : participants?.length || 0;
+        let validCount = 0;
+
+        // Use explicit count if provided
+        if (typeof count === "number" && count >= 0) {
+          validCount = count;
+        }
+        // Otherwise try to get length from participants array
+        else if (Array.isArray(participants)) {
+          validCount = participants.length;
+        }
+        // If neither is available, try session.participants
+        else if (Array.isArray(session.participants)) {
+          validCount = session.participants.length;
+        }
+
+        // Use at least 1 if this is the owner's view (they are a participant)
+        if (isOwner && validCount === 0) {
+          validCount = 1;
+        }
 
         setParticipantCount(validCount);
       }
@@ -267,7 +282,7 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
           <div className="meta-item">
             <FaUsers />
             <span>
-              Participants: {participantCount}/{session.maxParticipants}
+              Participants: {participantCount}/{session.maxParticipants || 10}
             </span>
           </div>
           <div className="meta-item">
