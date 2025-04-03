@@ -127,7 +127,7 @@ export function SocketProvider({ children }) {
 
       // Socket.io connection options
       const socketOptions = {
-        transports: ["polling", "websocket"],
+        transports: ["polling"], // Use only polling since WebSockets are failing
         reconnection: true,
         reconnectionAttempts: config.socketReconnectionAttempts,
         reconnectionDelay: config.socketReconnectionDelay,

@@ -5,14 +5,14 @@ import { SessionProvider } from "./contexts/SessionContext.jsx";
 import { FriendProvider } from "./contexts/FriendContext.jsx";
 import { DropdownProvider } from "./contexts/DropdownContext.jsx";
 import { UserMetricsProvider } from "./contexts/UserMetricsContext.jsx";
-import { AuthProvider } from "./hooks/useAuth.jsx";
+import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
 import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
 import { NotificationProvider } from "./contexts/NotificationContext.jsx";
 import routeConfig from "./routeConfig";
 
 /**
- * Simple loading fallback component
+ * Loading fallback component for suspense and auth checks
  */
 const LoadingFallback = ({ message = "Loading..." }) => (
   <div className="flex items-center justify-center min-h-screen">
@@ -27,36 +27,74 @@ const LoadingFallback = ({ message = "Loading..." }) => (
  * Initialize error tracking for production environments
  */
 const initErrorTracking = () => {
-  // This can be replaced with a real error tracking service implementation
   if (process.env.NODE_ENV === "production") {
     console.log("Error tracking initialized in production mode");
   }
 };
 
 /**
- * Render a route based on its configuration with suspense boundaries
- * for better code splitting and loading states
+ * Component that handles auth-aware routes (redirects authenticated users away from login)
+ */
+const AuthAwareRoute = ({ component: Component }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <LoadingFallback message="Checking authentication..." />;
+
+  // If authenticated, redirect to dashboard
+  if (user) return <Navigate to="/" replace />;
+
+  // If not authenticated, render the component (login)
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<LoadingFallback message="Loading login page..." />}>
+        <Component />
+      </Suspense>
+    </ErrorBoundary>
+  );
+};
+
+/**
+ * Render a route based on its configuration type
  */
 const renderRouteElement = (route) => {
-  if (route.element.type === "redirect") {
-    return <Navigate to={route.element.to} replace />;
+  // For auth-aware routes (login)
+  if (route.element.type === "auth-aware") {
+    return <AuthAwareRoute component={route.element.component} />;
   }
 
-  // Add suspense boundaries at the route level
+  // For protected routes (main app with nested routes)
   if (route.element.type === "protected") {
     const ProtectedComponent = route.element.component;
     return (
+      <ProtectedComponent>
+        <MainContent />
+      </ProtectedComponent>
+    );
+  }
+
+  // For regular component routes
+  if (route.element.type === "component") {
+    const Component = route.element.component;
+    return (
       <ErrorBoundary>
         <Suspense
-          fallback={<LoadingFallback message={`Loading ${route.path}...`} />}
+          fallback={
+            <LoadingFallback message={`Loading ${route.path || "page"}...`} />
+          }
         >
-          <ProtectedComponent>
-            <MainContent />
-          </ProtectedComponent>
+          <Component />
         </Suspense>
       </ErrorBoundary>
     );
   }
+
+  // Handle redirect routes
+  if (route.element.type === "redirect") {
+    return <Navigate to={route.element.to} replace />;
+  }
+
+  // Default fallback
+  return <div>Invalid route configuration</div>;
 };
 
 /**
@@ -100,16 +138,11 @@ const generateRoutes = (routes) => {
  */
 const ScrollToTop = () => {
   const { pathname } = useLocation();
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-
+  useEffect(() => window.scrollTo(0, 0), [pathname]);
   return null;
 };
 
 const App = () => {
-  // Initialize error tracking for production
   useEffect(() => {
     initErrorTracking();
   }, []);
@@ -124,6 +157,23 @@ const App = () => {
                 <UserMetricsProvider>
                   <DropdownProvider>
                     <ScrollToTop />
+                    {process.env.NODE_ENV !== "production" && (
+                      <div
+                        style={{
+                          position: "fixed",
+                          bottom: 10,
+                          right: 10,
+                          background: "rgba(0,0,0,0.7)",
+                          color: "white",
+                          padding: "5px 10px",
+                          borderRadius: "5px",
+                          zIndex: 9999,
+                          fontSize: "12px",
+                        }}
+                      >
+                        Path: {window.location.pathname}
+                      </div>
+                    )}
                     <Routes>{generateRoutes(routeConfig)}</Routes>
                   </DropdownProvider>
                 </UserMetricsProvider>

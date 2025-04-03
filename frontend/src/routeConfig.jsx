@@ -1,6 +1,5 @@
 import { lazy } from "react";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import PublicRoute from "./components/auth/PublicRoute";
 
 // Lazy loaded components for code splitting
 const Dashboard = lazy(() => import("./pages/dashboard"));
@@ -16,44 +15,28 @@ const NotFound = lazy(() => import("./pages/notFound"));
  * and nesting structure.
  */
 const routeConfig = [
-  // Public routes - accessible without authentication
+  // Login route (public)
   {
-    path: "/",
+    path: "/login",
     element: {
-      type: "public",
-      component: PublicRoute,
+      type: "auth-aware", // Special type that redirects authenticated users
+      component: Login,
     },
-    children: [
-      {
-        index: true,
-        element: {
-          type: "component",
-          component: Dashboard,
-        },
-      },
-      {
-        path: "login",
-        element: {
-          type: "component",
-          component: Login,
-        },
-      },
-    ],
   },
 
-  // Protected routes - require authentication
+  // Dashboard and protected routes
   {
-    path: "/app",
+    path: "/",
     element: {
       type: "protected",
       component: ProtectedRoute,
     },
     children: [
       {
-        index: true,
+        index: true, // Root path shows dashboard for authenticated users
         element: {
-          type: "redirect",
-          to: "/app/sessions",
+          type: "component",
+          component: Dashboard,
         },
       },
       {

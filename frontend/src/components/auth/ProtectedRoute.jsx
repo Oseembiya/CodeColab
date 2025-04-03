@@ -1,16 +1,14 @@
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { Suspense } from "react";
 
 /**
- * A wrapper component for routes that require authentication
- * Redirects to login page if user is not authenticated
+ * Protected route wrapper that redirects unauthenticated users to login
  */
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const location = useLocation();
 
-  // Show loading state while checking authentication
+  // Show loading spinner while checking authentication
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -24,17 +22,17 @@ const ProtectedRoute = ({ children }) => {
 
   // Redirect to login if not authenticated
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
-  // Render children if authenticated
+  // Show authenticated content with suspense for nested lazy-loaded components
   return (
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-e-transparent align-[-0.125em] text-primary"></div>
-            <p className="mt-2">Loading protected content...</p>
+            <p className="mt-2">Loading content...</p>
           </div>
         </div>
       }
