@@ -102,10 +102,7 @@ const SessionCard = ({ session, onJoin, view, isOwner }) => {
       const totalParticipants =
         session.totalParticipants ||
         (Array.isArray(session.participants) ? session.participants.length : 0);
-      // Use consistent X/Y format instead of "X Participated"
-      return `${totalParticipants}/${
-        maxParticipants > 0 ? maxParticipants : 10
-      }`;
+      return `${totalParticipants} Participated`;
     } else {
       // For active sessions, use current count or participants array length
       return `${
