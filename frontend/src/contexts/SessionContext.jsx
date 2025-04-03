@@ -20,6 +20,7 @@ import {
   arrayRemove,
 } from "firebase/firestore";
 import { v4 as uuidv4 } from "uuid";
+import { formatDateTime } from "../utils/dateUtils";
 
 const SessionContext = createContext();
 
@@ -56,13 +57,19 @@ export const SessionProvider = ({ children }) => {
         // Use ISO string for participant timestamps instead of serverTimestamp
         const now = new Date().toISOString();
 
+        // Determine if session should be scheduled
+        const isScheduled =
+          !sessionData.startNow &&
+          sessionData.scheduledDate &&
+          sessionData.scheduledTime;
+
         // Create session document
         const sessionRef = collection(db, "sessions");
         const newSession = {
           title: sessionData.title,
           description: sessionData.description || "",
           language: sessionData.language || "javascript",
-          isPrivate: sessionData.isPrivate || false,
+          isPrivate: Boolean(sessionData.isPrivate),
           joinCode: joinCode,
           hostId: user.uid,
           hostName: user.displayName || "Anonymous",
@@ -76,14 +83,17 @@ export const SessionProvider = ({ children }) => {
               joinedAt: now, // Changed from serverTimestamp() to ISO string
             },
           ],
-          status: sessionData.scheduled ? "scheduled" : "active",
-          startTime: sessionData.scheduled
-            ? new Date(sessionData.scheduledDate).toISOString()
+          status: isScheduled ? "scheduled" : "active",
+          startTime: isScheduled
+            ? formatDateTime(
+                sessionData.scheduledDate,
+                sessionData.scheduledTime
+              )
             : now,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          maxParticipants: sessionData.maxParticipants || 10,
-          duration: sessionData.duration || 60, // in minutes
+          maxParticipants: parseInt(sessionData.maxParticipants) || 10,
+          duration: parseInt(sessionData.duration) || 60, // in minutes
         };
 
         const docRef = await addDoc(sessionRef, newSession);

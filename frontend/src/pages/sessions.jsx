@@ -55,8 +55,12 @@ const Sessions = () => {
 
   const filteredSessions = sessions.filter((session) => {
     const matchesSearch =
-      session.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-      session.description.toLowerCase().includes(filters.search.toLowerCase());
+      session.title?.toLowerCase().includes(filters.search.toLowerCase()) ||
+      false ||
+      session.description
+        ?.toLowerCase()
+        .includes(filters.search.toLowerCase()) ||
+      false;
     const matchesStatus =
       filters.status === "all" ||
       session.status === filters.status ||
@@ -65,10 +69,10 @@ const Sessions = () => {
       filters.language === "all" || session.language === filters.language;
     const matchesPrivacy =
       filters.privacy === "all" ||
-      session.isPrivate === (filters.privacy === "private");
+      Boolean(session.isPrivate) === (filters.privacy === "private");
 
     let matchesDate = true;
-    if (filters.dateRange !== "all") {
+    if (filters.dateRange !== "all" && session.startTime) {
       const sessionDate = new Date(session.startTime);
       const now = new Date();
       switch (filters.dateRange) {
@@ -98,7 +102,20 @@ const Sessions = () => {
   });
 
   const uniqueSessions = Array.from(
-    new Map(filteredSessions.map((session) => [session.id, session])).values()
+    new Map(
+      filteredSessions.map((session) => [
+        session.id,
+        {
+          ...session,
+          // Ensure these fields exist and have valid types
+          participants: session.participants || [],
+          maxParticipants: parseInt(session.maxParticipants) || 10,
+          isPrivate: Boolean(session.isPrivate),
+          language: session.language || "javascript",
+          status: session.status || "active",
+        },
+      ])
+    ).values()
   );
 
   const handleCreateSession = async (sessionData) => {
@@ -276,15 +293,21 @@ const Sessions = () => {
       {/* Sessions Grid Container */}
       <div className="sessions-grid-container">
         <div className={`sessions-${view}`}>
-          {uniqueSessions.map((session) => (
-            <SessionCard
-              key={session.id}
-              session={session}
-              isOwner={session.ownerId === user.uid}
-              onJoin={() => initiateJoinSession(session.id)}
-              view={view}
-            />
-          ))}
+          {uniqueSessions.length > 0 ? (
+            uniqueSessions.map((session) => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                isOwner={session.hostId === user?.uid}
+                onJoin={() => initiateJoinSession(session.id)}
+                view={view}
+              />
+            ))
+          ) : (
+            <div className="no-sessions-message">
+              <p>No sessions found. Create a new session to get started!</p>
+            </div>
+          )}
         </div>
       </div>
 

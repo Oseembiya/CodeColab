@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from "react-icons/fa";
+import { useSocket } from "../../contexts/SocketContext";
+
 const SessionCard = ({ session, onJoin, view }) => {
   const [participantCount, setParticipantCount] = useState(
     session.participants?.length || 0
@@ -91,15 +93,18 @@ const SessionCard = ({ session, onJoin, view }) => {
   const displayParticipantCount = () => {
     if (session.status === "scheduled") {
       // For scheduled sessions, show "0/X" or special message
-      return `0/${maxParticipants}`;
+      return `0/${maxParticipants > 0 ? maxParticipants : 10}`;
     } else if (session.status === "ended") {
-      // For ended sessions, use the new totalParticipants field if available
+      // For ended sessions, use the totalParticipants field if available
       const totalParticipants =
-        session.totalParticipants || session.participants?.length || 0;
+        session.totalParticipants ||
+        (Array.isArray(session.participants) ? session.participants.length : 0);
       return `${totalParticipants} Participated`;
     } else {
       // For active sessions, show actual count
-      return `${participantCount}/${maxParticipants}`;
+      return `${participantCount}/${
+        maxParticipants > 0 ? maxParticipants : 10
+      }`;
     }
   };
 
