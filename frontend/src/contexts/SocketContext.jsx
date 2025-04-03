@@ -334,20 +334,24 @@ export function SocketProvider({ children }) {
   // Connect when auth state changes
   useEffect(() => {
     console.log("Auth state changed, reconnecting socket");
-    const cleanup = connectSocket();
 
-    return () => {
-      if (typeof cleanup === "function") {
-        cleanup();
-      }
-      if (cleanupRef.current) {
-        cleanupRef.current();
-      }
-      if (reconnectTimeout.current) {
-        clearTimeout(reconnectTimeout.current);
-      }
-    };
-  }, [connectSocket]);
+    // Only connect if authenticated or if we haven't connected yet
+    if (isAuthenticated || connectionStatus === "disconnected") {
+      const cleanup = connectSocket();
+
+      return () => {
+        if (typeof cleanup === "function") {
+          cleanup();
+        }
+        if (cleanupRef.current) {
+          cleanupRef.current();
+        }
+        if (reconnectTimeout.current) {
+          clearTimeout(reconnectTimeout.current);
+        }
+      };
+    }
+  }, [isAuthenticated, connectSocket]); // Only reconnect when auth state changes
 
   const reconnect = useCallback(() => {
     console.log("Manual reconnection requested");
