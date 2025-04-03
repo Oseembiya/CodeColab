@@ -120,16 +120,33 @@ export function SocketProvider({ children }) {
 
       // Add authentication token if user is logged in
       if (isAuthenticated) {
-        const token = await getAuthToken();
-        if (token) {
-          authData.token = token;
-          authData.userId = user?.uid;
-          console.log("Authentication token acquired for socket connection");
-        } else {
-          console.warn(
-            "No auth token available despite user being authenticated"
-          );
+        try {
+          const token = await getAuthToken();
+          if (token) {
+            authData.token = token;
+            authData.userId = user?.uid;
+            console.log("Authentication token acquired for socket connection");
+          } else {
+            console.warn("Failed to get auth token, retrying...");
+            // Retry token acquisition once
+            setTimeout(async () => {
+              try {
+                const retryToken = await getIdToken(true);
+                if (retryToken && socket) {
+                  console.log("Acquired token on retry, updating socket auth");
+                  socket.auth.token = retryToken;
+                  socket.auth.userId = user?.uid;
+                }
+              } catch (retryErr) {
+                console.error("Retry token acquisition failed:", retryErr);
+              }
+            }, 1000);
+          }
+        } catch (tokenErr) {
+          console.error("Error getting auth token:", tokenErr);
         }
+      } else {
+        console.log("User not authenticated, connecting without token");
       }
 
       // Socket.io connection URL from environment
@@ -160,6 +177,28 @@ export function SocketProvider({ children }) {
 
       // Create new socket connection
       const newSocket = io(socketUrl, socketOptions);
+
+      // Retry token acquisition if it failed initially
+      if (isAuthenticated && (!authData.token || !authData.userId)) {
+        setTimeout(async () => {
+          try {
+            console.log("Retrying authentication token acquisition");
+            const retryToken = await getIdToken(true);
+            if (retryToken && newSocket) {
+              console.log("Acquired token on retry, updating socket auth");
+              newSocket.auth.token = retryToken;
+              newSocket.auth.userId = user?.uid;
+              // Force reconnect with new auth
+              if (newSocket.connected) {
+                console.log("Reconnecting with updated auth token");
+                newSocket.disconnect().connect();
+              }
+            }
+          } catch (retryErr) {
+            console.error("Retry token acquisition failed:", retryErr);
+          }
+        }, 1000);
+      }
 
       newSocket.on("connect", () => {
         if (!connectionLogged.current) {

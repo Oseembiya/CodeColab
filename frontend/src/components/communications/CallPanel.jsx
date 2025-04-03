@@ -499,9 +499,10 @@ const CallPanel = ({ sessionId, userId }) => {
           rtcpMuxPolicy: config.webrtc.rtcpMuxPolicy,
         },
         debug: config.debug,
-        // Set higher timeouts for Render's environment - match server settings
-        pingInterval: 25000, // Changed from 5000 to match server's 25000ms
-        retryTimeouts: [3000, 6000, 10000],
+        // Increased timeouts for better stability
+        pingInterval: 25000,
+        connectTimeout: 30000, // Add explicit connect timeout
+        retryTimeouts: [5000, 10000, 15000, 20000], // More gradual retry progression
       };
 
       console.log("PeerJS configuration:", peerOptions);
@@ -827,14 +828,29 @@ const CallPanel = ({ sessionId, userId }) => {
                 console.log("Peer reconnection initiated");
               } catch (reconnectErr) {
                 console.error("Error reconnecting peer:", reconnectErr);
-                // If reconnect fails, wait longer before creating new peer
+                // Create a new peer instead of trying to reconnect
+                console.log(
+                  "Creating new peer connection due to reconnection error"
+                );
+                // Set a flag to avoid reconnection loops
+                if (peerRef.current) {
+                  peerRef.current = null;
+                }
                 setTimeout(() => {
-                  console.log("Creating new peer connection");
                   setupPeerConnection();
                 }, 5000);
               }
             } else {
               console.log("Not reconnecting: peer was destroyed or replaced");
+              // If the peer was destroyed, create a new one after a delay
+              if (!peerRef.current || peerRef.current.destroyed) {
+                setTimeout(() => {
+                  console.log(
+                    "Creating new peer connection after destroyed peer"
+                  );
+                  setupPeerConnection();
+                }, 5000);
+              }
             }
           }, 3000);
         } else if (err.type === "server-error") {
