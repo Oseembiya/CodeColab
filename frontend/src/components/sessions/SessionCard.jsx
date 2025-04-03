@@ -156,7 +156,7 @@ const SessionCard = ({ session, onJoin, view, isOwner }) => {
         <>
           <div className="detail-item">
             <FaUsers />
-            <span>Participants: {displayParticipantCount()}</span>
+            <span>{displayParticipantCount()}</span>
           </div>
           <div className="detail-item">
             <FaCode />
@@ -211,7 +211,7 @@ const SessionCard = ({ session, onJoin, view, isOwner }) => {
           <div className="session-details">
             <div className="detail-item">
               <FaUsers />
-              <span>Participants: {displayParticipantCount()}</span>
+              <span>{displayParticipantCount()}</span>
             </div>
             <div className="detail-item">
               <FaCode />
