@@ -12,6 +12,25 @@ process.env.SOCKET_TRANSPORTS = "polling,websocket";
 process.env.SOCKET_CORS_ORIGIN = "https://codekolab.netlify.app";
 console.log("Set Socket.io environment variables for Render compatibility");
 
+// Set PeerJS configuration for Render environment
+process.env.PEER_DEBUG = "3";
+process.env.PEER_ALLOW_DISCOVERY = "true";
+process.env.PEER_KEY = "peerjs";
+process.env.PEER_HOST = "codecolab-852p.onrender.com";
+process.env.PEER_PORT = "443";
+process.env.PEER_PATH = "/peerjs";
+process.env.PEER_PING_INTERVAL = "25000";
+console.log("Set PeerJS environment variables for Render compatibility");
+
+// Verify the peer.js module is available
+try {
+  const peerModule = require("peer");
+  console.log("PeerJS module found:", !!peerModule);
+  console.log("PeerJS version:", require("peer/package.json").version);
+} catch (error) {
+  console.error("PeerJS module not found or error loading it:", error.message);
+}
+
 // Create a credentials file from the environment variable if it exists
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   try {

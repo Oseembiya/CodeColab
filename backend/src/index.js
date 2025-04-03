@@ -62,9 +62,50 @@ console.log("Socket.io configuration:", {
 // Initialize Socket.IO
 const io = new Server(httpServer, socketConfig);
 
-// Initialize PeerJS server and mount it to Express app
+// Initialize PeerJS server
+console.log("Creating PeerJS server instance...");
 const peerServer = configurePeerServer(httpServer);
+
+// Mount PeerJS to Express app at /peerjs path
+console.log("Mounting PeerJS server to Express app at /peerjs...");
 app.use("/peerjs", peerServer);
+
+// Add a debug endpoint to check if PeerJS is mounted
+app.get("/peerjs-debug", (req, res) => {
+  res.status(200).json({
+    isPeerServerMounted: !!peerServer,
+    peerServerClientCount: peerServer?._clients?.size || 0,
+    peerPath: "/peerjs",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Debug logging to verify our Express routes
+console.log("Express routes:");
+app._router.stack.forEach((middleware) => {
+  if (middleware.route) {
+    console.log(`Route: ${JSON.stringify(middleware.route.path)}`);
+  } else if (middleware.name === "router") {
+    middleware.handle.stack.forEach((handler) => {
+      if (handler.route) {
+        console.log(`Nested route: ${JSON.stringify(handler.route.path)}`);
+      }
+    });
+  }
+});
+
+// Add middleware to help with WebSocket upgrades for PeerJS
+app.use("/peerjs", (req, res, next) => {
+  if (
+    req.headers.upgrade &&
+    req.headers.upgrade.toLowerCase() === "websocket"
+  ) {
+    console.log("PeerJS WebSocket upgrade request detected");
+    res.setHeader("Connection", "Upgrade");
+    res.setHeader("Upgrade", "websocket");
+  }
+  return next();
+});
 
 // Register API routes
 app.use("/api", apiRoutes);
@@ -157,27 +198,43 @@ app.get("/health", (req, res) => {
 
 // Add a PeerJS diagnostics endpoint
 app.get("/peer-status", (req, res) => {
-  const wsCount = peerServer?._clients?.size || 0;
-  const wsClients = peerServer?._clients
-    ? Array.from(peerServer._clients.keys())
-    : [];
+  try {
+    const wsCount = peerServer?._clients?.size || 0;
+    const wsClients = peerServer?._clients
+      ? Array.from(peerServer._clients.keys())
+      : [];
 
-  const info = {
-    status: peerServer ? "UP" : "DOWN",
-    port: process.env.PEER_PORT || 9000,
-    path: process.env.PEER_PATH || "/peerjs",
-    ssl: true,
-    connections: wsCount,
-    connectionIds: wsClients,
-    environment: process.env.NODE_ENV,
-    time: new Date().toISOString(),
-    uptime: process.uptime(),
-  };
+    // Get detailed peer server info
+    const info = {
+      status: peerServer ? "UP" : "DOWN",
+      serverType: peerServer ? typeof peerServer : "undefined",
+      isMounted: !!peerServer,
+      path: "/peerjs",
+      ssl: true,
+      connections: wsCount,
+      connectionIds: wsClients,
+      isServerUp: !!httpServer,
+      socketConnections: io?.engine?.clientsCount || 0,
+      expressRouteCount: app._router?.stack?.length || 0,
+      environment: process.env.NODE_ENV,
+      renderService: process.env.RENDER || "unknown",
+      time: new Date().toISOString(),
+      uptime: process.uptime(),
+    };
 
-  // Log the diagnosis for server-side reference
-  logger.info("PeerJS server status:", info);
+    // Log the diagnosis for server-side reference
+    logger.info("PeerJS server status:", info);
+    console.log("PeerJS server status check:", info);
 
-  res.status(200).json(info);
+    res.status(200).json(info);
+  } catch (error) {
+    logger.error("Error in peer-status endpoint:", error);
+    res.status(500).json({
+      status: "ERROR",
+      error: error.message,
+      stack: error.stack,
+    });
+  }
 });
 
 // Handle uncaught exceptions to prevent server crash

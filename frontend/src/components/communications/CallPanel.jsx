@@ -499,6 +499,9 @@ const CallPanel = ({ sessionId, userId }) => {
           rtcpMuxPolicy: config.webrtc.rtcpMuxPolicy,
         },
         debug: config.debug,
+        // Set higher timeouts for Render's environment
+        pingInterval: 5000,
+        retryTimeouts: [3000, 6000, 10000],
       };
 
       console.log("PeerJS configuration:", peerOptions);
@@ -515,13 +518,50 @@ const CallPanel = ({ sessionId, userId }) => {
         `Attempting to connect to PeerJS server with ID: ${uniquePeerId}`
       );
 
+      // Destroy any existing connection first
+      if (peerRef.current) {
+        try {
+          console.log(
+            "Destroying existing peer connection before creating new one"
+          );
+          peerRef.current.destroy();
+        } catch (err) {
+          console.warn("Error destroying existing peer:", err);
+        }
+        peerRef.current = null;
+      }
+
       const peer = new Peer(uniquePeerId, peerOptions);
       peerRef.current = peer;
+
+      // Set connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (peer && !peer.open) {
+          console.warn(
+            "PeerJS connection timeout - attempting alternate connection"
+          );
+          // Try reconnecting with modified options
+          try {
+            peer.disconnect();
+            setTimeout(() => {
+              peer.reconnect();
+            }, 1000);
+          } catch (err) {
+            console.error("Error during timeout reconnection:", err);
+          }
+        }
+      }, 15000);
 
       // Add connection event to confirm successful connection
       peer.on("open", (id) => {
         console.log(`PeerJS connection established with ID: ${id}`);
         setConnected(true);
+        clearTimeout(connectionTimeout);
+
+        // Initialize media after successful connection
+        initializeMedia().catch((err) => {
+          console.error("Error initializing media after connection:", err);
+        });
       });
 
       // Log all peer events for diagnostics
@@ -541,86 +581,20 @@ const CallPanel = ({ sessionId, userId }) => {
             port: config.peer.port,
           });
 
-          // Check NAT type if possible
-          checkNATType();
+          // No need to check NAT type here as it can overload the connection
+          console.log("ICE connection failed - retry may be needed");
         }
       });
 
-      // Add a function to diagnose NAT type
-      const checkNATType = () => {
-        try {
-          console.log("Beginning NAT traversal diagnosis...");
-          // Create a temporary RTCPeerConnection to check NAT capabilities
-          const pc = new RTCPeerConnection({
-            iceServers: config.webrtc.iceServers,
-          });
-
-          // Monitor ICE candidate types
-          let hasHost = false;
-          let hasReflexive = false;
-          let hasRelay = false;
-
-          pc.onicecandidate = (e) => {
-            if (!e.candidate) return;
-
-            console.log("ICE candidate:", e.candidate.candidate);
-
-            // Check candidate types
-            if (e.candidate.candidate.indexOf("typ host") !== -1)
-              hasHost = true;
-            if (e.candidate.candidate.indexOf("typ srflx") !== -1)
-              hasReflexive = true;
-            if (e.candidate.candidate.indexOf("typ relay") !== -1)
-              hasRelay = true;
-
-            // Report findings
-            if (!e.candidate) {
-              console.log("NAT diagnosis results:", {
-                localCandidates: hasHost,
-                reflexiveCandidates: hasReflexive,
-                relayCandidates: hasRelay,
-              });
-
-              // Suggest solutions
-              if (!hasReflexive && !hasRelay) {
-                console.warn(
-                  "NAT traversal will likely fail - only local candidates found. Consider adding more TURN servers."
-                );
-              } else if (!hasRelay) {
-                console.warn(
-                  "NAT traversal may have issues - no relay candidates found. Consider adding additional TURN servers."
-                );
-              }
-
-              // Clean up
-              pc.close();
-            }
-          };
-
-          // Create offer to generate candidates
-          pc.createOffer().then((offer) => pc.setLocalDescription(offer));
-        } catch (err) {
-          console.error("NAT diagnosis error:", err);
-        }
-      };
-
-      // Set a timeout for initial connection
-      const connectionTimeout = setTimeout(() => {
-        if (!peer.open) {
-          console.error("Peer connection timed out");
-          setError(
-            "Connection timed out. Please check your internet connection and refresh the page."
-          );
-        }
-      }, 15000);
-
-      // Connection established
-      peer.on("open", (id) => {
-        console.log(`Connected with peer ID: ${id}`);
-        clearTimeout(connectionTimeout);
-
-        // Initialize media after successful connection
-        initializeMedia();
+      // Add connection event handler
+      peer.on("connection", (conn) => {
+        console.log(`Received data connection from peer: ${conn.peer}`);
+        conn.on("open", () => {
+          console.log(`Data connection with ${conn.peer} opened`);
+        });
+        conn.on("error", (err) => {
+          console.error(`Data connection error with ${conn.peer}:`, err);
+        });
       });
 
       // Handle incoming calls
