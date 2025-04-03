@@ -10,6 +10,7 @@ const Sessions = lazy(() => import("./pages/sessions"));
 const LiveSession = lazy(() => import("./pages/liveSession"));
 const NotFound = lazy(() => import("./pages/notFound"));
 const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage"));
+const WhiteboardPage = lazy(() => import("./pages/whiteboard"));
 
 /**
  * Application route configuration
@@ -34,7 +35,7 @@ const routeConfig = [
     },
   },
 
-  // Dashboard and protected routes
+  // Root redirect for authenticated users
   {
     path: "/",
     element: {
@@ -43,7 +44,25 @@ const routeConfig = [
     },
     children: [
       {
-        index: true, // Root path shows dashboard for authenticated users
+        index: true,
+        element: {
+          type: "redirect",
+          to: "/dashboard",
+        },
+      },
+    ],
+  },
+
+  // Dashboard and protected routes
+  {
+    path: "/dashboard",
+    element: {
+      type: "protected",
+      component: ProtectedRoute,
+    },
+    children: [
+      {
+        index: true,
         element: {
           type: "component",
           component: Dashboard,
@@ -64,17 +83,24 @@ const routeConfig = [
         },
       },
       {
-        path: "dashboard/profile",
+        path: "profile",
         element: {
           type: "component",
           component: Profile,
         },
       },
       {
-        path: "dashboard/editor",
+        path: "editor",
         element: {
           type: "component",
           component: CodeEditorPage,
+        },
+      },
+      {
+        path: "whiteboard",
+        element: {
+          type: "component",
+          component: WhiteboardPage,
         },
       },
     ],
