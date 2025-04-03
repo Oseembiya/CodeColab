@@ -113,22 +113,20 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <SocketProvider>
-          <SessionProvider>
-            <FriendProvider>
-              <NotificationProvider>
-                <UserMetricsProvider>
-                  <DropdownProvider>
-                    <ScrollToTop />
-                    <Routes>{generateRoutes(routeConfig)}</Routes>
-                  </DropdownProvider>
-                </UserMetricsProvider>
-              </NotificationProvider>
-            </FriendProvider>
-          </SessionProvider>
-        </SocketProvider>
-      </AuthProvider>
+      <SocketProvider>
+        <SessionProvider>
+          <FriendProvider>
+            <NotificationProvider>
+              <UserMetricsProvider>
+                <DropdownProvider>
+                  <ScrollToTop />
+                  <Routes>{generateRoutes(routeConfig)}</Routes>
+                </DropdownProvider>
+              </UserMetricsProvider>
+            </NotificationProvider>
+          </FriendProvider>
+        </SessionProvider>
+      </SocketProvider>
     </ErrorBoundary>
   );
 };
