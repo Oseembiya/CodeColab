@@ -7,7 +7,6 @@ import { DropdownProvider } from "./contexts/DropdownContext.jsx";
 import { UserMetricsProvider } from "./contexts/UserMetricsContext.jsx";
 import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
-import routeConfig from "./config/routes";
 import { NotificationProvider } from "./contexts/NotificationContext.jsx";
 import LoadingFallback from "./components/common/LoadingFallback";
 
