@@ -116,7 +116,7 @@ const Sessions = () => {
       const result = await joinSession(sessionId);
 
       // Navigate to session
-      navigate(`/dashboard/sessions/${sessionId}`);
+      navigate(`/sessions/${sessionId}`);
     } catch (error) {
       console.error("Failed to join session:", error);
       setJoinError(error.message);
