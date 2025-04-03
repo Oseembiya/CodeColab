@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "../firebaseConfig";
 import { useSocket } from "../contexts/SocketContext";
+import { useAuth } from "../hooks/useAuth";
 
 /**
  * Hook for managing sessions
@@ -23,7 +24,7 @@ export const useSessions = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { user } = auth();
+  const { user } = useAuth();
   const { socket } = useSocket();
 
   // Fetch sessions from Firestore
