@@ -62,8 +62,14 @@ const Sidebar = memo(({ isOpen, onClose }) => {
         socket.disconnect();
       }
 
-      // Clear session data
-      clearActiveSession();
+      // Clear session data - add error handling
+      try {
+        console.log("Clearing active session");
+        clearActiveSession();
+      } catch (sessionError) {
+        console.error("Error clearing session:", sessionError);
+        // Continue with logout even if session clearing fails
+      }
 
       // Add a small delay to ensure socket disconnection completes
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -77,6 +83,12 @@ const Sidebar = memo(({ isOpen, onClose }) => {
       navigate("/login");
     } catch (error) {
       console.error("Error signing out:", error);
+      // If sign out fails, try to navigate to login anyway
+      try {
+        navigate("/login");
+      } catch (navError) {
+        console.error("Navigation error:", navError);
+      }
     }
   };
 

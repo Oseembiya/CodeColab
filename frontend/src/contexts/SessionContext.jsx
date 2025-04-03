@@ -362,6 +362,14 @@ export const SessionProvider = ({ children }) => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
+  // Clear the active session state
+  const clearActiveSession = useCallback(() => {
+    console.log("Clearing active session state");
+    setCurrentSession(null);
+    setError(null);
+    return true;
+  }, []);
+
   const contextValue = {
     currentSession,
     isLoading,
@@ -370,6 +378,7 @@ export const SessionProvider = ({ children }) => {
     joinSession,
     leaveSession,
     endSession,
+    clearActiveSession,
   };
 
   return (
