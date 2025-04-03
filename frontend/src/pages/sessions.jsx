@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaPlus,
@@ -23,9 +23,9 @@ const Sessions = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const {
-    sessions,
-    loading,
-    error,
+    sessions = [],
+    loading = false,
+    error = null,
     createSession,
     joinSession,
     refreshSessions,
@@ -44,79 +44,82 @@ const Sessions = () => {
     privacy: "all",
   });
   const [view, setView] = useState("grid");
+  const [filteredSessions, setFilteredSessions] = useState([]);
+  const [uniqueSessions, setUniqueSessions] = useState([]);
 
-  if (loading) {
-    return <div>Loading sessions...</div>;
-  }
+  // Process sessions when they change
+  useEffect(() => {
+    if (!sessions) return;
 
-  if (error) {
-    return <div>Error loading sessions: {error.message}</div>;
-  }
+    // Filter sessions
+    const filtered = sessions.filter((session) => {
+      const matchesSearch =
+        session.title?.toLowerCase().includes(filters.search.toLowerCase()) ||
+        false ||
+        session.description
+          ?.toLowerCase()
+          .includes(filters.search.toLowerCase()) ||
+        false;
+      const matchesStatus =
+        filters.status === "all" ||
+        session.status === filters.status ||
+        (filters.status === "completed" && session.status === "ended");
+      const matchesLanguage =
+        filters.language === "all" || session.language === filters.language;
+      const matchesPrivacy =
+        filters.privacy === "all" ||
+        Boolean(session.isPrivate) === (filters.privacy === "private");
 
-  const filteredSessions = sessions.filter((session) => {
-    const matchesSearch =
-      session.title?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      false ||
-      session.description
-        ?.toLowerCase()
-        .includes(filters.search.toLowerCase()) ||
-      false;
-    const matchesStatus =
-      filters.status === "all" ||
-      session.status === filters.status ||
-      (filters.status === "completed" && session.status === "ended");
-    const matchesLanguage =
-      filters.language === "all" || session.language === filters.language;
-    const matchesPrivacy =
-      filters.privacy === "all" ||
-      Boolean(session.isPrivate) === (filters.privacy === "private");
-
-    let matchesDate = true;
-    if (filters.dateRange !== "all" && session.startTime) {
-      const sessionDate = new Date(session.startTime);
-      const now = new Date();
-      switch (filters.dateRange) {
-        case "today":
-          matchesDate = sessionDate.toDateString() === now.toDateString();
-          break;
-        case "week":
-          const weekAgo = new Date(now.setDate(now.getDate() - 7));
-          matchesDate = sessionDate >= weekAgo;
-          break;
-        case "month":
-          const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
-          matchesDate = sessionDate >= monthAgo;
-          break;
-        default:
-          break;
+      let matchesDate = true;
+      if (filters.dateRange !== "all" && session.startTime) {
+        const sessionDate = new Date(session.startTime);
+        const now = new Date();
+        switch (filters.dateRange) {
+          case "today":
+            matchesDate = sessionDate.toDateString() === now.toDateString();
+            break;
+          case "week":
+            const weekAgo = new Date(now.setDate(now.getDate() - 7));
+            matchesDate = sessionDate >= weekAgo;
+            break;
+          case "month":
+            const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+            matchesDate = sessionDate >= monthAgo;
+            break;
+          default:
+            break;
+        }
       }
-    }
 
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesLanguage &&
-      matchesPrivacy &&
-      matchesDate
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesLanguage &&
+        matchesPrivacy &&
+        matchesDate
+      );
+    });
+    setFilteredSessions(filtered);
+
+    // Create unique sessions list
+    const unique = Array.from(
+      new Map(
+        filtered.map((session) => [
+          session.id,
+          {
+            ...session,
+            // Ensure these fields exist and have valid types
+            participants: session.participants || [],
+            maxParticipants: parseInt(session.maxParticipants) || 10,
+            isPrivate: Boolean(session.isPrivate),
+            language: session.language || "javascript",
+            status: session.status || "active",
+          },
+        ])
+      ).values()
     );
-  });
-
-  const uniqueSessions = Array.from(
-    new Map(
-      filteredSessions.map((session) => [
-        session.id,
-        {
-          ...session,
-          // Ensure these fields exist and have valid types
-          participants: session.participants || [],
-          maxParticipants: parseInt(session.maxParticipants) || 10,
-          isPrivate: Boolean(session.isPrivate),
-          language: session.language || "javascript",
-          status: session.status || "active",
-        },
-      ])
-    ).values()
-  );
+    setUniqueSessions(unique);
+  }, [sessions, filters]);
 
   const handleCreateSession = async (sessionData) => {
     try {
@@ -133,7 +136,7 @@ const Sessions = () => {
       console.log("Directly joining session:", sessionId);
 
       // No join code needed for public sessions
-      const result = await joinSession(sessionId);
+      await joinSession(sessionId);
 
       // Navigate to session
       navigate(`/session/${sessionId}`);
@@ -189,7 +192,7 @@ const Sessions = () => {
         })
       );
 
-      const result = await joinSession(targetSessionId, joinCode);
+      await joinSession(targetSessionId, joinCode);
 
       // Clear UI states
       setShowJoinModal(false);
@@ -240,6 +243,16 @@ const Sessions = () => {
       handleJoinSessionDirect(sessionId);
     }
   };
+
+  // Loading state
+  if (loading) {
+    return <div>Loading sessions...</div>;
+  }
+
+  // Error state
+  if (error) {
+    return <div>Error loading sessions: {error.message}</div>;
+  }
 
   return (
     <div className="sessions-container">
