@@ -9,6 +9,7 @@ const Profile = lazy(() => import("./pages/profile"));
 const Sessions = lazy(() => import("./pages/sessions"));
 const LiveSession = lazy(() => import("./pages/liveSession"));
 const NotFound = lazy(() => import("./pages/notFound"));
+const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage"));
 
 /**
  * Application route configuration
@@ -74,6 +75,13 @@ const routeConfig = [
         element: {
           type: "component",
           component: Profile,
+        },
+      },
+      {
+        path: "dashboard/editor",
+        element: {
+          type: "component",
+          component: CodeEditorPage,
         },
       },
     ],
