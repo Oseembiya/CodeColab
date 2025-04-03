@@ -10,7 +10,7 @@ const Sessions = lazy(() => import("./pages/sessions"));
 const LiveSession = lazy(() => import("./pages/liveSession"));
 const NotFound = lazy(() => import("./pages/notFound"));
 const CodeEditorPage = lazy(() => import("./pages/CodeEditorPage"));
-const WhiteboardPage = lazy(() => import("./pages/whiteboard"));
+//const WhiteboardPage = lazy(() => import("./pages/whiteboard"));
 
 /**
  * Application route configuration
@@ -96,13 +96,13 @@ const routeConfig = [
           component: CodeEditorPage,
         },
       },
-      {
+      /*{
         path: "whiteboard",
         element: {
           type: "component",
           component: WhiteboardPage,
         },
-      },
+      },*/
     ],
   },
 
