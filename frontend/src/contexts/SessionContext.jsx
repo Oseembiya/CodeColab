@@ -53,6 +53,9 @@ export const SessionProvider = ({ children }) => {
           ? sessionData.joinCode || generateJoinCode()
           : null;
 
+        // Use ISO string for participant timestamps instead of serverTimestamp
+        const now = new Date().toISOString();
+
         // Create session document
         const sessionRef = collection(db, "sessions");
         const newSession = {
@@ -70,13 +73,13 @@ export const SessionProvider = ({ children }) => {
               name: user.displayName || "Anonymous",
               photoURL: user.photoURL || "",
               isHost: true,
-              joinedAt: serverTimestamp(),
+              joinedAt: now, // Changed from serverTimestamp() to ISO string
             },
           ],
           status: sessionData.scheduled ? "scheduled" : "active",
           startTime: sessionData.scheduled
             ? new Date(sessionData.scheduledDate).toISOString()
-            : new Date().toISOString(),
+            : now,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           maxParticipants: sessionData.maxParticipants || 10,
@@ -170,12 +173,15 @@ export const SessionProvider = ({ children }) => {
 
         // Add user to participants if not already there
         if (!isExistingParticipant) {
+          // Use ISO string for timestamp instead of serverTimestamp
+          const now = new Date().toISOString();
+
           const userToAdd = {
             id: user.uid,
             name: user.displayName || "Anonymous",
             photoURL: user.photoURL || "",
             isHost: sessionData.hostId === user.uid,
-            joinedAt: serverTimestamp(),
+            joinedAt: now, // Changed from serverTimestamp() to ISO string
           };
 
           // Update session with new participant
@@ -227,16 +233,22 @@ export const SessionProvider = ({ children }) => {
       // Remove user from session participants
       const sessionRef = doc(db, "sessions", currentSession.id);
 
-      await updateDoc(sessionRef, {
-        participants: arrayRemove({
-          id: user.uid,
-          name: user.displayName || "Anonymous",
-          photoURL: user.photoURL || "",
-          isHost: currentSession.hostId === user.uid,
-          joinedAt: serverTimestamp(),
-        }),
-        updatedAt: serverTimestamp(),
-      });
+      // Get the actual user entry from participants array to remove the correct one
+      const sessionDoc = await getDoc(sessionRef);
+      if (!sessionDoc.exists()) {
+        throw new Error("Session not found");
+      }
+
+      const sessionData = sessionDoc.data();
+      const participants = sessionData.participants || [];
+      const userParticipant = participants.find((p) => p.id === user.uid);
+
+      if (userParticipant) {
+        await updateDoc(sessionRef, {
+          participants: arrayRemove(userParticipant),
+          updatedAt: serverTimestamp(),
+        });
+      }
 
       // Notify socket server
       if (socket) {
