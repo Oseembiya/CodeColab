@@ -8,6 +8,29 @@ import { UserMetricsProvider } from "./contexts/UserMetricsContext.jsx";
 import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
 import { NotificationProvider } from "./contexts/NotificationContext.jsx";
+import routeConfig from "./routeConfig";
+
+/**
+ * Simple loading fallback component
+ */
+const LoadingFallback = ({ message = "Loading..." }) => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="text-center">
+      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-e-transparent align-[-0.125em] text-primary"></div>
+      <p className="mt-2">{message}</p>
+    </div>
+  </div>
+);
+
+/**
+ * Initialize error tracking for production environments
+ */
+const initErrorTracking = () => {
+  // This can be replaced with a real error tracking service implementation
+  if (process.env.NODE_ENV === "production") {
+    console.log("Error tracking initialized in production mode");
+  }
+};
 
 /**
  * Render a route based on its configuration with suspense boundaries
