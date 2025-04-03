@@ -134,12 +134,24 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
   };
 
   const handleEndSession = () => {
+    // Double-check that the user is the owner before allowing session to be ended
+    if (!isOwner) {
+      console.error("Only the host can end the session");
+      return;
+    }
+
     setShowEndAlert(true);
   };
 
   const handleConfirmEndSession = async () => {
     setShowEndAlert(false);
     try {
+      // Verify once more that the user is the owner
+      if (!isOwner) {
+        console.error("Only the host can end the session");
+        return;
+      }
+
       const sessionRef = doc(db, "sessions", session.id);
 
       // First, get the historical metrics for this session to count all participants
@@ -222,7 +234,7 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
   };
 
   // Check if current user is the session owner
-  const isOwner = user && session.owner === user.uid;
+  const isOwner = user && session.hostId === user.uid;
 
   return (
     <>
