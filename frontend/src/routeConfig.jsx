@@ -3,8 +3,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Lazy loaded components for code splitting
 const Dashboard = lazy(() => import("./pages/dashboard"));
-const Login = lazy(() => import("./pages/login"));
-const SignUp = lazy(() => import("./pages/signup"));
+const Auth = lazy(() => import("./pages/auth"));
 const Profile = lazy(() => import("./pages/profile"));
 const Sessions = lazy(() => import("./pages/sessions"));
 const LiveSession = lazy(() => import("./pages/liveSession"));
@@ -23,7 +22,7 @@ const routeConfig = [
     path: "/login",
     element: {
       type: "auth-aware", // Special type that redirects authenticated users
-      component: Login,
+      component: Auth,
     },
   },
   // Signup route (public)
@@ -31,7 +30,7 @@ const routeConfig = [
     path: "/signup",
     element: {
       type: "auth-aware", // Special type that redirects authenticated users
-      component: SignUp,
+      component: Auth,
     },
   },
 

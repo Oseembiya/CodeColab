@@ -43,10 +43,12 @@ const AuthAwareRoute = ({ component: Component }) => {
   // If authenticated, redirect to dashboard
   if (user) return <Navigate to="/" replace />;
 
-  // If not authenticated, render the component (login)
+  // If not authenticated, render the component (auth page)
   return (
     <ErrorBoundary>
-      <Suspense fallback={<LoadingFallback message="Loading login page..." />}>
+      <Suspense
+        fallback={<LoadingFallback message="Loading authentication page..." />}
+      >
         <Component />
       </Suspense>
     </ErrorBoundary>
