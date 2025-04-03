@@ -1,7 +1,6 @@
 import { lazy } from "react";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
-import Dashboard from "./pages/dashboard";
 
 // Lazy loaded components for code splitting
 const Dashboard = lazy(() => import("./pages/dashboard"));
