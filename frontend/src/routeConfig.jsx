@@ -50,7 +50,7 @@ const routeConfig = [
         },
       },
       {
-        path: "sessions",
+        path: "dashboard/sessions",
         element: {
           type: "component",
           component: Sessions,
@@ -65,13 +65,6 @@ const routeConfig = [
       },
       {
         path: "dashboard/profile",
-        element: {
-          type: "component",
-          component: Profile,
-        },
-      },
-      {
-        path: "profile",
         element: {
           type: "component",
           component: Profile,

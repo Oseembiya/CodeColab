@@ -25,6 +25,7 @@ export function SocketProvider({ children }) {
   const isConnecting = useRef(false);
   const connectionAttempts = useRef(0);
   const lastConnectTime = useRef(0);
+  const socketRef = useRef(null); // Add a ref to track the socket instance
 
   // Connect to socket with authentication token
   const connectSocket = useCallback(async () => {
@@ -64,9 +65,9 @@ export function SocketProvider({ children }) {
 
     try {
       // Clean up existing socket if there is one
-      if (socket && socket.connected) {
+      if (socketRef.current && socketRef.current.connected) {
         console.log("Disconnecting existing socket connection");
-        socket.disconnect();
+        socketRef.current.disconnect();
         // Small delay to ensure clean disconnection
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -157,6 +158,9 @@ export function SocketProvider({ children }) {
 
       const newSocket = io(socketUrl, socketOptions);
 
+      // Store socket in ref
+      socketRef.current = newSocket;
+
       // Attempt connection
       newSocket.connect();
 
@@ -211,7 +215,7 @@ export function SocketProvider({ children }) {
       isConnecting.current = false;
       return () => {}; // Empty cleanup function
     }
-  }, [socket, user?.uid, getIdToken, isAuthenticated]);
+  }, [user?.uid, getIdToken, isAuthenticated]); // Remove socket from dependencies
 
   // Connect/reconnect when auth state changes
   useEffect(() => {
@@ -232,6 +236,20 @@ export function SocketProvider({ children }) {
     // If authenticated, ensure we have user and getIdToken function
     if (isAuthenticated && (!user || !getIdToken)) {
       console.log("Authenticated but user or getIdToken not ready, waiting...");
+      return;
+    }
+
+    // Use a ref to track if we should connect
+    const shouldConnect =
+      isConnecting.current === false &&
+      (connectionStatus === "disconnected" ||
+        connectionStatus === "error" ||
+        !socket);
+
+    if (!shouldConnect) {
+      console.log(
+        "Skipping connection attempt - already connected or connecting"
+      );
       return;
     }
 
@@ -258,13 +276,37 @@ export function SocketProvider({ children }) {
         clearTimeout(reconnectTimeout.current);
       }
     };
-  }, [isAuthenticated, user, getIdToken, connectSocket]);
+  }, [isAuthenticated, user, getIdToken, connectionStatus, socket]); // Add connectionStatus and socket as dependencies
 
   // Manual reconnect function
   const reconnect = useCallback(() => {
     console.log("Manual reconnection initiated");
     connectSocket();
   }, [connectSocket]);
+
+  // Cleanup socket on unmount or logout
+  useEffect(() => {
+    // If user was authenticated and is now logged out, disconnect the socket
+    if (!isAuthenticated && socketRef.current) {
+      console.log("User logged out, cleaning up socket connection");
+      socketRef.current.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+      setConnectionStatus("disconnected");
+    }
+
+    // Cleanup on component unmount
+    return () => {
+      if (socketRef.current) {
+        console.log("Component unmounting, cleaning up socket");
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      if (reconnectTimeout.current) {
+        clearTimeout(reconnectTimeout.current);
+      }
+    };
+  }, [isAuthenticated]);
 
   // Context value
   const contextValue = {

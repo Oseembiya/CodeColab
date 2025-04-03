@@ -14,6 +14,7 @@ import {
 import { useState, memo, useEffect } from "react";
 import { auth, db } from "../../firebaseConfig";
 import { useSession } from "../../contexts/SessionContext";
+import { useSocket } from "../../contexts/SocketContext";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import PropTypes from "prop-types";
 
@@ -21,6 +22,7 @@ const Sidebar = memo(({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { clearActiveSession } = useSession();
+  const { socket } = useSocket();
   const [showPreferences, setShowPreferences] = useState(false);
   const [preferences, setPreferences] = useState({
     theme: "system",
@@ -54,8 +56,24 @@ const Sidebar = memo(({ isOpen, onClose }) => {
 
   const handleSignOut = async () => {
     try {
+      // Disconnect socket before logout to prevent reconnection attempts
+      if (socket) {
+        console.log("Disconnecting socket before logout");
+        socket.disconnect();
+      }
+
+      // Clear session data
       clearActiveSession();
+
+      // Add a small delay to ensure socket disconnection completes
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Sign out from Firebase
+      console.log("Signing out from Firebase");
       await auth.signOut();
+
+      // Navigate to login page
+      console.log("Navigating to login page");
       navigate("/login");
     } catch (error) {
       console.error("Error signing out:", error);
