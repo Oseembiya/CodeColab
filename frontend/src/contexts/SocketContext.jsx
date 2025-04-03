@@ -99,17 +99,18 @@ export function SocketProvider({ children }) {
       const socketOptions = {
         transports: ["polling"],
         reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
+        reconnectionAttempts: config.socketReconnectionAttempts,
+        reconnectionDelay: config.socketReconnectionDelay,
+        reconnectionDelayMax: config.socketReconnectionDelayMax,
         timeout: 20000,
         forceNew: true,
         auth: authData,
+        path: config.socketPath,
       };
 
       // Create socket connection
       const socketUrl =
-        config.api.socketUrl || "https://codecolab-852p.onrender.com";
+        config.socketUrl || "https://codecolab-852p.onrender.com";
       console.log(`Connecting to socket server at ${socketUrl}`);
 
       const newSocket = io(socketUrl, socketOptions);
