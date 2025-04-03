@@ -88,16 +88,30 @@ export function SocketProvider({ children }) {
           if (token) {
             authData.token = token;
             authData.userId = user?.uid;
+            authData.username = user?.displayName || "Anonymous";
             console.log("Authentication token acquired for socket connection");
+            // Add more detailed debug info without exposing the full token
+            console.log(`Token length: ${token.length}, User ID: ${user?.uid}`);
+          } else {
+            console.warn(
+              "Token retrieval returned null despite authenticated user"
+            );
           }
         } catch (tokenErr) {
           console.error("Error getting auth token:", tokenErr);
         }
+      } else {
+        console.warn(
+          "User authenticated status:",
+          isAuthenticated,
+          "getIdToken available:",
+          !!getIdToken
+        );
       }
 
       // Socket.io connection options
       const socketOptions = {
-        transports: ["polling"],
+        transports: ["polling", "websocket"],
         reconnection: true,
         reconnectionAttempts: config.socketReconnectionAttempts,
         reconnectionDelay: config.socketReconnectionDelay,
@@ -106,6 +120,8 @@ export function SocketProvider({ children }) {
         forceNew: true,
         auth: authData,
         path: config.socketPath,
+        withCredentials: true, // Important for CORS with credentials
+        autoConnect: false, // Manually control connection
       };
 
       // Create socket connection
@@ -114,6 +130,9 @@ export function SocketProvider({ children }) {
       console.log(`Connecting to socket server at ${socketUrl}`);
 
       const newSocket = io(socketUrl, socketOptions);
+
+      // Attempt connection
+      newSocket.connect();
 
       // Connection event handlers
       newSocket.on("connect", () => {

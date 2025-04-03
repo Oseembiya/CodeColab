@@ -30,7 +30,30 @@ app.use("/socket.io", (req, res, next) => {
     },
   });
 
-  res.header("Access-Control-Allow-Origin", "https://codekolab.netlify.app");
+  // More permissive CORS for development
+  const isDevelopmentMode = process.env.NODE_ENV !== "production";
+  const allowedOrigins = isDevelopmentMode
+    ? [
+        "https://codekolab.netlify.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://localhost:5173",
+      ]
+    : ["https://codekolab.netlify.app"];
+
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  } else if (isDevelopmentMode) {
+    // In development, be more permissive
+    console.log(`Allowing unknown origin in development: ${origin}`);
+    res.header("Access-Control-Allow-Origin", origin);
+  } else {
+    // In production, restrict to known origins
+    res.header("Access-Control-Allow-Origin", "https://codekolab.netlify.app");
+  }
+
   res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Credentials", "true");
@@ -57,14 +80,22 @@ app.use((req, res, next) => {
 });
 
 // Socket.io config for production
+const isDevelopmentMode = process.env.NODE_ENV !== "production";
 const socketConfig = {
   cors: {
-    origin: "https://codekolab.netlify.app",
-    methods: ["GET", "POST"],
+    origin: isDevelopmentMode
+      ? [
+          "https://codekolab.netlify.app",
+          "http://localhost:5173",
+          "http://localhost:3000",
+          "https://localhost:5173",
+        ]
+      : "https://codekolab.netlify.app",
+    methods: ["GET", "POST", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   },
-  transports: ["polling"],
+  transports: ["polling", "websocket"],
   pingTimeout: 60000,
   pingInterval: 25000,
   path: "/socket.io/",

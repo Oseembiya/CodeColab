@@ -34,22 +34,48 @@ const initializeSocketHandlers = (io) => {
     try {
       // Get authentication token from handshake
       const token = socket.handshake.auth.token;
+      const clientId = socket.handshake.auth.clientId;
 
+      // Log detailed debugging information
+      logger.info(`Socket connection attempt - Client ID: ${clientId}`);
+      logger.info(
+        `Auth data received: ${JSON.stringify({
+          hasToken: !!token,
+          userId: socket.handshake.auth.userId,
+          username: socket.handshake.auth.username,
+        })}`
+      );
+
+      // If in development mode, allow connections without token for testing
+      const isDevelopmentMode = process.env.NODE_ENV !== "production";
       if (!token) {
-        logger.warn("Socket connection rejected - no auth token");
-        return next(new Error("Authentication error"));
+        if (isDevelopmentMode) {
+          // Allow unauthenticated connections in development
+          logger.warn(
+            `Development mode: allowing unauthenticated connection for client: ${clientId}`
+          );
+          socket.userId = `anonymous-${clientId}`;
+          socket.username = "Anonymous Dev User";
+          socket.isAuthenticated = false;
+          return next();
+        } else {
+          // In production, reject unauthenticated connections
+          logger.warn("Socket connection rejected - no auth token");
+          return next(new Error("Authentication error: No token provided"));
+        }
       }
 
       // Validate token (handled by Firebase client-side)
       // We trust the token from client since Firebase handles auth
       socket.userId = socket.handshake.auth.userId;
       socket.username = socket.handshake.auth.username || "Anonymous";
+      socket.isAuthenticated = true;
 
       logger.info(`Authenticated socket connection for user: ${socket.userId}`);
       next();
     } catch (error) {
       logger.error("Socket authentication error:", error);
-      next(new Error("Authentication error"));
+      next(new Error(`Authentication error: ${error.message}`));
     }
   });
 
