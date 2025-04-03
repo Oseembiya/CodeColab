@@ -99,6 +99,51 @@ const initializeSocketHandlers = (io) => {
     });
 
     // Session lifecycle events
+    socket.on("create-session", async (data) => {
+      try {
+        const { sessionId, userId, sessionData } = data;
+
+        if (!sessionId || !userId || !sessionData) {
+          logger.error("Invalid create-session parameters", data);
+          socket.emit("error", {
+            message: "Invalid session creation parameters",
+          });
+          return;
+        }
+
+        logger.info(`User ${userId} creating session ${sessionId}`);
+
+        // Add session to session store
+        sessionStore.initializeSession(sessionId, {
+          hostId: userId,
+          hostName: sessionData.hostName || "Anonymous",
+          createdAt: new Date().toISOString(),
+          status: sessionData.status || "active",
+          title: sessionData.title,
+          language: sessionData.language || "javascript",
+          isPrivate: sessionData.isPrivate || false,
+        });
+
+        // Join the session room
+        socket.join(sessionId);
+
+        // Attach sessionId to socket for easier reference in other handlers
+        socket.sessionId = sessionId;
+        socket.currentUserId = userId;
+
+        // Confirm creation to the user
+        socket.emit("session-created", {
+          sessionId,
+          message: "Successfully created session",
+        });
+      } catch (error) {
+        logger.error("Error in create-session:", error);
+        socket.emit("error", {
+          message: "Failed to create session",
+        });
+      }
+    });
+
     socket.on("join-session", async (data) => {
       try {
         const { sessionId, userId, username, photoURL } = data;

@@ -14,6 +14,43 @@ class SessionStore {
   }
 
   /**
+   * Initialize a session with metadata
+   */
+  initializeSession(sessionId, sessionData) {
+    // Initialize the session with an empty participants map
+    if (!this.activeSessions.has(sessionId)) {
+      this.activeSessions.set(sessionId, new Map());
+    }
+
+    // Initialize session state with default content and language
+    this.sessionStates.set(sessionId, {
+      content: sessionData.initialContent || "",
+      language: sessionData.language || "javascript",
+      createdAt: Date.now(),
+      lastEditAt: Date.now(),
+      lastEditBy: sessionData.hostId,
+    });
+
+    // Store session metadata
+    this.sessionInfo.set(sessionId, {
+      title: sessionData.title || "Untitled Session",
+      hostId: sessionData.hostId,
+      hostName: sessionData.hostName || "Anonymous",
+      isPrivate: sessionData.isPrivate || false,
+      status: sessionData.status || "active",
+      createdAt: sessionData.createdAt || new Date().toISOString(),
+      language: sessionData.language || "javascript",
+      initialContentCounted: false,
+    });
+
+    return {
+      sessionId,
+      info: this.sessionInfo.get(sessionId),
+      state: this.sessionStates.get(sessionId),
+    };
+  }
+
+  /**
    * Get or create session data
    */
   getSession(sessionId) {
