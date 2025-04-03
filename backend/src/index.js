@@ -15,6 +15,35 @@ const app = configureApp();
 // Create HTTP server
 const httpServer = createServer(app);
 
+// Add explicit CORS handling for Socket.io polling
+app.use("/socket.io", (req, res, next) => {
+  // Debug Socket.io requests
+  console.log("Socket.io request:", {
+    method: req.method,
+    url: req.url,
+    query: req.query,
+    headers: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      "user-agent": req.headers["user-agent"],
+      cookie: req.headers.cookie ? "[REDACTED]" : undefined,
+    },
+  });
+
+  res.header("Access-Control-Allow-Origin", "https://codekolab.netlify.app");
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+
+  next();
+});
+
 // Add explicit WebSocket handling for Socket.io
 app.use((req, res, next) => {
   if (
@@ -30,26 +59,18 @@ app.use((req, res, next) => {
 // Socket.io config for production
 const socketConfig = {
   cors: {
-    origin: process.env.SOCKET_CORS_ORIGIN || "https://codekolab.netlify.app",
+    origin: "https://codekolab.netlify.app",
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   },
-  allowEIO3: true,
-  transports: (process.env.SOCKET_TRANSPORTS || "polling,websocket").split(","),
-  pingTimeout: parseInt(process.env.SOCKET_PING_TIMEOUT || "60000"),
-  pingInterval: parseInt(process.env.SOCKET_PING_INTERVAL || "25000"),
-  maxHttpBufferSize: 1e6, // 1 MB
-  connectTimeout: 45000,
-  compression: true,
+  transports: ["polling"],
+  pingTimeout: 60000,
+  pingInterval: 25000,
   path: "/socket.io/",
-  perMessageDeflate: {
-    threshold: 32768,
-  },
-  // Handle being behind Render proxy
-  allowUpgrades: true,
-  serveClient: false,
-  cookie: false,
+  // Reduce complexity
+  allowEIO3: true,
+  connectTimeout: 45000,
 };
 
 // Log Socket.io configuration

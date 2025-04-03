@@ -148,6 +148,8 @@ export function SocketProvider({ children }) {
         autoConnect: true,
         path: "/socket.io/",
         auth: authData,
+        // Add request timeout
+        requestTimeout: 10000,
       };
 
       console.log(
@@ -279,6 +281,18 @@ export function SocketProvider({ children }) {
           isConnecting.current = false;
         }
       });
+
+      // Add raw xhr error handler
+      if (
+        newSocket.io &&
+        newSocket.io.engine &&
+        newSocket.io.engine.transport
+      ) {
+        const transport = newSocket.io.engine.transport;
+        if (transport.xhr && transport.xhr.responseText) {
+          console.log("XHR response:", transport.xhr.responseText);
+        }
+      }
 
       const cleanup = () => {
         if (newSocket) {
