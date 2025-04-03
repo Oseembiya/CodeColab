@@ -64,12 +64,12 @@ const renderRouteElement = (route) => {
     return <AuthAwareRoute component={route.element.component} />;
   }
 
-  // For protected routes (main app with nested routes)
+  // For protected routes
   if (route.element.type === "protected") {
     const ProtectedComponent = route.element.component;
     return (
       <ProtectedComponent>
-        <MainContent />
+        {route.children ? <MainContent /> : null}
       </ProtectedComponent>
     );
   }
@@ -97,42 +97,6 @@ const renderRouteElement = (route) => {
 
   // Default fallback
   return <div>Invalid route configuration</div>;
-};
-
-/**
- * Recursively generate routes
- */
-const generateRoutes = (routes) => {
-  return routes.map((route) => {
-    // If the route has children, recursively generate them
-    if (route.children) {
-      return (
-        <Route
-          key={route.path || "index"}
-          path={route.path}
-          element={renderRouteElement(route)}
-        >
-          {route.index && (
-            <Route
-              index
-              element={renderRouteElement(route.children.find((r) => r.index))}
-            />
-          )}
-          {generateRoutes(route.children)}
-        </Route>
-      );
-    }
-
-    // Otherwise, render a simple route
-    return (
-      <Route
-        key={route.path || "index"}
-        path={route.path}
-        index={route.index}
-        element={renderRouteElement(route)}
-      />
-    );
-  });
 };
 
 /**
@@ -176,7 +140,48 @@ const App = () => {
                         Path: {window.location.pathname}
                       </div>
                     )}
-                    <Routes>{generateRoutes(routeConfig)}</Routes>
+                    <Routes>
+                      {routeConfig.map((route) => {
+                        // For routes with children
+                        if (route.children) {
+                          return (
+                            <Route
+                              key={route.path}
+                              path={route.path}
+                              element={renderRouteElement(route)}
+                            >
+                              {route.children.map((childRoute) => {
+                                if (childRoute.index) {
+                                  return (
+                                    <Route
+                                      key="index"
+                                      index
+                                      element={renderRouteElement(childRoute)}
+                                    />
+                                  );
+                                }
+                                return (
+                                  <Route
+                                    key={childRoute.path}
+                                    path={childRoute.path}
+                                    element={renderRouteElement(childRoute)}
+                                  />
+                                );
+                              })}
+                            </Route>
+                          );
+                        }
+
+                        // For routes without children
+                        return (
+                          <Route
+                            key={route.path}
+                            path={route.path}
+                            element={renderRouteElement(route)}
+                          />
+                        );
+                      })}
+                    </Routes>
                   </DropdownProvider>
                 </UserMetricsProvider>
               </NotificationProvider>

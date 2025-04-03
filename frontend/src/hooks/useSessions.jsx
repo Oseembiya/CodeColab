@@ -10,6 +10,7 @@ import {
   addDoc,
   serverTimestamp,
   setDoc,
+  orderBy,
 } from "firebase/firestore";
 import { db, auth } from "../firebaseConfig";
 import { useSocket } from "../contexts/SocketContext";
@@ -25,79 +26,69 @@ export const useSessions = () => {
   const { user } = auth();
   const { socket } = useSocket();
 
-  // Load user's sessions
-  const loadSessions = useCallback(async () => {
-    if (!user) {
-      setSessions([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
+  // Fetch sessions from Firestore
+  const fetchSessions = useCallback(async () => {
     try {
-      // Get sessions the user has joined or created
-      const userSessionsRef = doc(db, "userSessions", user.uid);
-      const userSessionsSnap = await getDoc(userSessionsRef);
+      setLoading(true);
+      setError(null);
 
-      let sessionIds = [];
-
-      if (userSessionsSnap.exists()) {
-        const userData = userSessionsSnap.data();
-        sessionIds = (userData.sessions || []).map((s) => s.sessionId);
+      // Check if user is authenticated
+      if (!user) {
+        throw new Error("User not authenticated");
       }
 
-      // Also get all public sessions
-      const publicSessionsQuery = query(
-        collection(db, "sessions"),
-        where("isPrivate", "==", false)
+      // Query for sessions where user is participant or owner
+      const sessionsRef = collection(db, "sessions");
+      const userSessionsQuery = query(
+        sessionsRef,
+        where("participants", "array-contains", user.uid),
+        orderBy("createdAt", "desc")
       );
 
-      const publicSessionsSnap = await getDocs(publicSessionsQuery);
+      const ownedSessionsQuery = query(
+        sessionsRef,
+        where("ownerId", "==", user.uid),
+        orderBy("createdAt", "desc")
+      );
 
-      // Combine session IDs, removing duplicates
-      publicSessionsSnap.forEach((doc) => {
-        if (!sessionIds.includes(doc.id)) {
-          sessionIds.push(doc.id);
-        }
+      // Execute queries
+      const [participantSnapshot, ownerSnapshot] = await Promise.all([
+        getDocs(userSessionsQuery),
+        getDocs(ownedSessionsQuery),
+      ]);
+
+      // Combine results, removing duplicates
+      const uniqueSessions = new Map();
+
+      // Add sessions where user is a participant
+      participantSnapshot.forEach((doc) => {
+        uniqueSessions.set(doc.id, { id: doc.id, ...doc.data() });
       });
 
-      // Load full session data
-      const sessionDataPromises = sessionIds.map(async (sessionId) => {
-        const sessionRef = doc(db, "sessions", sessionId);
-        const sessionSnap = await getDoc(sessionRef);
-
-        if (sessionSnap.exists()) {
-          return {
-            id: sessionId,
-            ...sessionSnap.data(),
-          };
-        }
-        return null;
+      // Add sessions where user is the owner
+      ownerSnapshot.forEach((doc) => {
+        uniqueSessions.set(doc.id, { id: doc.id, ...doc.data() });
       });
 
-      const sessionDataResults = await Promise.all(sessionDataPromises);
-      const validSessions = sessionDataResults.filter((s) => s !== null);
+      // Convert to array and sort by creation date (newest first)
+      const sessionsArray = Array.from(uniqueSessions.values());
+      sessionsArray.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
 
-      // Sort sessions - most recent first
-      validSessions.sort((a, b) => {
-        // Use startTime or createdAt for sorting
-        const timeA =
-          a.startTime || (a.createdAt ? a.createdAt.toDate() : new Date(0));
-        const timeB =
-          b.startTime || (b.createdAt ? b.createdAt.toDate() : new Date(0));
-        return new Date(timeB) - new Date(timeA);
-      });
-
-      setSessions(validSessions);
+      setSessions(sessionsArray);
       setLoading(false);
     } catch (err) {
-      console.error("Error loading sessions:", err);
+      console.error("Error fetching sessions:", err);
       setError(err);
       setLoading(false);
     }
   }, [user]);
+
+  // Fetch sessions on component mount
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
 
   // Create a new session
   const createSession = useCallback(
@@ -191,7 +182,7 @@ export const useSessions = () => {
         }
 
         // Refresh sessions list
-        await loadSessions();
+        await fetchSessions();
         setLoading(false);
 
         return sessionId;
@@ -202,7 +193,7 @@ export const useSessions = () => {
         throw err;
       }
     },
-    [user, socket, loadSessions]
+    [user, socket, fetchSessions]
   );
 
   // Join a session
@@ -298,7 +289,7 @@ export const useSessions = () => {
         }
 
         // Refresh sessions list
-        await loadSessions();
+        await fetchSessions();
         setLoading(false);
 
         return sessionData;
@@ -309,7 +300,7 @@ export const useSessions = () => {
         throw err;
       }
     },
-    [user, loadSessions]
+    [user, fetchSessions]
   );
 
   // Leave a session
@@ -343,25 +334,20 @@ export const useSessions = () => {
           }
 
           // Refresh session list
-          await loadSessions();
+          await fetchSessions();
         }
       } catch (err) {
         console.error("Error leaving session:", err);
         setError(err.message || "Failed to leave session");
       }
     },
-    [user, socket, loadSessions]
+    [user, socket, fetchSessions]
   );
 
-  // Refresh sessions list
-  const refreshSessions = useCallback(() => {
-    loadSessions();
-  }, [loadSessions]);
-
-  // Load sessions when user changes
-  useEffect(() => {
-    loadSessions();
-  }, [user, loadSessions]);
+  // Refresh sessions
+  const refreshSessions = () => {
+    fetchSessions();
+  };
 
   // Helper function to generate a join code
   const generateJoinCode = () => {

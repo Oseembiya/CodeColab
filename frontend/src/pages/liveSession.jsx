@@ -40,136 +40,97 @@ const LiveSession = () => {
     }
   }, [user, navigate]);
 
-  // Join session handler with explicit cleanup function
-  const joinSessionHandler = useCallback(async () => {
-    console.log("Attempting to join session:", sessionId);
-    setLoading(true);
-
-    try {
-      // Check for stored join info
-      const storedJoinInfo = localStorage.getItem("lastJoinedSession");
-      let joinCode = null;
-
-      if (storedJoinInfo) {
-        try {
-          const parsedInfo = JSON.parse(storedJoinInfo);
-          if (parsedInfo.id === sessionId) {
-            joinCode = parsedInfo.joinCode;
-            console.log("Found stored join code for session");
-          }
-        } catch (parseErr) {
-          console.error("Error parsing stored session info:", parseErr);
-        }
-      }
-
-      // Join session through context
-      await contextJoinSession(sessionId, joinCode);
-      console.log("Successfully joined session");
-
-      // Set up real-time listener for session updates
-      const sessionRef = doc(db, "sessions", sessionId);
-      const unsubscribe = onSnapshot(
-        sessionRef,
-        (snapshot) => {
-          if (snapshot.exists()) {
-            setLoading(false);
-          } else {
-            setError("Session not found");
-            setLoading(false);
-          }
-        },
-        (err) => {
-          console.error("Error listening to session:", err);
-          setError(err.message);
-          setLoading(false);
-        }
-      );
-
-      // Store unsubscribe function
-      setUnsubscribeRef(() => unsubscribe);
-
-      // Emit join event to socket
-      if (socket && userId) {
-        socket.emit("join-session", {
-          sessionId,
-          userId,
-          username: user?.displayName || "Anonymous",
-          photoURL: user?.photoURL,
-        });
-      }
-    } catch (error) {
-      console.error("Error joining session:", error);
-      setError(error.message || "Error joining session");
-      setLoading(false);
-    }
-  }, [sessionId, contextJoinSession, socket, userId, user]);
-
-  // Leave session handler
-  const leaveSessionHandler = useCallback(() => {
-    console.log("Leaving session:", sessionId);
-
-    try {
-      // Clean up socket connection
-      if (socket && sessionId && userId) {
-        socket.emit("leave-session", { sessionId, userId });
-        socket.emit("user-left-session", { sessionId, userId });
-      }
-
-      // Clean up Firestore listener
-      if (unsubscribeRef) {
-        unsubscribeRef();
-        setUnsubscribeRef(null);
-      }
-
-      // Leave session through context
-      contextLeaveSession();
-    } catch (err) {
-      console.error("Error leaving session:", err);
-    }
-  }, [sessionId, userId, socket, contextLeaveSession, unsubscribeRef]);
-
-  // Handle scheduled sessions check
-  const checkScheduledSession = useCallback(async () => {
-    try {
-      const sessionRef = doc(db, "sessions", sessionId);
-      const sessionSnap = await getDoc(sessionRef);
-
-      if (!sessionSnap.exists()) {
-        setError("Session not found");
-        return false;
-      }
-
-      const data = sessionSnap.data();
-
-      if (data.status === "scheduled") {
-        const scheduledTime = new Date(data.startTime);
-        const now = new Date();
-
-        if (scheduledTime > now) {
-          const formattedDate = scheduledTime.toLocaleString();
-          setError(
-            `This session is scheduled for ${formattedDate}. Please join at the scheduled time.`
-          );
-          setLoading(false);
-          return false;
-        }
-      }
-
-      return true;
-    } catch (err) {
-      console.error("Error checking scheduled session:", err);
-      setError(err.message || "Failed to verify session status");
-      return false;
-    }
-  }, [sessionId]);
-
   // Main effect to initialize and clean up session
   useEffect(() => {
     // Check if user is authenticated
     if (!user) return;
 
-    // Track if component is mounted
-    let isMounted = true;
+    const joinSession = async () => {
+      console.log("Attempting to join session:", sessionId);
+      setLoading(true);
+
+      try {
+        // Check for stored join info
+        const storedJoinInfo = localStorage.getItem("lastJoinedSession");
+        let joinCode = null;
+
+        if (storedJoinInfo) {
+          try {
+            const parsedInfo = JSON.parse(storedJoinInfo);
+            if (parsedInfo.id === sessionId) {
+              joinCode = parsedInfo.joinCode;
+              console.log("Found stored join code for session");
+            }
+          } catch (parseErr) {
+            console.error("Error parsing stored session info:", parseErr);
+          }
+        }
+
+        // Check if session is scheduled
+        const sessionRef = doc(db, "sessions", sessionId);
+        const sessionSnap = await getDoc(sessionRef);
+
+        if (!sessionSnap.exists()) {
+          setError("Session not found");
+          setLoading(false);
+          return;
+        }
+
+        const sessionData = sessionSnap.data();
+        if (sessionData.status === "scheduled") {
+          const scheduledTime = new Date(sessionData.startTime);
+          const now = new Date();
+
+          if (scheduledTime > now) {
+            const formattedDate = scheduledTime.toLocaleString();
+            setError(
+              `This session is scheduled for ${formattedDate}. Please join at the scheduled time.`
+            );
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Join session through context
+        await contextJoinSession(sessionId, joinCode);
+        console.log("Successfully joined session");
+
+        // Set up real-time listener for session updates
+        const unsubscribe = onSnapshot(
+          sessionRef,
+          (snapshot) => {
+            if (snapshot.exists()) {
+              setLoading(false);
+            } else {
+              setError("Session not found");
+              setLoading(false);
+            }
+          },
+          (err) => {
+            console.error("Error listening to session:", err);
+            setError(err.message);
+            setLoading(false);
+          }
+        );
+
+        // Store unsubscribe function
+        setUnsubscribeRef(() => unsubscribe);
+
+        // Emit join event to socket
+        if (socket && userId) {
+          socket.emit("join-session", {
+            sessionId,
+            userId,
+            username: user?.displayName || "Anonymous",
+            photoURL: user?.photoURL,
+          });
+        }
+      } catch (error) {
+        console.error("Error joining session:", error);
+        setError(error.message || "Error joining session");
+        setLoading(false);
+      }
+    };
 
     // Check if already in the correct session
     if (currentSession?.id === sessionId) {
@@ -177,31 +138,42 @@ const LiveSession = () => {
       return;
     }
 
-    // Run initial session check and join
-    const initSession = async () => {
-      const isSessionValid = await checkScheduledSession();
-      if (isSessionValid && isMounted) {
-        await joinSessionHandler();
-      }
-    };
+    joinSession();
 
-    initSession();
-
-    // Clean up on unmount or when sessionId changes
+    // Clean up function
     return () => {
-      isMounted = false;
-      leaveSessionHandler();
+      console.log("Leaving session:", sessionId);
+
+      try {
+        // Clean up socket connection
+        if (socket && sessionId && userId) {
+          socket.emit("leave-session", { sessionId, userId });
+          socket.emit("user-left-session", { sessionId, userId });
+        }
+
+        // Clean up Firestore listener
+        if (unsubscribeRef) {
+          unsubscribeRef();
+        }
+
+        // Leave session through context
+        contextLeaveSession();
+      } catch (err) {
+        console.error("Error leaving session:", err);
+      }
     };
   }, [
     sessionId,
     user,
     currentSession,
-    joinSessionHandler,
-    leaveSessionHandler,
-    checkScheduledSession,
+    contextJoinSession,
+    contextLeaveSession,
+    socket,
+    userId,
+    unsubscribeRef,
   ]);
 
-  // Socket event listeners - separate from other effects to reduce rerenders
+  // Socket event listeners
   useEffect(() => {
     if (!socket || !sessionId) return;
 
@@ -269,7 +241,7 @@ const LiveSession = () => {
   }, [socket, sessionId, userId, currentSession, contextJoinSession, navigate]);
 
   // Handle UI-triggered leave
-  const handleLeave = useCallback(() => {
+  const handleLeave = () => {
     if (socket && currentSession) {
       console.log("Starting leave process for session:", sessionId);
 
@@ -281,21 +253,11 @@ const LiveSession = () => {
 
       // Clean up context
       contextLeaveSession();
-
-      // Navigate away
-      navigate("/sessions");
-    } else {
-      // If no socket or session, just navigate
-      navigate("/sessions");
     }
-  }, [
-    socket,
-    currentSession,
-    sessionId,
-    userId,
-    contextLeaveSession,
-    navigate,
-  ]);
+
+    // Navigate away
+    navigate("/sessions");
+  };
 
   // Render component
   return (
