@@ -5,6 +5,7 @@ import { SessionProvider } from "./contexts/SessionContext.jsx";
 import { FriendProvider } from "./contexts/FriendContext.jsx";
 import { DropdownProvider } from "./contexts/DropdownContext.jsx";
 import { UserMetricsProvider } from "./contexts/UserMetricsContext.jsx";
+import { AuthProvider } from "./hooks/useAuth.jsx";
 import ErrorBoundary from "./error/ErrorBoundary";
 import MainContent from "./components/layouts/mainContent";
 import { NotificationProvider } from "./contexts/NotificationContext.jsx";
@@ -115,20 +116,22 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <SocketProvider>
-        <SessionProvider>
-          <FriendProvider>
-            <NotificationProvider>
-              <UserMetricsProvider>
-                <DropdownProvider>
-                  <ScrollToTop />
-                  <Routes>{generateRoutes(routeConfig)}</Routes>
-                </DropdownProvider>
-              </UserMetricsProvider>
-            </NotificationProvider>
-          </FriendProvider>
-        </SessionProvider>
-      </SocketProvider>
+      <AuthProvider>
+        <SocketProvider>
+          <SessionProvider>
+            <FriendProvider>
+              <NotificationProvider>
+                <UserMetricsProvider>
+                  <DropdownProvider>
+                    <ScrollToTop />
+                    <Routes>{generateRoutes(routeConfig)}</Routes>
+                  </DropdownProvider>
+                </UserMetricsProvider>
+              </NotificationProvider>
+            </FriendProvider>
+          </SessionProvider>
+        </SocketProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 };
