@@ -2,7 +2,9 @@
  * API client configuration and creation
  * This file provides a reusable API client with authentication support
  */
-import config from "../config/env";
+
+// Get API URL from environment variable
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 /**
  * Creates an API client with authentication
@@ -10,8 +12,6 @@ import config from "../config/env";
  * @returns {Object} - API client object with methods for HTTP requests
  */
 export const createApiClient = (getToken) => {
-  const baseUrl = config.apiUrl;
-
   /**
    * Make an authenticated API request
    * @param {string} endpoint - API endpoint
@@ -41,7 +41,7 @@ export const createApiClient = (getToken) => {
       // Prepare the URL, handling both absolute and relative URLs
       const url = endpoint.startsWith("http")
         ? endpoint
-        : `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+        : `${apiUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
       // Make the request
       const response = await fetch(url, {

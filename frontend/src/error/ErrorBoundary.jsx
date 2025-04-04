@@ -1,5 +1,8 @@
 import React, { Component } from "react";
-import config from "../config/env";
+
+// Check if we're in development mode
+const isDevelopment = import.meta.env.MODE === "development";
+const isProduction = import.meta.env.MODE === "production";
 
 /**
  * ErrorFallback component displayed when an error occurs
@@ -11,7 +14,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }) => (
       <p className="error-message">
         {error.message || "An unexpected error occurred"}
       </p>
-      {config.isDevelopment && <pre className="error-stack">{error.stack}</pre>}
+      {isDevelopment && <pre className="error-stack">{error.stack}</pre>}
       <button className="error-reset-button" onClick={resetErrorBoundary}>
         Try again
       </button>
@@ -44,7 +47,7 @@ class ErrorBoundary extends Component {
     this.setState({ errorInfo });
 
     // In production, you could send this to an error reporting service
-    if (config.isProduction) {
+    if (isProduction) {
       // Example: sendToErrorReporting(error, errorInfo);
       console.error("Uncaught error:", error.message);
     }

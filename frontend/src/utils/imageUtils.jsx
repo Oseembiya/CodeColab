@@ -1,7 +1,9 @@
 /**
  * Centralized image utility for handling image loading, caching, and proxying
  */
-import config from "../config/env";
+
+// Check environment
+const isProduction = import.meta.env.MODE === "production";
 
 // Constants
 const LOCAL_STORAGE_PREFIX = "codecolab_img_cache_";
@@ -42,7 +44,7 @@ const shouldUseProxy = (url) => {
 
   // For Google images in production, we should NOT use proxy due to CSP restrictions
   if (
-    config.isProduction &&
+    isProduction &&
     (url.includes("googleusercontent.com") || url.includes("ggpht.com"))
   ) {
     return false; // Don't use proxy for Google images in production due to CSP
@@ -50,7 +52,7 @@ const shouldUseProxy = (url) => {
 
   // Check if it's a domain that might rate limit
   return (
-    (url.includes("googleusercontent.com") && !config.isProduction) ||
+    (url.includes("googleusercontent.com") && !isProduction) ||
     url.includes("ggpht.com") ||
     url.includes("gravatar.com")
   );
