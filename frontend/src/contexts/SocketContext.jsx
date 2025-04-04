@@ -9,7 +9,23 @@ import React, {
 import { io } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 import { useAuth } from "../hooks/useAuth";
-import config from "../config/env";
+
+// Load environment variables
+const socketUrl =
+  import.meta.env.VITE_SOCKET_URL || "https://codecolab-852p.onrender.com";
+const socketPath = import.meta.env.VITE_SOCKET_PATH || "/socket.io";
+const socketReconnectionAttempts = parseInt(
+  import.meta.env.VITE_SOCKET_RECONNECTION_ATTEMPTS || "5",
+  10
+);
+const socketReconnectionDelay = parseInt(
+  import.meta.env.VITE_SOCKET_RECONNECTION_DELAY || "1000",
+  10
+);
+const socketReconnectionDelayMax = parseInt(
+  import.meta.env.VITE_SOCKET_RECONNECTION_DELAY_MAX || "5000",
+  10
+);
 
 // Create context
 const SocketContext = createContext(null);
@@ -130,20 +146,18 @@ export function SocketProvider({ children }) {
       const socketOptions = {
         transports: ["polling"], // Use only polling since WebSockets are failing
         reconnection: true,
-        reconnectionAttempts: config.socketReconnectionAttempts,
-        reconnectionDelay: config.socketReconnectionDelay,
-        reconnectionDelayMax: config.socketReconnectionDelayMax,
+        reconnectionAttempts: socketReconnectionAttempts,
+        reconnectionDelay: socketReconnectionDelay,
+        reconnectionDelayMax: socketReconnectionDelayMax,
         timeout: 20000,
         forceNew: true,
         auth: authData,
-        path: config.socketPath,
+        path: socketPath,
         withCredentials: true,
         autoConnect: false,
       };
 
       // Create socket connection
-      const socketUrl =
-        config.socketUrl || "https://codecolab-852p.onrender.com";
       console.log(`Connecting to socket server at ${socketUrl}`);
       console.log("Connection options:", {
         transports: socketOptions.transports,

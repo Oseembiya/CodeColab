@@ -80,14 +80,14 @@ const getProxyUrl = (url) => {
 
   // For other images, use the proxy
   const encodedUrl = encodeURIComponent(url);
-  const apiBaseUrl = config.api.url || "";
+  const apiUrl = import.meta.env.VITE_API_URL || "";
 
   // Use full API URL in production, relative URL in development
-  if (config.isProduction) {
+  if (isProduction) {
     // Strip '/api' from the end if it exists to avoid double paths
-    const baseUrl = apiBaseUrl.endsWith("/api")
-      ? apiBaseUrl.substring(0, apiBaseUrl.length - 4)
-      : apiBaseUrl;
+    const baseUrl = apiUrl.endsWith("/api")
+      ? apiUrl.substring(0, apiUrl.length - 4)
+      : apiUrl;
 
     return `${baseUrl}/api/image-proxy?url=${encodedUrl}`;
   } else {
