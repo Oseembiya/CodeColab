@@ -162,11 +162,14 @@ public class Main {
     );
 
     if (!submissionResponse.ok) {
-      const error = await submissionResponse.json();
-      throw new Error(error.message || "Failed to submit code");
+      console.error("Submission failed:", await submissionResponse.text());
+      throw new Error("Failed to submit code for execution");
     }
 
     const { token } = await submissionResponse.json();
+    if (!token) {
+      throw new Error("No token received from Judge0 API");
+    }
 
     // Poll for results
     let result;
@@ -178,6 +181,7 @@ public class Main {
       const resultResponse = await fetch(
         `${baseUrl}/submissions/${token}?base64_encoded=false`,
         {
+          method: "GET",
           headers: {
             "content-type": "application/json",
           },
@@ -185,6 +189,7 @@ public class Main {
       );
 
       if (!resultResponse.ok) {
+        console.error("Result fetch failed:", await resultResponse.text());
         throw new Error("Failed to fetch execution result");
       }
 
@@ -201,7 +206,7 @@ public class Main {
     throw new Error("Execution timed out");
   } catch (error) {
     console.error("Code execution error:", error);
-    throw new Error(error.message || "Failed to execute code");
+    throw error;
   }
 };
 

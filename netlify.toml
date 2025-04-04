@@ -11,13 +11,20 @@ status = 200
   force = true
   headers = {X-Proxied-By = "Netlify"}
 
-# Proxy for Judge0 API requests
+# Direct proxy for Judge0 API requests to RapidAPI
 [[redirects]]
   from = "/.netlify/functions/judge0-proxy/*"
-  to = "https://codecolab-852p.onrender.com/judge0/:splat"
+  to = "https://judge0-ce.p.rapidapi.com/:splat"
   status = 200
   force = true
-  headers = {X-Proxied-By = "Netlify"}
+  headers = {
+    X-Proxied-By = "Netlify",
+    X-RapidAPI-Host = "judge0-ce.p.rapidapi.com",
+    X-RapidAPI-Key = "364315ccbdmshfca9834d3b458b0p1688e8jsn5a98fc87204d",
+    Access-Control-Allow-Origin = "*",
+    Access-Control-Allow-Headers = "X-RapidAPI-Host, X-RapidAPI-Key, Content-Type",
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+  }
 
 # Proxy for Socket.IO
 [[redirects]]
