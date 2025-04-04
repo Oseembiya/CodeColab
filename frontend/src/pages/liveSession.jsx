@@ -325,7 +325,11 @@ const LiveSession = () => {
 
           <div className="session-content">
             <div className="editor-section">
-              <CollaborativeEditor sessionId={sessionId} userId={user?.uid} />
+              {user && user.uid ? (
+                <CollaborativeEditor sessionId={sessionId} userId={user.uid} />
+              ) : (
+                <div className="loading-editor">Loading editor...</div>
+              )}
             </div>
           </div>
         </div>

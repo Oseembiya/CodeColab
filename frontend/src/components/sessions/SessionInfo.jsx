@@ -31,15 +31,15 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
   const { user } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 
+  // Create refs at the component level instead of inside useEffect
+  const lastRequestTime = useRef(0);
+  const requestTimeoutRef = useRef(null);
+
   useEffect(() => {
     if (!socket || !session?.id) return;
 
     // Set initial count from session
     setParticipantCount(session.participants?.length || 0);
-
-    // Avoid frequent polling - create refs for timing control
-    const lastRequestTime = useRef(0);
-    const requestTimeoutRef = useRef(null);
 
     // Request accurate participant count from server only once on mount
     socket.emit("request-participant-count", { sessionId: session.id });
