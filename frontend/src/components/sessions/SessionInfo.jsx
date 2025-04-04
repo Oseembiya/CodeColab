@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
   FaClock,
@@ -38,83 +38,6 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
   const [showEndAlert, setShowEndAlert] = useState(false);
   const { user } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
-
-  // Create refs at the component level
-  const lastRequestTime = useRef(0);
-  const requestTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    if (!socket || !session?.id) return;
-
-    // Set initial count from session
-    setParticipantCount(session.participants?.length || 0);
-
-    // Request accurate participant count from server immediately on mount
-    socket.emit("request-participant-count", { sessionId: session.id });
-
-    // Listen for participant count updates
-    const handleParticipantUpdate = ({ sessionId, participants, count }) => {
-      // Add sessionId check to ensure we only update for the current session
-      if (sessionId === session.id) {
-        console.log("Received participant update:", { count, participants });
-        // Validate count (prevent negative or unreasonably large values)
-        const validCount =
-          typeof count === "number"
-            ? Math.min(Math.max(0, count), session.maxParticipants)
-            : participants?.length || 0;
-
-        setParticipantCount(validCount);
-      }
-    };
-
-    // Listen for user joined events
-    const handleUserJoined = ({ sessionId }) => {
-      if (sessionId === session.id) {
-        // Request fresh participant count
-        socket.emit("request-participant-count", { sessionId: session.id });
-        console.log(
-          `User joined session ${sessionId}, requesting updated count`
-        );
-      }
-    };
-
-    // Listen for user left events
-    const handleUserLeft = ({ sessionId }) => {
-      if (sessionId === session.id) {
-        // Request fresh participant count
-        socket.emit("request-participant-count", { sessionId: session.id });
-        console.log(`User left session ${sessionId}, requesting updated count`);
-      }
-    };
-
-    socket.on("participants-update", handleParticipantUpdate);
-    socket.on("user-joined", handleUserJoined);
-    socket.on("user-left", handleUserLeft);
-    socket.on("user-left-session", handleUserLeft);
-
-    // Set up a more frequent refresh of the participant count (every 15 seconds)
-    const refreshInterval = setInterval(() => {
-      const now = Date.now();
-      // Only request if it's been at least 15 seconds since the last request
-      if (now - lastRequestTime.current > 15000) {
-        lastRequestTime.current = now;
-        if (socket.connected) {
-          socket.emit("request-participant-count", { sessionId: session.id });
-        }
-      }
-    }, 15000); // Check every 15 seconds instead of 60
-
-    return () => {
-      socket.off("participants-update", handleParticipantUpdate);
-      socket.off("user-joined", handleUserJoined);
-      socket.off("user-left", handleUserLeft);
-      socket.off("user-left-session", handleUserLeft);
-      clearInterval(refreshInterval);
-      if (requestTimeoutRef.current) {
-        clearTimeout(requestTimeoutRef.current);
-      }
-    };
-  }, [socket, session?.id, session?.maxParticipants]);
 
   useEffect(() => {
     // If we have a session already, clear any timeout
