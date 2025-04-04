@@ -9,6 +9,7 @@ const { verifyAuthToken, optionalAuth } = require("../middleware/auth");
 const imageProxyRouter = require("./imageProxy");
 const friendsRouter = require("./friends");
 const healthRouter = require("./health");
+const judge0Router = require("./judge0");
 
 // Global API rate limiter
 const apiLimiter = rateLimit({
@@ -41,5 +42,8 @@ router.use("/friends", verifyAuthToken, friendsRouter);
 
 // Add the search-specific rate limiter to the friends/search endpoint
 router.use("/friends/search", searchLimiter);
+
+// Judge0 API proxy route
+router.use("/judge0", judge0Router);
 
 module.exports = router;

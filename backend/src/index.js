@@ -162,6 +162,9 @@ app.use("/peerjs", (req, res, next) => {
 // Register API routes
 app.use("/api", apiRoutes);
 
+// Add direct Judge0 route to support Netlify redirects
+app.use("/judge0", require("./routes/judge0"));
+
 // Add special route to handle PeerJS token generation if coming through a proxy
 app.get("/peerjs/peerjs/id", (req, res) => {
   // This helps PeerJS when it's behind a proxy

@@ -150,8 +150,6 @@ public class Main {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
-          "X-RapidAPI-Key": import.meta.env.VITE_RAPIDAPI_KEY,
         },
         body: JSON.stringify({
           source_code: processedCode,
@@ -181,8 +179,7 @@ public class Main {
         `${baseUrl}/submissions/${token}?base64_encoded=false`,
         {
           headers: {
-            "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
-            "X-RapidAPI-Key": import.meta.env.VITE_RAPIDAPI_KEY,
+            "content-type": "application/json",
           },
         }
       );

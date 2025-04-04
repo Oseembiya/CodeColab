@@ -11,6 +11,14 @@ status = 200
   force = true
   headers = {X-Proxied-By = "Netlify"}
 
+# Proxy for Judge0 API requests
+[[redirects]]
+  from = "/.netlify/functions/judge0-proxy/*"
+  to = "https://codecolab-852p.onrender.com/judge0/:splat"
+  status = 200
+  force = true
+  headers = {X-Proxied-By = "Netlify"}
+
 # Proxy for Socket.IO
 [[redirects]]
   from = "/socket.io/*"
