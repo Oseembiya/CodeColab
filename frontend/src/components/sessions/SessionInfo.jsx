@@ -11,6 +11,7 @@ import {
 } from "react-icons/fa";
 import AlertDialog from "../notifications/AlertDialog";
 import { useAuth } from "../../hooks/useAuth";
+import { useParticipantCount } from "../../hooks/useParticipantCount";
 
 import {
   doc,
@@ -24,14 +25,21 @@ import { db } from "../../firebaseConfig";
 import { SESSION_STATUS } from "../../config/constants";
 
 const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
-  const [participantCount, setParticipantCount] = useState(0);
+  // Use the custom hook for participant count
+  const participantCount = useParticipantCount(
+    session?.id,
+    session?.participants?.length || 0,
+    session?.maxParticipants || 10,
+    false // This is a participant, not observer
+  );
+
   const [isHidden, setIsHidden] = useState(true);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
   const [showEndAlert, setShowEndAlert] = useState(false);
   const { user } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Create refs at the component level instead of inside useEffect
+  // Create refs at the component level
   const lastRequestTime = useRef(0);
   const requestTimeoutRef = useRef(null);
 
@@ -41,7 +49,7 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
     // Set initial count from session
     setParticipantCount(session.participants?.length || 0);
 
-    // Request accurate participant count from server only once on mount
+    // Request accurate participant count from server immediately on mount
     socket.emit("request-participant-count", { sessionId: session.id });
 
     // Listen for participant count updates
@@ -59,22 +67,48 @@ const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
       }
     };
 
-    socket.on("participants-update", handleParticipantUpdate);
+    // Listen for user joined events
+    const handleUserJoined = ({ sessionId }) => {
+      if (sessionId === session.id) {
+        // Request fresh participant count
+        socket.emit("request-participant-count", { sessionId: session.id });
+        console.log(
+          `User joined session ${sessionId}, requesting updated count`
+        );
+      }
+    };
 
-    // Set up a periodic refresh of the participant count - but limit to no more than once every 30 seconds
+    // Listen for user left events
+    const handleUserLeft = ({ sessionId }) => {
+      if (sessionId === session.id) {
+        // Request fresh participant count
+        socket.emit("request-participant-count", { sessionId: session.id });
+        console.log(`User left session ${sessionId}, requesting updated count`);
+      }
+    };
+
+    socket.on("participants-update", handleParticipantUpdate);
+    socket.on("user-joined", handleUserJoined);
+    socket.on("user-left", handleUserLeft);
+    socket.on("user-left-session", handleUserLeft);
+
+    // Set up a more frequent refresh of the participant count (every 15 seconds)
     const refreshInterval = setInterval(() => {
       const now = Date.now();
-      // Only request if it's been at least 30 seconds since the last request
-      if (now - lastRequestTime.current > 30000) {
+      // Only request if it's been at least 15 seconds since the last request
+      if (now - lastRequestTime.current > 15000) {
         lastRequestTime.current = now;
         if (socket.connected) {
           socket.emit("request-participant-count", { sessionId: session.id });
         }
       }
-    }, 60000); // Check every 60 seconds
+    }, 15000); // Check every 15 seconds instead of 60
 
     return () => {
       socket.off("participants-update", handleParticipantUpdate);
+      socket.off("user-joined", handleUserJoined);
+      socket.off("user-left", handleUserLeft);
+      socket.off("user-left-session", handleUserLeft);
       clearInterval(refreshInterval);
       if (requestTimeoutRef.current) {
         clearTimeout(requestTimeoutRef.current);

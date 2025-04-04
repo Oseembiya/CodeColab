@@ -1,60 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from "react-icons/fa";
-import { useSocket } from "../../contexts/SocketContext";
+import { useParticipantCount } from "../../hooks/useParticipantCount";
 
 const SessionCard = ({ session, onJoin, view, isOwner }) => {
-  const [participantCount, setParticipantCount] = useState(
-    session.participants?.length || 0
+  // Use the custom hook for participant count
+  const participantCount = useParticipantCount(
+    session.id,
+    session.participants?.length || 0,
+    session.maxParticipants || 10,
+    true // This is an observer
   );
-  const { socket, isConnected } = useSocket();
-
-  useEffect(() => {
-    // Only proceed if socket is connected and session is active
-    if (!socket || !isConnected || session.status !== "active") return;
-
-    try {
-      // Create a unique room identifier for observation
-      const observerRoom = `observe:${session.id}`;
-
-      // Join the observer room instead of the main session
-      socket.emit("observe-session", {
-        sessionId: session.id,
-        observerRoom,
-      });
-
-      // Listen for participant updates only for this session
-      const updateHandler = ({ sessionId, count }) => {
-        if (sessionId === session.id) {
-          setParticipantCount(count);
-        }
-      };
-
-      socket.on("participants-update", updateHandler);
-
-      // Enhanced user-left-session handler
-      const userLeftHandler = ({ sessionId }) => {
-        if (sessionId === session.id) {
-          // Request a fresh participant count rather than decrementing
-          socket.emit("request-participant-count", { sessionId: session.id });
-        }
-      };
-
-      socket.on("user-left-session", userLeftHandler);
-
-      // Cleanup function
-      return () => {
-        socket.off("participants-update", updateHandler);
-        socket.off("user-left-session", userLeftHandler);
-        socket.emit("leave-observer", {
-          sessionId: session.id,
-          observerRoom,
-        });
-      };
-    } catch (error) {
-      console.error("Socket operation error:", error);
-    }
-  }, [socket, isConnected, session.id, session.status]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Date not available";
