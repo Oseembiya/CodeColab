@@ -76,11 +76,24 @@ class SessionStore {
    * Remove a user from a session
    */
   removeUserFromSession(sessionId, clientId) {
-    if (!sessionId || !clientId) {
-      console.warn(
-        `Invalid sessionId or clientId in removeUserFromSession: ${sessionId}, ${clientId}`
-      );
+    if (!sessionId) {
+      console.warn(`Invalid sessionId in removeUserFromSession: ${sessionId}`);
       return null;
+    }
+
+    // If clientId is undefined, log warning and return current participants
+    if (!clientId) {
+      console.warn(
+        `Missing clientId in removeUserFromSession for session ${sessionId}, returning current participants`
+      );
+      const currentSession = this.activeSessions.get(sessionId);
+      if (currentSession) {
+        return Array.from(currentSession.entries()).map(([id, user]) => ({
+          userId: id,
+          ...user,
+        }));
+      }
+      return [];
     }
 
     const sessionUsers = this.activeSessions.get(sessionId);
@@ -89,7 +102,7 @@ class SessionStore {
       console.warn(
         `Session ${sessionId} not found when removing user ${clientId}`
       );
-      return null;
+      return [];
     }
 
     // Log before removal for debugging
@@ -98,7 +111,21 @@ class SessionStore {
       Array.from(sessionUsers.keys())
     );
 
-    const userRemoved = sessionUsers.delete(clientId);
+    // Try to remove by either clientId or userId (might be stored differently)
+    let userRemoved = sessionUsers.delete(clientId);
+
+    // If not found, try iterating through the values to find a match by userId property
+    if (!userRemoved) {
+      for (const [key, userData] of sessionUsers.entries()) {
+        if (userData.userId === clientId) {
+          console.log(
+            `Found user by userId instead of clientId, deleting key ${key}`
+          );
+          userRemoved = sessionUsers.delete(key);
+          break;
+        }
+      }
+    }
 
     // Check if we should clean up empty sessions
     if (sessionUsers.size === 0) {
@@ -111,15 +138,11 @@ class SessionStore {
 
     if (!userRemoved) {
       console.warn(`User ${clientId} not found in session ${sessionId}`);
-      return Array.from(sessionUsers.entries()).map(([id, user]) => ({
-        userId: id,
-        ...user,
-      }));
+    } else {
+      console.log(
+        `User ${clientId} removed from session ${sessionId}. Remaining: ${sessionUsers.size}`
+      );
     }
-
-    console.log(
-      `User ${clientId} removed from session ${sessionId}. Remaining: ${sessionUsers.size}`
-    );
 
     // Return the updated participant list
     return Array.from(sessionUsers.entries()).map(([id, user]) => ({

@@ -25,13 +25,8 @@ import { db } from "../../firebaseConfig";
 import { SESSION_STATUS } from "../../config/constants";
 
 const SessionInfo = ({ session = null, onLeave = () => {}, socket = null }) => {
-  // Use the custom hook for participant count
-  const participantCount = useParticipantCount(
-    session?.id,
-    session?.participants?.length || 0,
-    session?.maxParticipants || 10,
-    false // This is a participant, not observer
-  );
+  // Use the simplified hook - just pass sessionId
+  const participantCount = useParticipantCount(session?.id, false);
 
   const [isHidden, setIsHidden] = useState(true);
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);

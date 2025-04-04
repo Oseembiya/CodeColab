@@ -575,10 +575,20 @@ module.exports = (io, socket) => {
     }
 
     try {
+      // Leave the socket room
       socket.leave(sessionId);
+
+      // Determine the best ID to use for removing the user
+      const clientIdentifier = socket.clientId || userId || socket.id;
+
+      console.log(
+        `Handling leave-session for session ${sessionId}, user ${userId}, clientId ${socket.clientId}`
+      );
+
+      // Remove the user from our session store
       const participants = sessionStore.removeUserFromSession(
         sessionId,
-        socket.clientId
+        clientIdentifier
       );
 
       // Check if participants is null or undefined before accessing length
@@ -598,12 +608,21 @@ module.exports = (io, socket) => {
         }
 
         console.log(
-          `User left session ${sessionId}. Remaining participants: ${participants.length}`
+          `User ${clientIdentifier} left session ${sessionId}. Remaining participants: ${participants.length}`
         );
       } else {
         console.log(
-          `User left session ${sessionId}. No participants remaining or session not found.`
+          `User ${clientIdentifier} left session ${sessionId}. No participants remaining or session not found.`
         );
+
+        // Still emit a zero-participant update to ensure clients get updated
+        io.to(sessionId)
+          .to(`observe:${sessionId}`)
+          .emit("participants-update", {
+            sessionId,
+            participants: [],
+            count: 0,
+          });
       }
     } catch (error) {
       console.error(
@@ -619,10 +638,17 @@ module.exports = (io, socket) => {
   const handleUserLeftSession = ({ sessionId }) => {
     if (!sessionId) return;
 
+    // Determine the best ID to use - try all options
+    const clientIdentifier = socket.clientId || socket.userId || socket.id;
+
+    console.log(
+      `Handling user-left-session for session ${sessionId}, clientId ${clientIdentifier}`
+    );
+
     // Remove user and get updated participants list
     const participants = sessionStore.removeUserFromSession(
       sessionId,
-      socket.clientId
+      clientIdentifier
     );
 
     if (participants) {
@@ -634,8 +660,19 @@ module.exports = (io, socket) => {
       });
 
       console.log(
-        `User left session ${sessionId}. Remaining participants: ${participants.length}`
+        `User ${clientIdentifier} left session ${sessionId}. Remaining participants: ${participants.length}`
       );
+    } else {
+      console.log(
+        `User ${clientIdentifier} left session ${sessionId}. No participants list returned.`
+      );
+
+      // Emit a zero-count update to be safe
+      io.to(sessionId).to(`observe:${sessionId}`).emit("participants-update", {
+        sessionId,
+        participants: [],
+        count: 0,
+      });
     }
   };
 
@@ -772,6 +809,17 @@ module.exports = (io, socket) => {
   socket.on("user-left-session", handleUserLeftSession);
   socket.on("session-ended", handleSessionEnded);
   socket.on("request-participant-count", ({ sessionId }) => {
+    if (!sessionId) {
+      console.warn("Invalid sessionId in request-participant-count event");
+      socket.emit("participants-update", {
+        sessionId: null,
+        participants: [],
+        count: 0,
+      });
+      return;
+    }
+
+    // Get existing participants
     const participants = sessionStore.getSessionUsers(sessionId);
 
     // Log the participants for debugging
@@ -781,7 +829,7 @@ module.exports = (io, socket) => {
       "participants"
     );
 
-    // If no participants but the requestor is likely a participant, add them
+    // If no participants and this appears to be a real participant (with userId), add them
     if (
       (!participants || participants.length === 0) &&
       socket.userId &&
@@ -794,27 +842,43 @@ module.exports = (io, socket) => {
       const userData = {
         userId: socket.userId,
         socketId: socket.id,
+        clientId: socket.clientId || socket.userId, // Store both IDs for better tracking
         username:
           socket.username || socket.handshake.auth.username || "Anonymous",
         photoURL: socket.handshake.auth.photoURL || "",
         joinedAt: new Date().toISOString(),
       };
 
+      // Use the best identifier for this user (clientId or userId)
+      const userIdentifier = socket.clientId || socket.userId;
+
       const updatedParticipants = sessionStore.addUserToSession(
         sessionId,
-        socket.userId,
+        userIdentifier,
         userData
       );
 
+      // Send update to the requesting client
       socket.emit("participants-update", {
         sessionId,
         participants: updatedParticipants,
         count: updatedParticipants.length,
       });
 
+      // Also notify all other clients in session and observers
+      socket
+        .to(sessionId)
+        .to(`observe:${sessionId}`)
+        .emit("participants-update", {
+          sessionId,
+          participants: updatedParticipants,
+          count: updatedParticipants.length,
+        });
+
       return;
     }
 
+    // Send current participant information to the requester
     socket.emit("participants-update", {
       sessionId,
       participants,

@@ -4,13 +4,8 @@ import { FaClock, FaUsers, FaCode, FaLock, FaLockOpen } from "react-icons/fa";
 import { useParticipantCount } from "../../hooks/useParticipantCount";
 
 const SessionCard = ({ session, onJoin, view, isOwner }) => {
-  // Use the custom hook for participant count
-  const participantCount = useParticipantCount(
-    session.id,
-    session.participants?.length || 0,
-    session.maxParticipants || 10,
-    true // This is an observer
-  );
+  // Use the simplified hook - just pass sessionId and observer flag
+  const participantCount = useParticipantCount(session.id, true);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Date not available";

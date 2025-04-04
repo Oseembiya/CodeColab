@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { FaExclamationTriangle } from "react-icons/fa";
 import { useSocket } from "../../contexts/SocketContext";
+import { useAuth } from "../../hooks/useAuth";
 
 const AlertDialog = ({
   isOpen,
@@ -13,11 +14,27 @@ const AlertDialog = ({
   cancelText = "Cancel",
 }) => {
   const { socket } = useSocket();
+  const { user } = useAuth();
 
   const handleConfirm = () => {
-    if (socket && sessionId) {
-      socket.emit("user-left-session", { sessionId });
+    // If this is a leave session dialog and we have socket & sessionId,
+    // emit the appropriate events
+    if (socket && sessionId && title.toLowerCase().includes("leave")) {
+      console.log(`Emitting leave events for session ${sessionId}`);
+
+      // First emit leave-session
+      socket.emit("leave-session", {
+        sessionId,
+        userId: user?.uid,
+      });
+
+      // Then emit user-left-session for cleanup
+      socket.emit("user-left-session", {
+        sessionId,
+        userId: user?.uid,
+      });
     }
+
     onConfirm();
   };
 
