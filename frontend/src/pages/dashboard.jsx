@@ -15,18 +15,84 @@ import {
   FaClock,
   FaHandshake,
 } from "react-icons/fa";
-import { db } from "../firebaseConfig";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  onSnapshot,
-} from "firebase/firestore";
+import { useSession } from "../contexts/SessionContext";
 import { useUserMetrics } from "../contexts/UserMetricsContext";
 import { useSocket } from "../contexts/SocketContext";
-import CreateSessionModal from "../components/sessions/CreateSessionModal";
-import { useSession } from "../contexts/SessionContext";
+import "../styles/pages/Dashboard.css";
+
+// Placeholder component for the session creation modal
+const CreateSessionModal = ({ isQuickStart, onClose, onSubmit }) => {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [language, setLanguage] = useState("javascript");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit({
+      title,
+      description,
+      language,
+      userId: "user-123", // placeholder, would come from auth
+    });
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2>{isQuickStart ? "Quick Start Session" : "Create New Session"}</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="title">Session Title</label>
+            <input
+              type="text"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter a title for your session"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="description">Description (optional)</label>
+            <input
+              type="text"
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief description of the session"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="language">Programming Language</label>
+            <select
+              id="language"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            >
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+              <option value="csharp">C#</option>
+              <option value="cpp">C++</option>
+            </select>
+          </div>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="button alternative"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="button">
+              Create Session
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -44,11 +110,11 @@ const Dashboard = () => {
   const { metrics } = useUserMetrics();
   const { socket } = useSocket();
 
-  // Platform statistics with real-time updates
+  // Platform statistics with placeholder data
   const [platformStats, setPlatformStats] = useState({
-    activeSessions: 0,
-    collaboratingUsers: 0,
-    codeLinesSynced: "0",
+    activeSessions: 12,
+    collaboratingUsers: 43,
+    codeLinesSynced: "2.5K",
   });
 
   // Handle the "Get Started Now" button click
@@ -76,74 +142,32 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch platform statistics
+  // Simulate fetching platform statistics from the server
   useEffect(() => {
-    // Get current active sessions count
-    const fetchActiveSessions = async () => {
-      try {
-        const sessionsRef = collection(db, "sessions");
-        const activeSessionsQuery = query(
-          sessionsRef,
-          where("status", "==", "active")
-        );
+    if (socket) {
+      // This would be the real implementation
+      // socket.emit("request-global-stats");
+      // socket.on("global-stats", ({ activeUsers, totalLinesOfCode }) => {
+      //   setPlatformStats({
+      //     activeSessions: 12,
+      //     collaboratingUsers: activeUsers,
+      //     codeLinesSynced: totalLinesOfCode > 1000
+      //       ? `${Math.round(totalLinesOfCode / 100) / 10}K`
+      //       : totalLinesOfCode.toString(),
+      //   });
+      // });
 
-        const snapshot = await getDocs(activeSessionsQuery);
-
-        // Set initial count
-        setPlatformStats((prev) => ({
-          ...prev,
-          activeSessions: snapshot.size,
-        }));
-
-        // Set up real-time listener for active sessions
-        const unsubscribe = onSnapshot(activeSessionsQuery, (querySnapshot) => {
-          setPlatformStats((prev) => ({
-            ...prev,
-            activeSessions: querySnapshot.size,
-          }));
+      // For now, just simulate with placeholder data
+      const timer = setTimeout(() => {
+        setPlatformStats({
+          activeSessions: 14,
+          collaboratingUsers: 48,
+          codeLinesSynced: "2.7K",
         });
+      }, 3000);
 
-        return unsubscribe;
-      } catch (error) {
-        console.error("Error fetching active sessions:", error);
-      }
-    };
-
-    // Listen for participant updates from socket
-    const handleParticipantUpdates = () => {
-      if (socket) {
-        // Get global users count
-        socket.on("global-stats", ({ activeUsers, totalLinesOfCode }) => {
-          setPlatformStats((prev) => ({
-            ...prev,
-            collaboratingUsers: activeUsers,
-            codeLinesSynced:
-              totalLinesOfCode > 1000
-                ? `${Math.round(totalLinesOfCode / 100) / 10}K`
-                : totalLinesOfCode.toString(),
-          }));
-        });
-
-        // Request global stats when dashboard mounts
-        socket.emit("request-global-stats");
-
-        return () => {
-          socket.off("global-stats");
-        };
-      }
-    };
-
-    const unsubscribeSessions = fetchActiveSessions();
-    const unsubscribeSocket = handleParticipantUpdates();
-
-    return () => {
-      if (unsubscribeSessions instanceof Function) {
-        unsubscribeSessions();
-      }
-      if (unsubscribeSocket instanceof Function) {
-        unsubscribeSocket();
-      }
-    };
+      return () => clearTimeout(timer);
+    }
   }, [socket]);
 
   // User's personal stats section
@@ -406,6 +430,7 @@ const Dashboard = () => {
         </button>
       </div>
 
+      {/* Create Session Modal */}
       {showCreateModal && (
         <CreateSessionModal
           isQuickStart={isQuickStart}

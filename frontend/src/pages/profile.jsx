@@ -1,810 +1,365 @@
 import { useState, useEffect } from "react";
-import { auth, storage } from "../firebaseConfig";
 import {
-  updateProfile,
-  updatePassword,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-} from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import {
-  FaEdit,
-  FaUserCircle,
-  FaCode,
-  FaHistory,
-  FaStar,
-  FaCog,
-  FaGithub,
-  FaLinkedin,
-  FaTwitter,
-  FaGlobe,
-  FaUsers,
+  FaUser,
+  FaEnvelope,
+  FaPencilAlt,
+  FaSave,
   FaTimes,
-  FaExclamationCircle,
-  FaCheckCircle,
   FaCamera,
-  FaClock,
-  FaFileCode,
 } from "react-icons/fa";
-import { v4 as uuidv4 } from "uuid";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
-import { getImageUrl, preloadImage } from "../utils/imageUtils.jsx";
-import { useUserMetrics } from "../contexts/UserMetricsContext";
-import { useAuth } from "../hooks/useAuth";
-import { useSocket } from "../contexts/SocketContext";
-
-const DEFAULT_AVATAR_SVG =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cpath fill='%23c6c6c6' d='M0 0h128v128H0z'/%3E%3Ccircle fill='%23fff' cx='64' cy='48' r='28'/%3E%3Cpath fill='%23fff' d='M64 95c19.883 0 36-8.075 36-18.031V89c0 18-16.117 33-36 33S28 107 28 89V76.969C28 86.925 44.117 95 64 95z'/%3E%3C/svg%3E";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { updateProfile } from "firebase/auth";
+import { useAuth } from "../contexts/AuthContext";
+import { db, storage } from "../services/firebase";
+import "../styles/pages/Profile.css";
 
 const Profile = () => {
-  const { user } = useAuth();
-  const { socket } = useSocket();
-  const [activeTab, setActiveTab] = useState("personal");
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const { metrics, loading: metricsLoading } = useUserMetrics();
-  const [formData, setFormData] = useState({
-    // Personal Info
-    displayName: auth.currentUser?.displayName || "",
+  const { currentUser } = useAuth();
+
+  // User profile state
+  const [profile, setProfile] = useState({
+    name: "",
+    email: "",
     bio: "",
-    location: "",
-    occupation: "",
-    website: "",
-
-    // Social Links
-    github: "",
-    linkedin: "",
-    twitter: "",
-
-    // Preferences
-    theme: "light",
-    emailNotifications: true,
-    codeEditor: "vscode",
-    language: "javascript",
-
-    // Security
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-    timestamp: null,
+    profileImage: null,
+    joinDate: "",
+    projects: [],
+    sessions: [],
   });
 
-  // Replace the mock statistics with real metrics
-  const statistics = {
-    totalSessions: metricsLoading ? "..." : metrics.totalSessions,
-    hoursSpent: metricsLoading ? "..." : metrics.hoursSpent,
-    linesOfCode: metricsLoading ? "..." : metrics.linesOfCode,
-    collaborations: metricsLoading ? "..." : metrics.collaborations || 0,
+  // Form state for editing
+  const [formData, setFormData] = useState({
+    name: "",
+    bio: "",
+    profileImage: null,
+    newProfileImage: null,
+  });
+
+  // Fetch user profile on load
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserProfile();
+    }
+  }, [currentUser]);
+
+  // Fetch real user data from Firestore
+  const fetchUserProfile = async () => {
+    setIsLoading(true);
+
+    try {
+      // Get the user document from Firestore
+      const userDocRef = doc(db, "users", currentUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        setError("User profile not found");
+        setIsLoading(false);
+        return;
+      }
+
+      const userData = userDoc.data();
+
+      // Get user activity data
+      const activityDocRef = doc(db, "userActivities", currentUser.uid);
+      const activityDoc = await getDoc(activityDocRef);
+      const activityData = activityDoc.exists() ? activityDoc.data() : {};
+
+      // Format join date
+      const joinDate = userData.joinDate
+        ? new Date(userData.joinDate.toDate()).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        : "N/A";
+
+      // Create session data from activity history if available
+      const sessions = activityData.sessionHistory || [];
+
+      setProfile({
+        name: userData.displayName || currentUser.displayName || "User",
+        email: userData.email || currentUser.email,
+        bio: userData.bio || "",
+        profileImage:
+          userData.photoURL ||
+          currentUser.photoURL ||
+          "https://i.pravatar.cc/300",
+        joinDate,
+        projects: [], // Would fetch from projects collection in a real app
+        sessions: sessions
+          .map((session, index) => ({
+            id: index,
+            name: session.title || `Session #${index + 1}`,
+            date: new Date(session.timestamp).toLocaleDateString(),
+          }))
+          .slice(0, 5),
+      });
+
+      setFormData({
+        name: userData.displayName || currentUser.displayName || "User",
+        bio: userData.bio || "",
+        profileImage:
+          userData.photoURL ||
+          currentUser.photoURL ||
+          "https://i.pravatar.cc/300",
+        newProfileImage: null,
+      });
+    } catch (err) {
+      console.error("Error fetching user profile:", err);
+      setError("Failed to load profile data");
+    }
+
+    setIsLoading(false);
   };
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: "session",
-      title: "JavaScript Debugging Session",
-      date: "2024-03-08",
-    },
-    {
-      id: 2,
-      type: "achievement",
-      title: "Completed 10 Sessions",
-      date: "2024-03-07",
-    },
-    {
-      id: 3,
-      type: "collaboration",
-      title: "Python Project Collab",
-      date: "2024-03-06",
-    },
-  ];
-
-  const skills = [
-    { name: "JavaScript", level: 90 },
-    { name: "Python", level: 75 },
-    { name: "React", level: 85 },
-    { name: "Node.js", level: 80 },
-  ];
-
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-
+  // Handle form input changes
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
   };
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          // Preload user avatar to prevent rate limiting
-          if (user.photoURL) {
-            preloadImage(user.photoURL);
-          }
-
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setFormData((prev) => ({
-              ...prev,
-              displayName: userData.displayName || user.displayName || "",
-              bio: userData.bio || "",
-              occupation: userData.occupation || "",
-              // ... keep other existing formData fields
-            }));
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        setError("Failed to load user data");
-      }
-    };
-
-    fetchUserData();
-  }, []);
-
-  const handleProfileUpdate = async () => {
-    try {
-      setError("");
-      setSuccess("");
-
-      const user = auth.currentUser;
-      if (user) {
-        // Update Auth Profile
-        await updateProfile(user, {
-          displayName: formData.displayName,
-        });
-
-        // Update Firestore
-        const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, {
-          displayName: formData.displayName,
-          bio: formData.bio,
-          occupation: formData.occupation,
-          updatedAt: new Date().toISOString(),
-        });
-
-        setSuccess("Profile updated successfully!");
-        setIsEditing(false);
-
-        // Add fade-out animation before removing
-        setTimeout(() => {
-          const messageContainer = document.querySelector(
-            ".status-message-container"
-          );
-          if (messageContainer) {
-            messageContainer.classList.add("fade-out");
-            setTimeout(() => {
-              setSuccess("");
-            }, 300);
-          }
-        }, 2700);
-      }
-    } catch (err) {
-      console.error("Update error:", err);
-      setError("Failed to update profile: " + err.message);
+  // Handle profile image change
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({
+          ...prev,
+          profileImage: reader.result,
+          newProfileImage: file,
+        }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const handlePasswordUpdate = async () => {
+  // Start editing profile
+  const startEditing = () => {
+    setIsEditing(true);
+    setError("");
+    setSuccess("");
+  };
+
+  // Cancel editing and reset form
+  const cancelEditing = () => {
+    setFormData({
+      name: profile.name,
+      bio: profile.bio,
+      profileImage: profile.profileImage,
+      newProfileImage: null,
+    });
+    setIsEditing(false);
+    setError("");
+  };
+
+  // Save profile changes
+  const saveProfile = async () => {
+    setError("");
+    setSuccess("");
+
+    if (!formData.name.trim()) {
+      setError("Name cannot be empty");
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      setError("");
-      setSuccess("");
+      // Reference to the user document
+      const userDocRef = doc(db, "users", currentUser.uid);
 
-      // Validate password fields
-      if (!formData.currentPassword) {
-        setError("Current password is required");
-        return;
+      // If there's a new profile image, upload it
+      let photoURL = profile.profileImage;
+
+      if (formData.newProfileImage) {
+        const storageRef = ref(storage, `profile_images/${currentUser.uid}`);
+        await uploadBytesResumable(storageRef, formData.newProfileImage);
+        photoURL = await getDownloadURL(storageRef);
+
+        // Update the auth profile
+        await updateProfile(currentUser, {
+          displayName: formData.name,
+          photoURL,
+        });
+      } else if (formData.name !== currentUser.displayName) {
+        // Just update the display name if it changed
+        await updateProfile(currentUser, {
+          displayName: formData.name,
+        });
       }
 
-      if (!formData.newPassword) {
-        setError("New password is required");
-        return;
-      }
-
-      if (formData.newPassword !== formData.confirmPassword) {
-        setError("New passwords do not match");
-        return;
-      }
-
-      if (formData.newPassword.length < 8 || formData.newPassword.length > 12) {
-        setError("Password must be between 8 and 12 characters");
-        return;
-      }
-
-      const user = auth.currentUser;
-      if (!user) {
-        setError("No user is currently signed in");
-        return;
-      }
-
-      // Create credentials with current password
-      const credential = EmailAuthProvider.credential(
-        user.email,
-        formData.currentPassword
-      );
-
-      // Reauthenticate user before password change
-      await reauthenticateWithCredential(user, credential);
-
-      // Update password
-      await updatePassword(user, formData.newPassword);
-
-      // Update Firestore with password change timestamp
-      const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, {
-        lastPasswordChange: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      // Update the user document in Firestore
+      await updateDoc(userDocRef, {
+        displayName: formData.name,
+        bio: formData.bio,
+        photoURL,
       });
 
-      // Clear password fields
-      setFormData((prev) => ({
+      // Update local profile state
+      setProfile((prev) => ({
         ...prev,
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+        name: formData.name,
+        bio: formData.bio,
+        profileImage: photoURL,
       }));
 
-      setSuccess("Password updated successfully!");
+      setIsEditing(false);
+      setSuccess("Profile updated successfully!");
 
-      // Add fade-out animation
-      setTimeout(() => {
-        const messageContainer = document.querySelector(
-          ".status-message-container"
-        );
-        if (messageContainer) {
-          messageContainer.classList.add("fade-out");
-          setTimeout(() => {
-            setSuccess("");
-          }, 300);
-        }
-      }, 2700);
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      console.error("Password update error:", err);
-
-      // Handle specific error cases
-      switch (err.code) {
-        case "auth/wrong-password":
-          setError("Current password is incorrect");
-          break;
-        case "auth/requires-recent-login":
-          setError("Please sign in again before changing your password");
-          break;
-        case "auth/weak-password":
-          setError(
-            "New password is too weak. It must be at least 8 characters"
-          );
-          break;
-        default:
-          setError("Failed to update password. Please try again");
-      }
+      console.error("Error updating profile:", err);
+      setError("Failed to update profile");
     }
+
+    setIsLoading(false);
   };
 
-  const handlePhotoUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setError("Please select an image file");
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be less than 5MB");
-      return;
-    }
-
-    try {
-      setUploadingPhoto(true);
-      setError("");
-
-      // Create unique filename
-      const fileExtension = file.name.split(".").pop();
-      const fileName = `${auth.currentUser.uid}-${uuidv4()}.${fileExtension}`;
-
-      // Create storage reference
-      const storageRef = ref(storage, `profile-photos/${fileName}`);
-
-      // Upload file
-      await uploadBytes(storageRef, file);
-
-      // Get download URL
-      const photoURL = await getDownloadURL(storageRef);
-
-      // Update user profile
-      await updateProfile(auth.currentUser, { photoURL });
-
-      setSuccess("Profile photo updated successfully!");
-
-      // Force a re-render of the profile image
-      setFormData((prev) => ({ ...prev, timestamp: Date.now() }));
-    } catch (error) {
-      console.error("Error uploading photo:", error);
-      setError("Failed to upload photo. Please try again.");
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
-
-  const renderProfileAvatar = () => (
-    <div className="profile-avatar">
-      {auth.currentUser?.photoURL ? (
-        <img
-          src={getImageUrl(auth.currentUser.photoURL, formData.timestamp)}
-          alt="Profile"
-          className="avatar-large"
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = DEFAULT_AVATAR_SVG;
-          }}
-          loading="lazy"
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
-        />
-      ) : (
-        <FaUserCircle className="default-avatar-icon" size={150} />
-      )}
-
-      {isEditing && (
-        <label className="avatar-icon" htmlFor="photo-upload">
-          <input
-            type="file"
-            id="photo-upload"
-            accept="image/*"
-            onChange={handlePhotoUpload}
-            disabled={uploadingPhoto}
-            className="hidden"
-          />
-          <FaCamera />
-        </label>
-      )}
-    </div>
-  );
-
-  const renderStatisticsSection = () => (
-    <div className="profile-statistics">
-      <h3>Your CodeColab Stats</h3>
-      <div className="profile-stats">
-        <div className="stat-item">
-          <div className="stat-icon">
-            <FaUsers />
-          </div>
-          <span className="stat-value">{statistics.totalSessions}</span>
-          <span className="stat-label">Total Sessions</span>
-        </div>
-        <div className="stat-item">
-          <div className="stat-icon">
-            <FaClock />
-          </div>
-          <span className="stat-value">{statistics.hoursSpent}</span>
-          <span className="stat-label">Hours Spent</span>
-        </div>
-        <div className="stat-item">
-          <div className="stat-icon">
-            <FaFileCode />
-          </div>
-          <span className="stat-value">{statistics.linesOfCode}</span>
-          <span className="stat-label">Lines Added</span>
-        </div>
-        <div className="stat-item">
-          <div className="stat-icon">
-            <FaUsers />
-          </div>
-          <span className="stat-value">{statistics.collaborations}</span>
-          <span className="stat-label">Collaborations</span>
-        </div>
+  if (isLoading && !profile.name) {
+    return (
+      <div className="profile-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading profile...</p>
       </div>
-      {metrics.lastActive && (
-        <div className="last-active">
-          <span>
-            Last active: {new Date(metrics.lastActive).toLocaleString()}
-          </span>
-        </div>
-      )}
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="profile-main-content">
-      <div className="profile-container">
-        <div className="profile-header">
-          <h1>Profile Settings</h1>
-          <button
-            className="edit-button"
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            <FaEdit /> {isEditing ? "Cancel Editing" : "Edit Profile"}
+    <div className="profile-container">
+      <div className="profile-header">
+        <h1>User Profile</h1>
+        {!isEditing ? (
+          <button className="edit-button" onClick={startEditing}>
+            <FaPencilAlt /> Edit Profile
           </button>
-        </div>
-
-        {(error || success) && (
-          <div
-            className={`status-message-container ${
-              error ? "error" : "success"
-            }`}
-          >
-            <div className="status-message-content">
-              <div className="status-icon">
-                {error ? <FaExclamationCircle /> : <FaCheckCircle />}
-              </div>
-              <p>{error || success}</p>
-              <button
-                className="close-message"
-                onClick={() => {
-                  const messageContainer = document.querySelector(
-                    ".status-message-container"
-                  );
-                  messageContainer.classList.add("fade-out");
-                  setTimeout(() => {
-                    error ? setError("") : setSuccess("");
-                  }, 300);
-                }}
-              >
-                <FaTimes />
-              </button>
-            </div>
+        ) : (
+          <div className="edit-actions">
+            <button
+              className="save-button"
+              onClick={saveProfile}
+              disabled={isLoading}
+            >
+              <FaSave /> {isLoading ? "Saving..." : "Save"}
+            </button>
+            <button className="cancel-button" onClick={cancelEditing}>
+              <FaTimes /> Cancel
+            </button>
           </div>
         )}
+      </div>
 
-        <div className="profile-section">
-          <div className="profile-overview">
-            {renderProfileAvatar()}
-            {renderStatisticsSection()}
-          </div>
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
 
-          <div className="profile-tabs">
-            <button
-              className={`tab-button ${
-                activeTab === "personal" ? "active" : ""
-              }`}
-              onClick={() => setActiveTab("personal")}
-            >
-              <FaUserCircle /> Personal Info
-            </button>
-            <button
-              className={`tab-button ${
-                activeTab === "activity" ? "active" : ""
-              }`}
-              onClick={() => setActiveTab("activity")}
-            >
-              <FaHistory /> Activity
-            </button>
-            <button
-              className={`tab-button ${activeTab === "skills" ? "active" : ""}`}
-              onClick={() => setActiveTab("skills")}
-            >
-              <FaCode /> Skills
-            </button>
-            <button
-              className={`tab-button ${
-                activeTab === "settings" ? "active" : ""
-              }`}
-              onClick={() => setActiveTab("settings")}
-            >
-              <FaCog /> Settings
-            </button>
-          </div>
-
-          <div className="profile-content">
-            {activeTab === "personal" && (
-              <form
-                className="profile-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleProfileUpdate();
-                }}
-              >
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="displayName">Display Name</label>
-                    <input
-                      type="text"
-                      id="displayName"
-                      name="displayName"
-                      value={formData.displayName}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="occupation">Occupation</label>
-                    <input
-                      type="text"
-                      id="occupation"
-                      name="occupation"
-                      value={formData.occupation}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="bio">Bio</label>
-                  <textarea
-                    id="bio"
-                    name="bio"
-                    rows="3"
-                    value={formData.bio}
-                    onChange={handleChange}
-                    disabled={!isEditing}
+      <div className="profile-content">
+        <div className="profile-sidebar">
+          <div className="profile-image-container">
+            {isEditing ? (
+              <>
+                <div className="profile-image edit-mode">
+                  <img src={formData.profileImage} alt="Profile" />
+                  <label
+                    htmlFor="profile-image-upload"
+                    className="image-upload-label"
+                  >
+                    <FaCamera />
+                  </label>
+                  <input
+                    type="file"
+                    id="profile-image-upload"
+                    className="image-upload-input"
+                    onChange={handleImageChange}
+                    accept="image/*"
                   />
                 </div>
-
-                <div className="social-links">
-                  <h3>Social Links</h3>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label htmlFor="github">
-                        <FaGithub /> GitHub Profile URL
-                      </label>
-                      <input
-                        type="url"
-                        id="github"
-                        name="github"
-                        placeholder="https://github.com/yourusername"
-                        value={formData.github}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="linkedin">
-                        <FaLinkedin /> LinkedIn Profile URL
-                      </label>
-                      <input
-                        type="url"
-                        id="linkedin"
-                        name="linkedin"
-                        placeholder="https://linkedin.com/in/yourusername"
-                        value={formData.linkedin}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="personal-links">
-                  <div className="section-header">
-                    <h3>Professional Links</h3>
-                  </div>
-                  <div className="links-grid">
-                    {formData.github ? (
-                      <a
-                        href={formData.github}
-                        className="link-item"
-                        data-type="github"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <div className="link-icon">
-                          <FaGithub />
-                        </div>
-                        <div className="link-content">
-                          <div className="link-title">GitHub</div>
-                          <div className="link-url">{formData.github}</div>
-                        </div>
-                      </a>
-                    ) : (
-                      <div className="link-item" data-type="github">
-                        <div className="link-icon">
-                          <FaGithub />
-                        </div>
-                        <div className="link-content">
-                          <div className="link-title">GitHub</div>
-                          <div className="link-url">Not added yet</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {formData.linkedin ? (
-                      <a
-                        href={formData.linkedin}
-                        className="link-item"
-                        data-type="linkedin"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <div className="link-icon">
-                          <FaLinkedin />
-                        </div>
-                        <div className="link-content">
-                          <div className="link-title">LinkedIn</div>
-                          <div className="link-url">{formData.linkedin}</div>
-                        </div>
-                      </a>
-                    ) : (
-                      <div className="link-item" data-type="linkedin">
-                        <div className="link-icon">
-                          <FaLinkedin />
-                        </div>
-                        <div className="link-content">
-                          <div className="link-title">LinkedIn</div>
-                          <div className="link-url">Not added yet</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {formData.twitter ? (
-                      <a
-                        href={formData.twitter}
-                        className="link-item"
-                        data-type="twitter"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <div className="link-icon">
-                          <FaTwitter />
-                        </div>
-                        <div className="link-content">
-                          <div className="link-title">Twitter</div>
-                          <div className="link-url">{formData.twitter}</div>
-                        </div>
-                      </a>
-                    ) : (
-                      <div className="link-item" data-type="twitter">
-                        <div className="link-icon">
-                          <FaTwitter />
-                        </div>
-                        <div className="link-content">
-                          <div className="link-title">Twitter</div>
-                          <div className="link-url">Not added yet</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {formData.website ? (
-                      <a
-                        href={formData.website}
-                        className="link-item"
-                        data-type="portfolio"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <div className="link-icon">
-                          <FaGlobe />
-                        </div>
-                        <div className="link-content">
-                          <div className="link-title">Portfolio</div>
-                          <div className="link-url">{formData.website}</div>
-                        </div>
-                      </a>
-                    ) : (
-                      <div className="link-item" data-type="portfolio">
-                        <div className="link-icon">
-                          <FaGlobe />
-                        </div>
-                        <div className="link-content">
-                          <div className="link-title">Portfolio</div>
-                          <div className="link-url">Not added yet</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {isEditing && (
-                  <div className="form-actions">
-                    <button type="submit" className="submit-button">
-                      Save Changes
-                    </button>
-                  </div>
-                )}
-              </form>
-            )}
-
-            {activeTab === "activity" && (
-              <div className="activity-section">
-                <h3>Recent Activity</h3>
-                <div className="activity-list">
-                  {recentActivity.map((activity) => (
-                    <div key={activity.id} className="activity-item">
-                      <div className="activity-icon">
-                        {activity.type === "session" && <FaCode />}
-                        {activity.type === "achievement" && <FaStar />}
-                        {activity.type === "collaboration" && <FaUsers />}
-                      </div>
-                      <div className="activity-details">
-                        <span className="activity-title">{activity.title}</span>
-                        <span className="activity-date">{activity.date}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              </>
+            ) : (
+              <div className="profile-image">
+                <img src={profile.profileImage} alt="Profile" />
               </div>
             )}
 
-            {activeTab === "skills" && (
-              <div className="skills-section">
-                <h3>Programming Skills</h3>
-                <div className="skills-list">
-                  {skills.map((skill) => (
-                    <div key={skill.name} className="skill-item">
-                      <div className="skill-header">
-                        <span className="skill-name">{skill.name}</span>
-                        <span className="skill-level">{skill.level}%</span>
-                      </div>
-                      <div className="skill-bar">
-                        <div
-                          className="skill-progress"
-                          style={{ width: `${skill.level}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <div className="profile-info">
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="name-edit-input"
+                />
+              ) : (
+                <h2>{profile.name}</h2>
+              )}
+
+              <div className="profile-email">
+                <FaEnvelope /> {profile.email}
               </div>
+
+              <div className="profile-joined">
+                <FaUser /> Joined {profile.joinDate}
+              </div>
+            </div>
+          </div>
+
+          <div className="profile-bio">
+            <h3>Bio</h3>
+            {isEditing ? (
+              <textarea
+                name="bio"
+                value={formData.bio}
+                onChange={handleChange}
+                rows="5"
+                placeholder="Tell us about yourself"
+              />
+            ) : (
+              <p>{profile.bio}</p>
             )}
+          </div>
+        </div>
 
-            {activeTab === "settings" && (
-              <div className="settings-section">
-                <h3>Security</h3>
-                <form
-                  className="profile-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handlePasswordUpdate();
-                  }}
-                >
-                  <div className="form-group">
-                    <label htmlFor="currentPassword">Current Password</label>
-                    <input
-                      type="password"
-                      id="currentPassword"
-                      name="currentPassword"
-                      value={formData.currentPassword}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                      autoComplete="current-password"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="newPassword">New Password</label>
-                    <input
-                      type="password"
-                      id="newPassword"
-                      name="newPassword"
-                      value={formData.newPassword}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                      autoComplete="new-password"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="confirmPassword">
-                      Confirm New Password
-                    </label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                      autoComplete="new-password"
-                    />
-                  </div>
-
-                  {isEditing && (
-                    <div className="form-actions">
-                      <button type="submit" className="submit-button">
-                        Update Password
-                      </button>
+        <div className="profile-details">
+          <div className="profile-section">
+            <h3>Recent Projects</h3>
+            {profile.projects && profile.projects.length > 0 ? (
+              <ul className="profile-list">
+                {profile.projects.map((project) => (
+                  <li key={project.id} className="profile-list-item">
+                    <div className="item-name">{project.name}</div>
+                    <div className="item-meta">
+                      Last edited: {project.lastEdited}
                     </div>
-                  )}
-                </form>
-              </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-list">No projects yet</p>
+            )}
+          </div>
+
+          <div className="profile-section">
+            <h3>Recent Sessions</h3>
+            {profile.sessions && profile.sessions.length > 0 ? (
+              <ul className="profile-list">
+                {profile.sessions.map((session) => (
+                  <li key={session.id} className="profile-list-item">
+                    <div className="item-name">{session.name}</div>
+                    <div className="item-meta">{session.date}</div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-list">No recent sessions</p>
             )}
           </div>
         </div>
@@ -812,4 +367,5 @@ const Profile = () => {
     </div>
   );
 };
+
 export default Profile;

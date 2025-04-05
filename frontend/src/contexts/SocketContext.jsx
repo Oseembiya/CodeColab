@@ -1,350 +1,67 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { io } from "socket.io-client";
-import { v4 as uuidv4 } from "uuid";
-import { useAuth } from "../hooks/useAuth";
 
-// Load environment variables
-const socketUrl =
-  import.meta.env.VITE_SOCKET_URL || "https://codecolab-852p.onrender.com";
-const socketPath = import.meta.env.VITE_SOCKET_PATH || "/socket.io";
-const socketReconnectionAttempts = parseInt(
-  import.meta.env.VITE_SOCKET_RECONNECTION_ATTEMPTS || "5",
-  10
-);
-const socketReconnectionDelay = parseInt(
-  import.meta.env.VITE_SOCKET_RECONNECTION_DELAY || "1000",
-  10
-);
-const socketReconnectionDelayMax = parseInt(
-  import.meta.env.VITE_SOCKET_RECONNECTION_DELAY_MAX || "5000",
-  10
-);
+const SocketContext = createContext();
 
-// Create context
-const SocketContext = createContext(null);
-
-export function SocketProvider({ children }) {
-  const [socket, setSocket] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState("disconnected");
-  const [error, setError] = useState(null);
-  const { user, getIdToken, isAuthenticated } = useAuth();
-
-  // Refs to prevent issues with stale closures and tracking connection state
-  const reconnectTimeout = useRef(null);
-  const isConnecting = useRef(false);
-  const connectionAttempts = useRef(0);
-  const lastConnectTime = useRef(0);
-  const socketRef = useRef(null); // Add a ref to track the socket instance
-
-  // Connect to socket with authentication token
-  const connectSocket = useCallback(async () => {
-    // Prevent multiple concurrent connection attempts
-    if (isConnecting.current) {
-      console.log("Connection already in progress");
-      return;
-    }
-
-    // Apply connection throttling if needed
-    const now = Date.now();
-    const timeSinceLastConnect = now - lastConnectTime.current;
-
-    if (connectionAttempts.current > 3 && timeSinceLastConnect < 5000) {
-      console.warn(
-        `Throttling socket connection attempts. Will try again in ${Math.ceil(
-          (5000 - timeSinceLastConnect) / 1000
-        )} seconds`
-      );
-
-      // Schedule a retry after cooldown
-      if (reconnectTimeout.current) {
-        clearTimeout(reconnectTimeout.current);
-      }
-
-      reconnectTimeout.current = setTimeout(() => {
-        connectionAttempts.current = 0;
-        connectSocket();
-      }, 5000 - timeSinceLastConnect);
-
-      return;
-    }
-
-    isConnecting.current = true;
-    connectionAttempts.current++;
-    lastConnectTime.current = now;
-
-    try {
-      // Clean up existing socket if there is one
-      if (socketRef.current && socketRef.current.connected) {
-        console.log("Disconnecting existing socket connection");
-        socketRef.current.disconnect();
-        // Small delay to ensure clean disconnection
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-
-      // Get or create client ID for persistent identity
-      let clientId = localStorage.getItem("clientId");
-      if (!clientId) {
-        clientId = uuidv4();
-        localStorage.setItem("clientId", clientId);
-      }
-
-      // Prepare auth data with client ID
-      const authData = {
-        clientId,
-        isGuest: !isAuthenticated, // Explicitly mark as guest if not authenticated
-      };
-
-      // Add authentication token if user is logged in
-      if (isAuthenticated && user && getIdToken) {
-        try {
-          console.log("Attempting to get auth token...");
-          const token = await getIdToken(true);
-          console.log(
-            `Token obtained: ${token ? "yes" : "no"}, length: ${
-              token?.length || 0
-            }`
-          );
-
-          if (token) {
-            authData.token = token;
-            authData.userId = user?.uid;
-            authData.username = user?.displayName || "Anonymous";
-            console.log("Authentication token acquired for socket connection");
-            console.log(
-              `User details: uid=${user.uid}, displayName=${
-                user.displayName || "not set"
-              }`
-            );
-          } else {
-            console.warn(
-              "Token retrieval returned null despite authenticated user"
-            );
-          }
-        } catch (tokenErr) {
-          console.error("Error getting auth token:", tokenErr);
-        }
-      } else {
-        // For guests or not yet authenticated users
-        console.log("Connecting as guest or auth not ready:", {
-          isAuthenticated,
-          hasUser: !!user,
-          hasGetIdToken: !!getIdToken,
-        });
-
-        authData.mode = "guest";
-        authData.guestId = clientId;
-      }
-
-      // Socket.io connection options
-      const socketOptions = {
-        transports: ["polling"], // Use only polling since WebSockets are failing
-        reconnection: true,
-        reconnectionAttempts: socketReconnectionAttempts,
-        reconnectionDelay: socketReconnectionDelay,
-        reconnectionDelayMax: socketReconnectionDelayMax,
-        timeout: 20000,
-        forceNew: true,
-        auth: authData,
-        path: socketPath,
-        withCredentials: true,
-        autoConnect: false,
-      };
-
-      // Create socket connection
-      console.log(`Connecting to socket server at ${socketUrl}`);
-      console.log("Connection options:", {
-        transports: socketOptions.transports,
-        auth: {
-          hasToken: !!authData.token,
-          userId: authData.userId,
-          isGuest: authData.isGuest,
-          clientId: authData.clientId,
-        },
-        path: socketOptions.path,
-      });
-
-      const newSocket = io(socketUrl, socketOptions);
-
-      // Store socket in ref
-      socketRef.current = newSocket;
-
-      // Attempt connection
-      newSocket.connect();
-
-      // Connection event handlers
-      newSocket.on("connect", () => {
-        console.log("Connected with client ID:", clientId);
-        console.log("Transport used:", newSocket.io.engine.transport.name);
-
-        if (authData.token) {
-          console.log("Authenticated socket connection established");
-        } else {
-          console.log("Unauthenticated socket connection established");
-        }
-
-        setSocket(newSocket);
-        setConnectionStatus("connected");
-        setError(null);
-        isConnecting.current = false;
-      });
-
-      newSocket.on("connect_error", (err) => {
-        console.error("Socket connection error:", err.message);
-        setError(`Connection error: ${err.message}`);
-        setConnectionStatus("error");
-        isConnecting.current = false;
-      });
-
-      newSocket.on("disconnect", (reason) => {
-        console.log("Socket disconnected:", reason);
-        setConnectionStatus("disconnected");
-
-        if (reason === "io client disconnect") {
-          // Intentional client disconnect, don't auto-reconnect
-          console.log("Client initiated disconnect, no auto-reconnect");
-          isConnecting.current = false;
-        }
-      });
-
-      // Clean up function
-      return () => {
-        if (newSocket) {
-          if (newSocket.connected) {
-            newSocket.disconnect();
-          }
-          console.log("Socket connection cleaned up");
-        }
-      };
-    } catch (err) {
-      console.error("Socket initialization error:", err);
-      setError(`Socket initialization error: ${err.message}`);
-      setConnectionStatus("error");
-      isConnecting.current = false;
-      return () => {}; // Empty cleanup function
-    }
-  }, [user?.uid, getIdToken, isAuthenticated]); // Remove socket from dependencies
-
-  // Connect/reconnect when auth state changes
-  useEffect(() => {
-    console.log("Auth state changed, connecting socket");
-    console.log("Auth status:", {
-      isAuthenticated,
-      hasUser: !!user,
-      hasGetIdToken: !!getIdToken,
-    });
-
-    // Only proceed if we have a definitive auth state (true or false, not undefined)
-    // And if authenticated, ensure we have the necessary auth functions
-    if (typeof isAuthenticated === "undefined") {
-      console.log("Authentication state not yet determined, waiting...");
-      return;
-    }
-
-    // If authenticated, ensure we have user and getIdToken function
-    if (isAuthenticated && (!user || !getIdToken)) {
-      console.log("Authenticated but user or getIdToken not ready, waiting...");
-      return;
-    }
-
-    // Use a ref to track if we should connect
-    const shouldConnect =
-      isConnecting.current === false &&
-      (connectionStatus === "disconnected" ||
-        connectionStatus === "error" ||
-        !socket);
-
-    if (!shouldConnect) {
-      console.log(
-        "Skipping connection attempt - already connected or connecting"
-      );
-      return;
-    }
-
-    // Debounce reconnection to prevent rapid reconnection attempts
-    if (reconnectTimeout.current) {
-      clearTimeout(reconnectTimeout.current);
-    }
-
-    reconnectTimeout.current = setTimeout(() => {
-      const cleanup = connectSocket();
-
-      return () => {
-        if (typeof cleanup === "function") {
-          cleanup();
-        }
-        if (reconnectTimeout.current) {
-          clearTimeout(reconnectTimeout.current);
-        }
-      };
-    }, 300);
-
-    return () => {
-      if (reconnectTimeout.current) {
-        clearTimeout(reconnectTimeout.current);
-      }
-    };
-  }, [isAuthenticated, user, getIdToken, connectionStatus, socket]); // Add connectionStatus and socket as dependencies
-
-  // Manual reconnect function
-  const reconnect = useCallback(() => {
-    console.log("Manual reconnection initiated");
-    connectSocket();
-  }, [connectSocket]);
-
-  // Cleanup socket on unmount or logout
-  useEffect(() => {
-    // If user was authenticated and is now logged out, disconnect the socket
-    if (!isAuthenticated && socketRef.current) {
-      console.log("User logged out, cleaning up socket connection");
-      socketRef.current.disconnect();
-      socketRef.current = null;
-      setSocket(null);
-      setConnectionStatus("disconnected");
-    }
-
-    // Cleanup on component unmount
-    return () => {
-      if (socketRef.current) {
-        console.log("Component unmounting, cleaning up socket");
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      if (reconnectTimeout.current) {
-        clearTimeout(reconnectTimeout.current);
-      }
-    };
-  }, [isAuthenticated]);
-
-  // Context value
-  const contextValue = {
-    socket,
-    connectionStatus,
-    isConnected: connectionStatus === "connected",
-    error,
-    reconnect,
-  };
-
-  return (
-    <SocketContext.Provider value={contextValue}>
-      {children}
-    </SocketContext.Provider>
-  );
-}
-
-// Custom hook for using socket
 export const useSocket = () => {
   const context = useContext(SocketContext);
   if (!context) {
     throw new Error("useSocket must be used within a SocketProvider");
   }
   return context;
+};
+
+export const SocketProvider = ({ children }) => {
+  const [socket, setSocket] = useState(null);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    // Create socket connection
+    const socketInstance = io(
+      import.meta.env.VITE_SOCKET_URL || "http://localhost:3001",
+      {
+        autoConnect: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      }
+    );
+
+    // Set up event listeners
+    socketInstance.on("connect", () => {
+      console.log("Socket connected:", socketInstance.id);
+      setConnected(true);
+    });
+
+    socketInstance.on("disconnect", () => {
+      console.log("Socket disconnected");
+      setConnected(false);
+    });
+
+    socketInstance.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setConnected(false);
+    });
+
+    // Set socket in state
+    setSocket(socketInstance);
+
+    // Cleanup on unmount
+    return () => {
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
+    };
+  }, []);
+
+  const value = {
+    socket,
+    connected,
+  };
+
+  return (
+    <SocketContext.Provider value={value}>{children}</SocketContext.Provider>
+  );
 };
 
 export default SocketContext;

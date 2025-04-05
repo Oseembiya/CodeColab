@@ -1,196 +1,144 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { Suspense, lazy, useEffect } from "react";
-import { SocketProvider } from "./contexts/SocketContext.jsx";
-import { SessionProvider } from "./contexts/SessionContext.jsx";
-import { FriendProvider } from "./contexts/FriendContext.jsx";
-import { DropdownProvider } from "./contexts/DropdownContext.jsx";
-import { UserMetricsProvider } from "./contexts/UserMetricsContext.jsx";
-import { AuthProvider, useAuth } from "./hooks/useAuth.jsx";
-import ErrorBoundary from "./error/ErrorBoundary";
-import MainContent from "./components/layouts/mainContent";
-import { NotificationProvider } from "./contexts/NotificationContext.jsx";
-import routeConfig from "./routeConfig";
+import { useState, useEffect } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { SessionProvider } from "./contexts/SessionContext";
+import { SocketProvider } from "./contexts/SocketContext";
+import { UserMetricsProvider } from "./contexts/UserMetricsContext";
+import { useAuth } from "./contexts/AuthContext";
+import Sidebar from "./components/layout/Sidebar";
+import Dashboard from "./pages/dashboard";
+import Auth from "./pages/auth";
+import Profile from "./pages/profile";
+import Session from "./pages/session";
+import Whiteboard from "./pages/whiteboard";
+import LiveSessions from "./pages/liveSessions";
+import NotFound from "./pages/notFound";
+import "./styles/App.css";
 
-/**
- * Loading fallback component for suspense and auth checks
- */
-const LoadingFallback = ({ message = "Loading..." }) => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="text-center">
-      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-e-transparent align-[-0.125em] text-primary"></div>
-      <p className="mt-2">{message}</p>
-    </div>
-  </div>
-);
+// Protected route component
+const ProtectedRoute = ({ children }) => {
+  const { currentUser } = useAuth();
 
-/**
- * Initialize error tracking for production environments
- */
-const initErrorTracking = () => {
-  if (process.env.NODE_ENV === "production") {
-    console.log("Error tracking initialized in production mode");
+  if (!currentUser) {
+    return <Navigate to="/auth" replace />;
   }
+  return children;
 };
 
-/**
- * Component that handles auth-aware routes (redirects authenticated users away from login)
- */
-const AuthAwareRoute = ({ component: Component }) => {
-  const { user, loading } = useAuth();
+function App() {
+  const [loading, setLoading] = useState(true);
+  const [isSidebarFolded, setIsSidebarFolded] = useState(false);
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
 
-  if (loading) return <LoadingFallback message="Checking authentication..." />;
-
-  // If authenticated, redirect to dashboard
-  if (user) return <Navigate to="/" replace />;
-
-  // If not authenticated, render the component (auth page)
-  return (
-    <ErrorBoundary>
-      <Suspense
-        fallback={<LoadingFallback message="Loading authentication page..." />}
-      >
-        <Component />
-      </Suspense>
-    </ErrorBoundary>
-  );
-};
-
-/**
- * Render a route based on its configuration type
- */
-const renderRouteElement = (route) => {
-  // For auth-aware routes (login)
-  if (route.element.type === "auth-aware") {
-    return <AuthAwareRoute component={route.element.component} />;
-  }
-
-  // For protected routes
-  if (route.element.type === "protected") {
-    const ProtectedComponent = route.element.component;
-    return (
-      <ProtectedComponent>
-        {route.children ? <MainContent /> : null}
-      </ProtectedComponent>
-    );
-  }
-
-  // For regular component routes
-  if (route.element.type === "component") {
-    const Component = route.element.component;
-    return (
-      <ErrorBoundary>
-        <Suspense
-          fallback={
-            <LoadingFallback message={`Loading ${route.path || "page"}...`} />
-          }
-        >
-          <Component />
-        </Suspense>
-      </ErrorBoundary>
-    );
-  }
-
-  // Handle redirect routes
-  if (route.element.type === "redirect") {
-    return <Navigate to={route.element.to} replace />;
-  }
-
-  // Default fallback
-  return <div>Invalid route configuration</div>;
-};
-
-/**
- * ScrollToTop component that handles scrolling to top on route changes
- */
-const ScrollToTop = () => {
-  const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
-  return null;
-};
-
-const App = () => {
   useEffect(() => {
-    initErrorTracking();
+    // Remove loading state after a short delay
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, []);
 
-  return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <SocketProvider>
-          <SessionProvider>
-            <FriendProvider>
-              <NotificationProvider>
-                <UserMetricsProvider>
-                  <DropdownProvider>
-                    <ScrollToTop />
-                    {process.env.NODE_ENV !== "production" && (
-                      <div
-                        style={{
-                          position: "fixed",
-                          bottom: 10,
-                          right: 10,
-                          background: "rgba(0,0,0,0.7)",
-                          color: "white",
-                          padding: "5px 10px",
-                          borderRadius: "5px",
-                          zIndex: 9999,
-                          fontSize: "12px",
-                        }}
-                      >
-                        Path: {window.location.pathname}
-                      </div>
-                    )}
-                    <Routes>
-                      {routeConfig.map((route) => {
-                        // For routes with children
-                        if (route.children) {
-                          return (
-                            <Route
-                              key={route.path}
-                              path={route.path}
-                              element={renderRouteElement(route)}
-                            >
-                              {route.children.map((childRoute) => {
-                                if (childRoute.index) {
-                                  return (
-                                    <Route
-                                      key="index"
-                                      index
-                                      element={renderRouteElement(childRoute)}
-                                    />
-                                  );
-                                }
-                                return (
-                                  <Route
-                                    key={childRoute.path}
-                                    path={childRoute.path}
-                                    element={renderRouteElement(childRoute)}
-                                  />
-                                );
-                              })}
-                            </Route>
-                          );
-                        }
+  // Function to update sidebar folded state
+  const handleSidebarFold = (folded) => {
+    setIsSidebarFolded(folded);
+  };
 
-                        // For routes without children
-                        return (
-                          <Route
-                            key={route.path}
-                            path={route.path}
-                            element={renderRouteElement(route)}
-                          />
-                        );
-                      })}
-                    </Routes>
-                  </DropdownProvider>
-                </UserMetricsProvider>
-              </NotificationProvider>
-            </FriendProvider>
-          </SessionProvider>
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading CodeColab...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`app-container ${isSidebarFolded ? "sidebar-folded" : ""} ${
+        !currentUser ? "auth-only" : ""
+      }`}
+    >
+      <SessionProvider>
+        <SocketProvider>
+          <UserMetricsProvider>
+            {/* Only show sidebar for authenticated users */}
+            {currentUser && <Sidebar onFoldChange={handleSidebarFold} />}
+
+            <div className="main-content">
+              <Routes>
+                {/* Auth route - combines login and register */}
+                <Route
+                  path="/auth"
+                  element={currentUser ? <Navigate to="/" replace /> : <Auth />}
+                />
+
+                {/* Protected routes */}
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/sessions"
+                  element={
+                    <ProtectedRoute>
+                      <LiveSessions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/session/:sessionId"
+                  element={
+                    <ProtectedRoute>
+                      <Session />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/whiteboard/:sessionId"
+                  element={
+                    <ProtectedRoute>
+                      <Whiteboard />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Redirect legacy routes */}
+                <Route
+                  path="/login"
+                  element={<Navigate to="/auth" replace />}
+                />
+                <Route
+                  path="/register"
+                  element={<Navigate to="/auth" replace />}
+                />
+
+                {/* 404 route - also protected */}
+                <Route
+                  path="*"
+                  element={
+                    currentUser ? <NotFound /> : <Navigate to="/auth" replace />
+                  }
+                />
+              </Routes>
+            </div>
+          </UserMetricsProvider>
         </SocketProvider>
-      </AuthProvider>
-    </ErrorBoundary>
+      </SessionProvider>
+    </div>
   );
-};
+}
 
 export default App;

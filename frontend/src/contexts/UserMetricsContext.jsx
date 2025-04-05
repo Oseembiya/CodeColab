@@ -1,110 +1,60 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { useAuth } from "../hooks/useAuth";
-import { db } from "../firebaseConfig";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
 
-const UserMetricsContext = createContext(null);
+const UserMetricsContext = createContext();
 
-export function UserMetricsProvider({ children }) {
-  const { user } = useAuth();
-  const [metrics, setMetrics] = useState({
-    totalSessions: 0,
-    hoursSpent: 0,
-    linesOfCode: 0,
-    collaborations: 0,
-    lastSessionStart: null,
-    lastActive: null,
-  });
+export const useUserMetrics = () => {
+  const context = useContext(UserMetricsContext);
+  if (!context) {
+    throw new Error("useUserMetrics must be used within a UserMetricsProvider");
+  }
+  return context;
+};
+
+export const UserMetricsProvider = ({ children }) => {
+  const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-
-    // Initial fetch
-    const fetchInitialMetrics = async () => {
+    const fetchUserMetrics = async () => {
       try {
-        const userMetricsRef = doc(db, "userMetrics", user.uid);
-        const metricsDoc = await getDoc(userMetricsRef);
-
-        if (metricsDoc.exists()) {
-          const data = metricsDoc.data();
+        // Simulate API call to fetch user metrics
+        setTimeout(() => {
+          // Placeholder demo data
           setMetrics({
-            totalSessions: data.totalSessions || 0,
-            hoursSpent: parseFloat(data.hoursSpent || 0).toFixed(1),
-            linesOfCode: data.linesOfCode || 0,
-            collaborations: data.collaborations || 0,
-            lastSessionStart: data.lastSessionStart,
-            lastActive: data.lastActive,
+            totalSessions: 5,
+            hoursSpent: 12,
+            linesOfCode: 430,
+            collaborations: 3,
           });
-        } else {
-          // No metrics yet, use defaults
-          setMetrics({
-            totalSessions: 0,
-            hoursSpent: 0,
-            linesOfCode: 0,
-            collaborations: 0,
-            lastSessionStart: null,
-            lastActive: null,
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching user metrics:", err);
-        setError("Failed to load user metrics");
-      } finally {
+          setLoading(false);
+        }, 1000);
+      } catch (error) {
+        console.error("Error fetching user metrics:", error);
         setLoading(false);
       }
     };
 
-    fetchInitialMetrics();
+    fetchUserMetrics();
+  }, []);
 
-    // Set up real-time listener
-    const userMetricsRef = doc(db, "userMetrics", user.uid);
-    const unsubscribe = onSnapshot(
-      userMetricsRef,
-      (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          setMetrics({
-            totalSessions: data.totalSessions || 0,
-            hoursSpent: parseFloat(data.hoursSpent || 0).toFixed(1),
-            linesOfCode: data.linesOfCode || 0,
-            collaborations: data.collaborations || 0,
-            lastSessionStart: data.lastSessionStart,
-            lastActive: data.lastActive,
-          });
-        }
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Error in metrics snapshot:", err);
-        setError("Failed to sync user metrics");
-        setLoading(false);
-      }
-    );
+  const updateMetrics = (newMetrics) => {
+    setMetrics((prev) => ({
+      ...prev,
+      ...newMetrics,
+    }));
+  };
 
-    // Cleanup
-    return () => unsubscribe();
-  }, [user]);
+  const value = {
+    metrics,
+    loading,
+    updateMetrics,
+  };
 
   return (
-    <UserMetricsContext.Provider value={{ metrics, loading, error }}>
+    <UserMetricsContext.Provider value={value}>
       {children}
     </UserMetricsContext.Provider>
   );
-}
-
-export const useUserMetrics = () => {
-  const context = useContext(UserMetricsContext);
-  if (context === null) {
-    throw new Error("useUserMetrics must be used within a UserMetricsProvider");
-  }
-  return context;
 };
 
 export default UserMetricsContext;
