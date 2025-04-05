@@ -15,70 +15,6 @@ import {
 import { useSession } from "../contexts/SessionContext";
 import "../styles/pages/LiveSessions.css";
 
-// Mock data for sessions - in production would come from API/backend
-const MOCK_SESSIONS = [
-  {
-    id: "s1",
-    name: "Quick Collaboration Session",
-    description: "A quick session for real-time collaboration",
-    status: "active",
-    createdAt: new Date(Date.now() - 60 * 60 * 1000),
-    participants: 2,
-    language: "javascript",
-    isPublic: true,
-  },
-  {
-    id: "s2",
-    name: "React Component Workshop",
-    description: "Building reusable React components",
-    status: "active",
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    participants: 4,
-    language: "javascript",
-    isPublic: true,
-  },
-  {
-    id: "s3",
-    name: "Algorithm Practice",
-    description: "Working on sorting algorithms and data structures",
-    status: "ended",
-    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-    participants: 1,
-    language: "python",
-    isPublic: true,
-  },
-  {
-    id: "s4",
-    name: "Private Code Review",
-    description: "Code review for our team project",
-    status: "active",
-    createdAt: new Date(Date.now() - 30 * 60 * 1000),
-    participants: 3,
-    language: "java",
-    isPublic: false,
-  },
-  {
-    id: "s5",
-    name: "Backend API Development",
-    description: "Creating RESTful APIs with Express",
-    status: "ended",
-    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-    participants: 2,
-    language: "javascript",
-    isPublic: true,
-  },
-  {
-    id: "s6",
-    name: "CSS Animation Tutorial",
-    description: "Learning advanced CSS animations",
-    status: "active",
-    createdAt: new Date(Date.now() - 20 * 60 * 1000),
-    participants: 8,
-    language: "html/css",
-    isPublic: true,
-  },
-];
-
 // Filter options for dropdowns
 const STATUS_OPTIONS = ["All Status", "Active", "Ended"];
 const LANGUAGE_OPTIONS = [
@@ -220,7 +156,6 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
       description,
       language,
       isPublic,
-      userId: "user-123", // placeholder, would come from auth
     });
   };
 
@@ -295,7 +230,7 @@ const CreateSessionModal = ({ onClose, onSubmit }) => {
 // Main LiveSessions Component
 const LiveSessions = () => {
   const navigate = useNavigate();
-  const { createSession } = useSession();
+  const { createSession, getSessions } = useSession();
 
   // State for sessions and filters
   const [sessions, setSessions] = useState([]);
@@ -314,16 +249,24 @@ const LiveSessions = () => {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Fetch sessions - in production this would be an API call
+  // Fetch sessions from API
   useEffect(() => {
-    // Simulate API call
-    setIsLoading(true);
-    setTimeout(() => {
-      setSessions(MOCK_SESSIONS);
-      setFilteredSessions(MOCK_SESSIONS);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
+    const fetchSessions = async () => {
+      setIsLoading(true);
+      try {
+        const sessionsData = await getSessions();
+        setSessions(sessionsData);
+        setFilteredSessions(sessionsData);
+      } catch (error) {
+        console.error("Failed to fetch sessions:", error);
+        // Handle error - maybe show an error message to the user
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [getSessions]);
 
   // Apply filters when any filter changes
   useEffect(() => {

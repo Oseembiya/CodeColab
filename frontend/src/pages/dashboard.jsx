@@ -32,7 +32,6 @@ const CreateSessionModal = ({ isQuickStart, onClose, onSubmit }) => {
       title,
       description,
       language,
-      userId: "user-123", // placeholder, would come from auth
     });
   };
 
@@ -110,11 +109,11 @@ const Dashboard = () => {
   const { metrics } = useUserMetrics();
   const { socket } = useSocket();
 
-  // Platform statistics with placeholder data
+  // Platform statistics - initialize empty
   const [platformStats, setPlatformStats] = useState({
-    activeSessions: 12,
-    collaboratingUsers: 43,
-    codeLinesSynced: "2.5K",
+    activeSessions: 0,
+    collaboratingUsers: 0,
+    codeLinesSynced: "0",
   });
 
   // Handle the "Get Started Now" button click
@@ -142,31 +141,24 @@ const Dashboard = () => {
     }
   };
 
-  // Simulate fetching platform statistics from the server
+  // Fetch platform statistics from the server
   useEffect(() => {
     if (socket) {
-      // This would be the real implementation
-      // socket.emit("request-global-stats");
-      // socket.on("global-stats", ({ activeUsers, totalLinesOfCode }) => {
-      //   setPlatformStats({
-      //     activeSessions: 12,
-      //     collaboratingUsers: activeUsers,
-      //     codeLinesSynced: totalLinesOfCode > 1000
-      //       ? `${Math.round(totalLinesOfCode / 100) / 10}K`
-      //       : totalLinesOfCode.toString(),
-      //   });
-      // });
-
-      // For now, just simulate with placeholder data
-      const timer = setTimeout(() => {
+      socket.emit("request-global-stats");
+      socket.on("global-stats", (stats) => {
         setPlatformStats({
-          activeSessions: 14,
-          collaboratingUsers: 48,
-          codeLinesSynced: "2.7K",
+          activeSessions: stats.activeSessions || 0,
+          collaboratingUsers: stats.collaboratingUsers || 0,
+          codeLinesSynced:
+            stats.totalLinesOfCode > 1000
+              ? `${Math.round(stats.totalLinesOfCode / 100) / 10}K`
+              : (stats.totalLinesOfCode || 0).toString(),
         });
-      }, 3000);
+      });
 
-      return () => clearTimeout(timer);
+      return () => {
+        socket.off("global-stats");
+      };
     }
   }, [socket]);
 
@@ -253,17 +245,8 @@ const Dashboard = () => {
     },
   ];
 
-  // Testimonials
-  const testimonials = [
-    {
-      quote: "CodeColab helped our team reduce meeting times by 30%",
-      author: "Sarah J., Senior Developer",
-    },
-    {
-      quote: "Our remote development productivity increased significantly",
-      author: "Michael T., Project Manager",
-    },
-  ];
+  // Testimonials section - remove dummy testimonials
+  const testimonials = [];
 
   return (
     <div className="dashboard-container">

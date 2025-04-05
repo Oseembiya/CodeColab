@@ -26,7 +26,7 @@ const Profile = () => {
     name: "",
     email: "",
     bio: "",
-    profileImage: null,
+    profileImage: "",
     joinDate: "",
     projects: [],
     sessions: [],
@@ -36,7 +36,7 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
-    profileImage: null,
+    profileImage: "",
     newProfileImage: null,
   });
 
@@ -85,15 +85,12 @@ const Profile = () => {
         name: userData.displayName || currentUser.displayName || "User",
         email: userData.email || currentUser.email,
         bio: userData.bio || "",
-        profileImage:
-          userData.photoURL ||
-          currentUser.photoURL ||
-          "https://i.pravatar.cc/300",
+        profileImage: userData.photoURL || currentUser.photoURL || "",
         joinDate,
         projects: [], // Would fetch from projects collection in a real app
         sessions: sessions
           .map((session, index) => ({
-            id: index,
+            id: session.sessionId || index,
             name: session.title || `Session #${index + 1}`,
             date: new Date(session.timestamp).toLocaleDateString(),
           }))
@@ -103,10 +100,7 @@ const Profile = () => {
       setFormData({
         name: userData.displayName || currentUser.displayName || "User",
         bio: userData.bio || "",
-        profileImage:
-          userData.photoURL ||
-          currentUser.photoURL ||
-          "https://i.pravatar.cc/300",
+        profileImage: userData.photoURL || currentUser.photoURL || "",
         newProfileImage: null,
       });
     } catch (err) {

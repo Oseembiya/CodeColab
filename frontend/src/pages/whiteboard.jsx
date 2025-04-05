@@ -84,7 +84,6 @@ const Whiteboard = () => {
         const pathAsJson = e.path.toJSON();
         socket.emit("whiteboard-draw", {
           sessionId,
-          senderId: "user-123",
           objects: [pathAsJson],
         });
       }
@@ -97,7 +96,6 @@ const Whiteboard = () => {
         const objectAsJson = e.target.toJSON();
         socket.emit("whiteboard-update", {
           sessionId,
-          senderId: "user-123",
           object: objectAsJson,
         });
       }
@@ -125,7 +123,7 @@ const Whiteboard = () => {
     const initSession = async () => {
       try {
         // Join the session
-        await joinSession(sessionId, "user-123");
+        await joinSession(sessionId);
 
         // Subscribe to whiteboard events
         if (socket) {
@@ -133,11 +131,7 @@ const Whiteboard = () => {
 
           // Listen for drawing events from other users
           socket.on("whiteboard-draw", (data) => {
-            if (
-              data.sessionId === sessionId &&
-              data.senderId !== "user-123" &&
-              fabricCanvasRef.current
-            ) {
+            if (data.sessionId === sessionId && fabricCanvasRef.current) {
               // Add received objects to canvas
               fabric.util.enlivenObjects(data.objects, (objects) => {
                 objects.forEach((obj) => {
@@ -150,11 +144,7 @@ const Whiteboard = () => {
 
           // Listen for object updates
           socket.on("whiteboard-update", (data) => {
-            if (
-              data.sessionId === sessionId &&
-              data.senderId !== "user-123" &&
-              fabricCanvasRef.current
-            ) {
+            if (data.sessionId === sessionId && fabricCanvasRef.current) {
               // Update object on canvas
               const canvas = fabricCanvasRef.current;
               const objects = canvas.getObjects();
@@ -278,7 +268,6 @@ const Whiteboard = () => {
         if (socket && connected) {
           socket.emit("whiteboard-clear", {
             sessionId,
-            senderId: "user-123",
           });
         }
       }

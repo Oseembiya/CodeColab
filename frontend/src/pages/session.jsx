@@ -49,14 +49,23 @@ const VideoPanel = () => (
   </div>
 );
 
-const ParticipantsList = () => (
+const ParticipantsList = ({ participants = [] }) => (
   <div className="participants-list">
     <h3>Participants</h3>
-    <ul>
-      <li className="participant active">You (Host)</li>
-      <li className="participant">John Doe</li>
-      <li className="participant">Jane Smith</li>
-    </ul>
+    {participants.length === 0 ? (
+      <p>No participants yet</p>
+    ) : (
+      <ul>
+        {participants.map((participant, index) => (
+          <li
+            key={participant.id || index}
+            className={`participant ${participant.isHost ? "active" : ""}`}
+          >
+            {participant.name} {participant.isHost ? "(Host)" : ""}
+          </li>
+        ))}
+      </ul>
+    )}
   </div>
 );
 
@@ -68,15 +77,11 @@ const Session = () => {
   const editorRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const [code, setCode] = useState(
-    "// Start coding here\n\nfunction helloWorld() {\n  console.log('Hello from CodeColab!');\n}\n\nhelloWorld();"
-  );
+  const [code, setCode] = useState("// Start coding here\n\n");
   const [language, setLanguage] = useState("javascript");
   const [theme, setTheme] = useState("vs-dark");
   const [isVideoOpen, setIsVideoOpen] = useState(true);
-  const [output, setOutput] = useState(
-    "Welcome to CodeColab!\nRun your code to see the output here."
-  );
+  const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -85,6 +90,7 @@ const Session = () => {
   const [outputHeight, setOutputHeight] = useState(200);
   const [isOutputMinimized, setIsOutputMinimized] = useState(false);
   const [isOutputMaximized, setIsOutputMaximized] = useState(false);
+  const [participants, setParticipants] = useState([]);
   const outputDragRef = useRef(null);
   const startDragYRef = useRef(null);
   const startHeightRef = useRef(null);
@@ -93,17 +99,27 @@ const Session = () => {
   useEffect(() => {
     const initSession = async () => {
       try {
-        // In production, this would verify the session exists
-        await joinSession(sessionId, "user-123");
+        // Join the session using context
+        const sessionData = await joinSession(sessionId);
+
+        // Set initial code and language if available
+        if (sessionData) {
+          setCode(sessionData.code || "// Start coding here\n\n");
+          setLanguage(sessionData.language || "javascript");
+        }
 
         // Subscribe to code updates
         if (socket) {
           socket.emit("join-session", sessionId);
 
           socket.on("code-update", (data) => {
-            if (data.sessionId === sessionId && data.senderId !== "user-123") {
+            if (data.sessionId === sessionId) {
               setCode(data.content);
             }
+          });
+
+          socket.on("users-update", (users) => {
+            setParticipants(users);
           });
         }
       } catch (error) {
@@ -118,6 +134,7 @@ const Session = () => {
     return () => {
       if (socket) {
         socket.off("code-update");
+        socket.off("users-update");
         leaveSession();
       }
     };
@@ -137,7 +154,6 @@ const Session = () => {
       socket.emit("code-change", {
         sessionId,
         content: value,
-        senderId: "user-123",
       });
     }
   };
@@ -158,14 +174,39 @@ const Session = () => {
   };
 
   // Run code simulation
-  const handleRunCode = () => {
+  const handleRunCode = async () => {
     setIsRunning(true);
+    setOutput("Running code...");
 
-    // Simulate code execution
-    setTimeout(() => {
-      setOutput("Hello from CodeColab!\n\nExecution completed successfully.");
+    try {
+      const response = await fetch("/api/code/execute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          language,
+          stdin: "", // Could add input field in UI
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.status.id !== 3) {
+        // Not Accepted
+        setOutput(
+          `Error: ${result.status.description}\n${result.stderr || ""}`
+        );
+      } else {
+        setOutput(result.stdout || "Code executed successfully (no output)");
+      }
+    } catch (error) {
+      console.error("Error running code:", error);
+      setOutput("Failed to execute code. Please try again.");
+    } finally {
       setIsRunning(false);
-    }, 1500);
+    }
   };
 
   // Handle save
@@ -306,7 +347,7 @@ const Session = () => {
 
   const handleClearEditor = () => {
     if (window.confirm("Are you sure you want to clear the editor?")) {
-      setCode("");
+      setCode("// Start coding here\n\n");
     }
   };
 
@@ -381,7 +422,7 @@ const Session = () => {
           <button className="back-button" onClick={handleBack}>
             <FaArrowLeft />
           </button>
-          <h1>Session: {sessionId.substring(0, 8)}</h1>
+          <h1>Session: {currentSession?.title || sessionId.substring(0, 8)}</h1>
           <div className="connection-status">
             <span
               className={`status-indicator ${
@@ -416,7 +457,7 @@ const Session = () => {
       >
         {/* Sidebar */}
         <div className={`session-sidebar ${isFullscreen ? "hidden" : ""}`}>
-          <ParticipantsList />
+          <ParticipantsList participants={participants} />
         </div>
 
         {/* Editor area */}
